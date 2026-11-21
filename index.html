@@ -158,6 +158,94 @@ textarea{resize:vertical;line-height:1.45}
 input[type=range]{width:100%;accent-color:var(--acc);min-height:32px}
 input[type=time]{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;min-height:44px}
 .meta a,.brief a{color:var(--acc);font-weight:600;text-decoration:none}
+
+/* Notes, Apple Notes style */
+.nwrap{padding-bottom:90px}
+.nhead{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.ntitle{font-size:34px;margin:4px 0 12px}
+.nback{font-size:17px;padding-left:0}
+.circ{width:44px;height:44px;border-radius:50%;border:0;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.08);display:grid;place-items:center;flex:none;font-size:20px;color:var(--ink)}
+.circ svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.circ.yel{background:var(--accfill);color:#3a2f00}
+.circ.yel svg{stroke-width:2.6}
+.circ.sm{width:34px;height:34px;font-size:15px;background:var(--fill);box-shadow:none}
+.circ.big{width:52px;height:52px}
+.folders2 .frow{display:grid;grid-template-columns:28px minmax(0,1fr) auto 30px;align-items:center;gap:10px;padding:12px 14px 12px calc(14px + var(--d)*30px);border-bottom:1px solid var(--line);cursor:pointer;min-height:54px}
+.folders2 .frow:last-child{border-bottom:0}
+.folders2 svg{width:26px;height:26px;stroke:var(--acc);fill:none;stroke-width:1.6}
+.folders2 .ttl{font-size:17px;font-weight:400}
+.cnt{color:var(--mut);font-size:17px;font-variant-numeric:tabular-nums}
+.fx,.fx-sp{border:0;background:none;color:var(--mut);font-size:24px;line-height:1;width:30px;height:30px;display:grid;place-items:center;padding:0}
+.fx{color:var(--acc);transition:transform .2s}.fx.on{transform:rotate(90deg)}
+.nrow{padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+.nrow:last-child{border-bottom:0}
+.nrow .ttl{font-weight:700;font-size:17px}
+.nrow .note-snip b{color:var(--ink);font-weight:500;margin-right:6px}
+.nfold{display:flex;align-items:center;gap:5px;color:var(--mut);font-size:13px;margin-top:3px}
+.nfold svg{width:14px;height:14px;stroke:var(--mut);fill:none;stroke-width:1.8}
+.nsec{font-size:15px;color:var(--mut);margin:14px 0 6px}
+.nfform{padding:16px;margin-bottom:16px}
+.nbar{position:sticky;bottom:12px;display:flex;gap:10px;align-items:center;margin-top:10px;z-index:3}
+.nsearch{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:99px;padding:0 16px;box-shadow:0 4px 18px rgba(0,0,0,.10);min-height:52px}
+.nsearch svg{width:20px;height:20px;stroke:var(--mut);fill:none;stroke-width:2;flex:none}
+.nsearch input{border:0;background:none;padding:0;min-height:50px;font-size:17px}
+.nsearch input:focus{outline:none}
+.pane.noting{background:var(--card)}
+.ned{min-height:100%;display:flex;flex-direction:column;padding:calc(10px + env(safe-area-inset-top,0px)) 18px 0}
+.ntop{display:flex;align-items:center;gap:10px;position:sticky;top:calc(8px + env(safe-area-inset-top,0px));z-index:4}
+.cgroup{display:flex;background:var(--card);border-radius:99px;box-shadow:0 2px 10px rgba(0,0,0,.08);height:44px}
+.cgroup button{border:0;background:none;width:50px;font-size:17px;font-weight:700;letter-spacing:1px;display:grid;place-items:center;color:var(--ink)}
+.cgroup svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.nmore{padding:14px;margin-top:10px}
+.ned .ed{flex:1;min-height:60vh;padding:14px 4px 24px 26px;font-size:17px;line-height:1.5;color:var(--ink)}
+.ed h1{font-size:30px;font-weight:700;line-height:1.15;margin:.3em 0 .4em;letter-spacing:-.01em}
+.ed h2{font-size:22px;font-weight:700;margin:.9em 0 .3em}
+.ed h3{font-size:18px;font-weight:600;margin:.8em 0 .2em}
+.ed h1,.ed h2,.ed h3{position:relative}
+.ed h1::before,.ed h2::before,.ed h3::before{content:"›";position:absolute;left:-22px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--acc);font-weight:600;font-size:20px;opacity:0;transition:opacity .2s,transform .2s;width:18px;text-align:center}
+.ed h1:hover::before,.ed h2:hover::before,.ed h3:hover::before,.ed [data-collapsed="1"]::before{opacity:1}
+.ed [data-collapsed="1"]::before{transform:translateY(-50%) rotate(0)}
+.ed .hid{display:none}
+.ed p,.ed div{margin:0 0 .35em}
+.ed ul,.ed ol{padding-left:1.6em;margin:.2em 0 .6em}
+.ed ul.dash{list-style:none;padding-left:1.6em}
+.ed ul.dash>li{position:relative}
+.ed ul.dash>li::before{content:"–";position:absolute;left:-1.3em}
+.ed ul.check{list-style:none;padding-left:0}
+.ed ul.check>li{position:relative;padding-left:34px;min-height:28px;margin:4px 0}
+.ed ul.check>li::before{content:"";position:absolute;left:2px;top:2px;width:22px;height:22px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--mut) 70%,transparent)}
+.ed ul.check>li.on::before{background:var(--accfill) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%233a2f00' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat;border-color:var(--accfill)}
+.ed ul.check>li.on{color:var(--mut)}
+.ed blockquote{margin:.5em 0;padding:2px 0 2px 14px;border-left:3px solid var(--line);color:color-mix(in srgb,var(--ink) 85%,transparent)}
+.ed hr{border:0;border-top:1.5px solid var(--line);margin:20px 0}
+.ed img{max-width:100%;border-radius:10px;display:block;margin:10px 0}
+.ed a{color:var(--acc)}
+.ed a.sec{text-decoration:underline dotted}
+.ed .att{display:inline-flex;gap:6px;padding:6px 12px;border-radius:10px;background:var(--fill);text-decoration:none;color:var(--ink);font-size:15px}
+.ntable{border-collapse:collapse;width:100%;margin:10px 0}
+.ntable td{border:1px solid var(--line);padding:8px 10px;min-width:60px;vertical-align:top}
+.ndock{position:sticky;bottom:calc(var(--kb,0px) + 10px + env(safe-area-inset-bottom,0px));z-index:5;display:grid;gap:8px;padding-bottom:4px}
+.acc{display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:99px;box-shadow:0 4px 18px rgba(0,0,0,.12);padding:4px 10px;min-height:56px}
+.acc button,.acc label{border:0;background:none;width:46px;height:46px;display:grid;place-items:center;font-size:22px;font-weight:500;color:var(--ink);cursor:pointer;border-radius:50%}
+.acc svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.acc .rec{background:var(--red);color:#fff}
+.fmt{background:var(--card);border-radius:28px;box-shadow:0 6px 28px rgba(0,0,0,.16);padding:16px 14px 18px;display:grid;gap:14px}
+.fhead{display:flex;justify-content:space-between;align-items:center;padding-left:6px;font-size:19px}
+.fstyles{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;align-items:center}
+.fstyles button{border:0;background:none;border-radius:99px;padding:8px 16px;white-space:nowrap;color:var(--ink);flex:none}
+.fstyles [data-f=h1]{font-size:24px;font-weight:700}.fstyles [data-f=h2]{font-size:19px;font-weight:700}.fstyles [data-f=h3]{font-size:17px;font-weight:600}.fstyles [data-f=p]{font-size:17px}
+.fstyles button.on{background:var(--accfill);color:#3a2f00}
+.frow2{display:flex;gap:10px;flex-wrap:wrap}
+.seg2{display:flex;background:var(--fill);border-radius:16px;overflow:hidden;flex:1 1 auto}
+.seg2 button{flex:1;border:0;background:none;height:50px;min-width:48px;font-size:20px;display:grid;place-items:center;color:var(--ink);border-right:1px solid var(--bg)}
+.seg2 button:last-child{border-right:0}
+.seg2.wide button{font-size:15px;font-weight:600}
+.seg2 button.on{background:color-mix(in srgb,var(--accfill) 45%,var(--fill))}
+.seg2 svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cdot{width:24px;height:24px;border-radius:50%;background:#0a84ff;display:inline-block}
+.colors{display:flex;gap:8px;flex-wrap:wrap;padding:0 4px}
+.colors button{border:0;background:var(--fill);border-radius:12px;min-width:44px;height:44px;display:grid;place-items:center;padding:0 10px}
+@media(min-width:1101px){.pane.noting .ned{padding-top:16px}}
 </style>
 </head>
 <body>
@@ -277,8 +365,8 @@ addEventListener('online',()=>flush());
 const view=$('#view'),pane=$('#pane'),toast=$('#toast');
 let tt;const say=m=>{toast.textContent=m;toast.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toast.classList.remove('show'),3400)};
 const buzz=()=>{try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}};
-const openPane=h=>{pane.innerHTML=h;pane.classList.add('open');pane.scrollTop=0;pane.onscroll=null};
-const closePane=()=>pane.classList.remove('open');
+const openPane=h=>{pane.classList.remove('noting');pane.innerHTML=h;pane.classList.add('open');pane.scrollTop=0;pane.onscroll=null};
+const closePane=()=>{pane.classList.remove('open');pane.classList.remove('noting');if(window.__rec)window.__rec.stop()};
 const back='<button class="btn link back" data-a="close">‹ Back</button>';
 const grp=(rows,empty)=>`<div class="group">${rows.length?rows.join(''):`<div class="empty">${empty}</div>`}</div>`;
 const maps=loc=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(loc)}`;
@@ -344,44 +432,218 @@ function itemPane(k,id){
  <div class="prow"><button class="btn y" data-a="tsave" data-id="${esc(id)}">Save</button><button class="btn" data-a="tvoid" data-id="${esc(id)}">Mark void</button></div>
  <p class="samp">Void tasks stay in the Sheet's history instead of being deleted.</p></div>`)}
 
-/* ---------- NOTES ---------- */
-const PARA=['Projects','Areas','Resources','Archive'],TYPES=['Client','Work','Church staff','Church','Discipleship','Personal','Claude session'];
+/* ---------- NOTES (Apple Notes style: nested folders, format panel, attachments) ---------- */
+const TYPES=['Client','Work','Church staff','Church','Discipleship','Personal','Claude session'];
+const DEFAULT_FOLDERS=['1. Projects','2. Areas','2. Areas/[BCC & Sinode]','2. Areas/[CWM-PIK]','2. Areas/[DYC]','2. Areas/[Mission]','2. Areas/[Personal & Family]','2. Areas/[Personal & Family]/[Personal] To Do','2. Areas/[Personal & Family]/[Personal] Pajak','2. Areas/[Personal & Family]/[Personal] Insurances','2. Areas/[Personal & Family]/[Personal] Health','3. Resources','4. Archive'];
+const PARA_MAP={Projects:'1. Projects',Areas:'2. Areas',Resources:'3. Resources',Archive:'4. Archive'};
+const ICON={folder:'<svg viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2h8.8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M3 9.5h18"/></svg>',
+ compose:'<svg viewBox="0 0 24 24"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 16l1.4-4z"/></svg>',
+ newfolder:'<svg viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2h8.8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M12 10v6M9 13h6"/></svg>',
+ search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
+ share:'<svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>',
+ check:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+ checklist:'<svg viewBox="0 0 24 24"><circle cx="5" cy="7" r="2.2"/><path d="M4 7l1 1 1.6-1.8"/><circle cx="5" cy="16" r="2.2"/><path d="M10 7h10M10 16h10"/></svg>',
+ table:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M3 15h18M9 5v14M15 5v14"/></svg>',
+ clip:'<svg viewBox="0 0 24 24"><path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7.2"/></svg>',
+ mic:'<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>',
+ pen:'<svg viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L9 20H4v-5z"/><path d="M4 22h16"/></svg>',
+ ul:'<svg viewBox="0 0 24 24"><circle cx="4.5" cy="7" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="17" r="1.3"/><path d="M9 7h11M9 12h11M9 17h11"/></svg>',
+ dash:'<svg viewBox="0 0 24 24"><path d="M3 7h3M3 12h3M3 17h3M9 7h11M9 12h11M9 17h11"/></svg>',
+ ol:'<svg viewBox="0 0 24 24"><path d="M3.5 5.5h1.5v4M3.5 9.5h3M3.5 14.5c.4-.8 2.7-.8 2.7.4 0 1-2.7 2-2.7 3.1h2.8M9 7h11M9 12h11M9 17h11"/></svg>',
+ outdent:'<svg viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M10 14h10M4 18h16M7 9.5L4 12l3 2.5"/></svg>',
+ indent:'<svg viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M10 14h10M4 18h16M4 9.5L7 12l-3 2.5"/></svg>',
+ quote:'<svg viewBox="0 0 24 24"><path d="M5 5v14"/><rect x="9" y="7" width="11" height="10" rx="2"/></svg>'};
+const fpath=n=>n.folder||(n.para&&PARA_MAP[n.para])||'Notes';
+const fname=p=>p.split('/').pop();
+const fparent=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')):'';
+const noteRows=()=>D.notes_index.filter(n=>!yes(n.void)&&n.kind!=='folder');
+function folderList(){
+ const set=new Set(['Notes']);
+ D.notes_index.filter(n=>n.kind==='folder'&&!yes(n.void)).forEach(f=>set.add(f.folder));
+ noteRows().forEach(n=>set.add(fpath(n)));
+ [...set].forEach(p=>{let q=p;while(q.includes('/')){q=fparent(q);set.add(q)}});
+ const order=p=>p==='Notes'?'':p.toLowerCase();
+ return[...set].sort((a,b)=>order(a).localeCompare(order(b),undefined,{numeric:true}))}
+function seedFolders(){
+ if(D.notes_index.some(n=>n.kind==='folder'))return;
+ DEFAULT_FOLDERS.forEach(p=>D.notes_index.push({id:'f-'+uid(),kind:'folder',folder:p,title:fname(p),date:TODAY,void:''}));
+ touch('notes_index')}
+const ndate=s=>s?new Date(s+'T00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
+const snippet=n=>{const t=(n.text||plain(BODY[n.id])||'');const rest=t.startsWith(n.title)?t.slice(n.title.length).trim():t;return rest.slice(0,90)||'No additional text'};
+function noteRow(n,mk,showFolder){return `<div class="nrow" data-a="note" data-id="${esc(n.id)}"><div class="ttl">${mk(n.title||'New Note')}</div><div class="note-snip"><b>${ndate(n.date)}</b> ${mk(snippet(n))}</div>${showFolder?`<div class="nfold">${ICON.folder}${esc(fname(fpath(n)))}</div>`:''}</div>`}
 function notes(){
- const q=(UI.q||'').toLowerCase(),nf=UI.nf;
- let list=D.notes_index.filter(n=>!yes(n.void));
- if(PARA.includes(nf))list=list.filter(n=>n.para===nf);if(TYPES.includes(nf))list=list.filter(n=>n.type===nf);
- const words=q.split(/\s+/).filter(Boolean);
- const hay=n=>(n.title+' '+(n.text||'')+' '+plain(BODY[n.id])+' '+n.type+' '+n.para+' '+(n.people||'')+' '+(n.tags||'')).toLowerCase();
- if(words.length)list=list.filter(n=>{const h=hay(n);return words.every(w=>h.includes(w))});
- list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- const hl=words.length?D.highlights.filter(h=>words.every(w=>(h.passage+' '+(h.note||'')).toLowerCase().includes(w))):[];
+ if(live()||D.notes_index.length)seedFolders();
+ const q=(UI.q||'').trim().toLowerCase(),words=q.split(/\s+/).filter(Boolean);
  const rx=words.length?new RegExp('('+words.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi'):null;
  const mk=s=>rx?esc(s).replace(rx,'<mark>$1</mark>'):esc(s);
- view.innerHTML=`<h1>Notes</h1><p class="sub">Sorted by PARA. Search looks through every note and your book highlights.</p>
- <input type="search" id="nq" placeholder="Search words, people, places" value="${esc(UI.q||'')}" aria-label="Search notes">
- <div class="chips">${['All',...PARA,...TYPES].map(c=>`<button class="chip" data-a="nf" data-v="${c}" aria-pressed="${nf===c}">${c}</button>`).join('')}</div>
- ${!q&&nf==='All'?`<h2>Folders</h2><div class="group folders">${PARA.map(p=>`<div class="row" data-a="nf" data-v="${p}"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ttl">${p}</span><span class="pill">${D.notes_index.filter(n=>n.para===p&&!yes(n.void)).length}</span></div>`).join('')}</div>`:''}
- <h2>${q?'Results':nf==='All'?'Recent':esc(nf)} <span class="n">${list.length}</span><button class="btn link act" data-a="newnote">New note</button></h2>
- ${grp(list.slice(0,200).map(n=>`<div class="row nt hit" data-a="note" data-id="${esc(n.id)}"><span class="dot" style="background:var(--acc)"></span><div><div class="ttl">${mk(n.title||'Untitled')}</div><div class="note-snip">${nice(n.date)} · ${esc(n.type)} · ${mk((n.text||plain(BODY[n.id])).slice(0,100))}</div></div><span class="pill">${esc(n.para)}</span></div>`),words.length?'No notes match. Try fewer words.':'No notes here yet.')}
- ${hl.length?`<h2>Book highlights <span class="n">${hl.length}</span></h2>${grp(hl.map(h=>{const b=D.books.find(x=>x.id===h.bookId);return `<div class="row nt hit"><span class="dot m-${esc(h.colour||'y')}"></span><div><div class="ttl">“${mk(h.passage)}”</div><div class="note-snip">${esc(b?b.title:'')}</div></div><span></span></div>`}),'')}`:''}`;
+ const all=noteRows(),folders=folderList(),cur=UI.folder||'';
+ const count=p=>all.filter(n=>fpath(n)===p).length;
+ const kids=p=>folders.filter(f=>f!=='Notes'&&fparent(f)===p);
+ UI.open=UI.open||{};
+ let body='';
+ if(words.length){
+  const hay=n=>(n.title+' '+(n.text||'')+' '+plain(BODY[n.id])+' '+fpath(n)+' '+(n.type||'')+' '+(n.people||'')+' '+(n.tags||'')).toLowerCase();
+  const res=all.filter(n=>words.every(w=>hay(n).includes(w))).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const hl=D.highlights.filter(h=>words.every(w=>(h.passage+' '+(h.note||'')).toLowerCase().includes(w)));
+  body=`<h1 class="ntitle">Search</h1><p class="sub">${res.length} note${res.length===1?'':'s'}${hl.length?` and ${hl.length} highlight${hl.length===1?'':'s'}`:''}</p>
+  <div class="group">${res.map(n=>noteRow(n,mk,true)).join('')||'<div class="empty">No notes match. Try fewer words.</div>'}</div>
+  ${hl.length?`<h2>Book highlights</h2><div class="group">${hl.map(h=>{const b=D.books.find(x=>x.id===h.bookId);return `<div class="nrow"><div class="ttl">“${mk(h.passage)}”</div><div class="note-snip">${esc(b?b.title:'')}</div></div>`}).join('')}</div>`:''}`}
+ else if(!cur){
+  const tree=(p,depth)=>kids(p).map(f=>{const k=kids(f).length,open=UI.open[f];return `<div class="frow" style="--d:${depth}" data-a="fopen" data-v="${esc(f)}">${ICON.folder}<span class="ttl">${esc(fname(f))}</span><span class="cnt">${count(f)}</span>${k?`<button class="fx${open?' on':''}" data-a="fx" data-v="${esc(f)}" aria-label="${open?'Collapse':'Expand'}">›</button>`:'<span class="fx-sp">›</span>'}</div>${k&&open?tree(f,depth+1):''}`}).join('');
+  body=`<div class="nhead"><h1 class="ntitle">Folders</h1><button class="circ" data-a="newfolder" aria-label="New folder">${ICON.newfolder}</button></div>
+  <div class="group folders2"><div class="frow" style="--d:0" data-a="fopen" data-v="Notes">${ICON.folder}<span class="ttl">Notes</span><span class="cnt">${count('Notes')}</span><span class="fx-sp">›</span></div>${tree('',0)}</div>
+  <div class="group folders2" style="margin-top:18px"><div class="frow" style="--d:0" data-a="fopen" data-v="__deleted"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span class="ttl">Recently Deleted</span><span class="cnt">${D.notes_index.filter(n=>yes(n.void)&&n.kind!=='folder').length}</span><span class="fx-sp">›</span></div></div>
+  <div id="nf-new"></div>`}
+ else{
+  const del=cur==='__deleted';const sub=del?[]:kids(cur),list=(del?D.notes_index.filter(n=>yes(n.void)&&n.kind!=='folder'):all.filter(n=>fpath(n)===cur)).sort((a,b)=>(yes(b.pinned)-yes(a.pinned))||(b.date||'').localeCompare(a.date||''));const pinned=list.filter(n=>yes(n.pinned)&&!del),rest=list.filter(n=>!yes(n.pinned)||del);
+  body=`<div class="nhead"><button class="btn link nback" data-a="fopen" data-v="${del?'':esc(fparent(cur))}">‹ ${esc(!del&&fparent(cur)?fname(fparent(cur)):'Folders')}</button><button class="circ" data-a="newfolder" aria-label="New folder">${ICON.newfolder}</button></div>
+  <h1 class="ntitle">${del?'Recently Deleted':esc(fname(cur))}</h1><p class="sub">${list.length} note${list.length===1?'':'s'}</p>
+  ${sub.length?`<div class="group folders2" style="margin-bottom:18px">${sub.map(f=>`<div class="frow" style="--d:0" data-a="fopen" data-v="${esc(f)}">${ICON.folder}<span class="ttl">${esc(fname(f))}</span><span class="cnt">${count(f)}</span><span class="fx-sp">›</span></div>`).join('')}</div>`:''}
+  <div id="nf-new"></div>
+  ${pinned.length?`<h2 class="nsec">Pinned</h2><div class="group">${pinned.map(n=>noteRow(n,mk,false)).join('')}</div><h2 class="nsec">Notes</h2>`:''}<div class="group">${rest.map(n=>del?noteRow(n,mk,true).replace('data-a="note"','data-a="nrestore"'):noteRow(n,mk,false)).join('')||`<div class="empty">${del?'Nothing here. Deleted notes stay here and in Drive, so nothing is ever lost.':'No notes in this folder yet. Tap the pencil to write one.'}</div>`}</div>${del&&rest.length?'<p class="samp">Tap a note to put it back.</p>':''}`}
+ view.innerHTML=`<div class="nwrap">${body}</div>
+ <div class="nbar"><label class="nsearch">${ICON.search}<input type="search" id="nq" placeholder="Search" value="${esc(UI.q||'')}" aria-label="Search all notes"></label><button class="circ big" data-a="newnote" aria-label="New note">${ICON.compose}</button></div>`;
  const nq=$('#nq');nq.oninput=()=>{UI.q=nq.value;saveUI();const p=nq.selectionStart;notes();const n2=$('#nq');n2.focus();n2.setSelectionRange(p,p)}}
+function newFolderForm(){
+ const box=$('#nf-new');if(!box)return;const cur=UI.folder&&UI.folder!=='Notes'?UI.folder:'';
+ box.innerHTML=`<form class="group nfform" id="nff"><div class="field"><label for="nff-n">New folder</label><input type="text" id="nff-n" placeholder="Folder name" autocomplete="off"></div><div class="field"><label for="nff-p">Inside</label><select id="nff-p"><option value="">Top level</option>${folderList().filter(f=>f!=='Notes').map(f=>`<option value="${esc(f)}" ${f===cur?'selected':''}>${esc(f.split('/').join(' › '))}</option>`).join('')}</select></div><div class="prow"><button class="btn y">Create</button><button class="btn" type="button" data-a="fcancel">Cancel</button></div></form>`;
+ $('#nff-n').focus();
+ $('#nff').onsubmit=e=>{e.preventDefault();const name=$('#nff-n').value.trim().replace(/\//g,'-');if(!name){say('Type a folder name.');return}const p=($('#nff-p').value?$('#nff-p').value+'/':'')+name;
+  if(folderList().includes(p)){say('That folder already exists.');return}
+  D.notes_index.push({id:'f-'+uid(),kind:'folder',folder:p,title:name,date:TODAY,void:''});const par=fparent(p);if(par){UI.open=UI.open||{};UI.open[par]=true}saveUI();touch('notes_index');notes();say('Folder created.')}}
+
+/* editor */
+let savedRange=null;
+const keepRange=()=>{const s=getSelection();const ed=$('#ed');if(s.rangeCount&&ed&&ed.contains(s.anchorNode))savedRange=s.getRangeAt(0).cloneRange()};
+const restoreRange=()=>{const ed=$('#ed');if(!ed)return;ed.focus({preventScroll:true});if(savedRange){const s=getSelection();s.removeAllRanges();s.addRange(savedRange)}};
+document.addEventListener('selectionchange',()=>{keepRange();markFormat()});
+function markFormat(){
+ const fmt=$('#fmt');if(!fmt||fmt.hidden)return;const s=getSelection();if(!s.rangeCount)return;
+ let el=s.anchorNode;el=el&&el.nodeType===3?el.parentNode:el;const blk=el&&el.closest?el.closest('h1,h2,h3,p,div:not(#ed),li,blockquote'):null;
+ const tag=blk&&$('#ed').contains(blk)?blk.tagName.toLowerCase():'p';
+ fmt.querySelectorAll('[data-f]').forEach(b=>{const f=b.dataset.f;let on=false;
+  if(['h1','h2','h3'].includes(f))on=tag===f;else if(f==='p')on=!['h1','h2','h3'].includes(tag);
+  else if(['bold','italic','underline','strikeThrough'].includes(f))try{on=document.queryCommandState(f)}catch(x){}
+  b.classList.toggle('on',on)})}
+function shrinkImage(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const k=Math.min(1,1400/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.72))};img.onerror=()=>rej(new Error('That picture could not be read.'));img.src=r.result};r.onerror=()=>rej(new Error('That file could not be read.'));r.readAsDataURL(file)})}
+const fileB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(new Error('That file could not be read.'));r.readAsDataURL(f)});
 async function notePane(n){
- openPane(`<div class="detail"><div class="dhead">${back}<select id="np" aria-label="PARA folder" style="width:auto">${PARA.map(p=>`<option ${n.para===p?'selected':''}>${p}</option>`).join('')}</select><select id="nt" aria-label="Type" style="width:auto">${TYPES.map(p=>`<option ${n.type===p?'selected':''}>${p}</option>`).join('')}</select><button class="btn link" data-a="nvoid" data-id="${esc(n.id)}" style="margin-left:auto">Archive</button></div>
- <div class="tools" role="toolbar" aria-label="Formatting"><button data-f="h1" title="Heading">H1</button><button data-f="h2" title="Subheading">H2</button><button data-f="p" title="Body text">Aa</button><button data-f="bold"><b>B</b></button><button data-f="italic"><i>I</i></button><button data-f="ul" title="List">•</button><button data-f="hr" title="Divider">—</button>${['y','g','b','p'].map(c=>`<button data-f="m-${c}" aria-label="Highlight"><span class="sw m-${c}"></span></button>`).join('')}<button data-f="voice" title="Voice note">Mic</button></div>
- <div class="ed" id="ed" contenteditable="true">${BODY[n.id]??'<p class="meta">Loading…</p>'}</div>
- <p class="samp" id="nmeta">Edited ${nice(n.date)} · saves to Google Drive as you type</p></div>`);
+ if(!n)return;
+ openPane(`<div class="ned">
+ <div class="ntop"><button class="circ" data-a="close" aria-label="Back to notes">‹</button><span style="flex:1"></span><div class="cgroup"><button data-a="nshare" aria-label="Copy note text">${ICON.share}</button><button data-a="nmore" aria-label="More">•••</button></div><button class="circ yel" data-a="ndone" aria-label="Done">${ICON.check}</button></div>
+ <div class="nmore group" id="nmore" hidden>
+  <div class="field"><label for="nm-f">Folder</label><select id="nm-f">${folderList().map(f=>`<option value="${esc(f)}" ${fpath(n)===f?'selected':''}>${esc(f.split('/').join(' › '))}</option>`).join('')}</select></div>
+  <div class="field"><label for="nm-t">Type</label><select id="nm-t">${TYPES.map(t=>`<option ${n.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+  <div class="prow" style="margin-bottom:12px"><button class="btn" data-a="npin" data-id="${esc(n.id)}">${yes(n.pinned)?'Unpin note':'Pin note'}</button><button class="btn" data-a="nmd">Copy as Markdown</button><button class="btn" data-a="ntxt">Copy text</button></div>
+  <div class="field"><label>Sections</label><div id="nsecs" class="chips" style="flex-wrap:wrap"></div></div>
+  <div class="prow"><button class="btn" data-a="nvoid" data-id="${esc(n.id)}">Move to Recently Deleted</button></div><p class="meta" style="margin-top:8px">Edited ${nice(n.date)}${n.driveLink?` · <a href="${esc(n.driveLink)}" target="_blank" rel="noopener">Open file in Drive</a>`:''}</p></div>
+ <div class="ed" id="ed" contenteditable="true" spellcheck="true">${BODY[n.id]??'<p class="meta">Loading…</p>'}</div>
+ <div class="ndock">
+  <div class="fmt" id="fmt" hidden>
+   <div class="fhead"><b>Format</b><button class="circ sm" data-f="closefmt" aria-label="Close format">✕</button></div>
+   <div class="fstyles"><button data-f="h1">Title</button><button data-f="h2">Heading</button><button data-f="h3">Subheading</button><button data-f="p">Body</button></div>
+   <div class="frow2"><div class="seg2"><button data-f="bold"><b>B</b></button><button data-f="italic"><i style="font-family:Georgia,serif">I</i></button><button data-f="underline"><u>U</u></button><button data-f="strikeThrough"><s>S</s></button></div>
+    <div class="seg2"><button data-f="mark" aria-label="Highlight">${ICON.pen}</button><button data-f="colors" aria-label="Text colour"><span class="cdot"></span></button></div></div>
+   <div class="colors" id="colors" hidden>${[['Default',''],['Purple','#af52de'],['Pink','#ff2d55'],['Orange','#ff9500'],['Mint','#00a88f'],['Blue','#0a84ff']].map(([l,c])=>`<button data-f="color" data-c="${c}" aria-label="${l}"><span class="cdot" style="background:${c||'var(--ink)'}"></span></button>`).join('')}${['y','g','b','p'].map(c=>`<button data-f="mark" data-c="m-${c}" aria-label="Highlight colour"><span class="sw m-${c}"></span></button>`).join('')}</div>
+   <div class="frow2"><div class="seg2"><button data-f="ul" aria-label="Bulleted list">${ICON.ul}</button><button data-f="dash" aria-label="Dashed list">${ICON.dash}</button><button data-f="ol" aria-label="Numbered list">${ICON.ol}</button></div>
+    <div class="seg2"><button data-f="outdent" aria-label="Decrease indent">${ICON.outdent}</button><button data-f="indent" aria-label="Increase indent">${ICON.indent}</button></div><div class="seg2"><button data-f="quote" aria-label="Block quote">${ICON.quote}</button></div></div>
+   <div class="frow2"><div class="seg2 wide"><button data-f="hr">Divider line</button><button data-f="seclink">Link to section</button></div></div>
+   <div class="colors" id="seclist" hidden></div>
+  </div>
+  <div class="acc" id="acc"><button data-f="fmt" aria-label="Format">Aa</button><button data-f="check" aria-label="Checklist">${ICON.checklist}</button><button data-f="table" aria-label="Table">${ICON.table}</button><label aria-label="Attach photo or file">${ICON.clip}<input type="file" id="attach" hidden></label><button data-f="mic" aria-label="Dictate">${ICON.mic}</button><button data-f="hr" aria-label="Divider line">—</button></div>
+ </div></div>`);
+ pane.classList.add('noting');
  const ed=$('#ed');
- if(BODY[n.id]==null&&live()){try{const j=await api({action:'note',id:n.id});BODY[n.id]=j.html||'<h1>'+esc(n.title)+'</h1><p></p>';persist();if($('#ed')===ed)ed.innerHTML=BODY[n.id]}catch(e){ed.innerHTML='';say("Couldn't open the note: "+e.message)}}
- else if(BODY[n.id]==null){BODY[n.id]='<h1>'+esc(n.title)+'</h1><p></p>';ed.innerHTML=BODY[n.id]}
- ed.oninput=()=>{BODY[n.id]=ed.innerHTML;const first=ed.querySelector('h1,h2,p,li');n.title=plain(first?first.innerHTML:ed.innerHTML).slice(0,80)||'Untitled';n.text=plain(ed.innerHTML).slice(0,4000);n.date=TODAY;touchNote(n.id)};
- $('#np').onchange=e=>{n.para=e.target.value;touch('notes_index');notes()};$('#nt').onchange=e=>{n.type=e.target.value;touch('notes_index');notes()};
- const tb=pane.querySelector('.tools');tb.onmousedown=e=>e.preventDefault();
- tb.onclick=e=>{const b=e.target.closest('button');if(!b)return;const f=b.dataset.f;ed.focus();
-  if(f==='voice'){say('Voice notes are coming in the next version. For now, use the Claude app to record and I will file it here.');return}
-  if(f.startsWith('m-')){const sel=getSelection();if(!sel.rangeCount||sel.isCollapsed){say('Select some text first.');return}const r=sel.getRangeAt(0);const m=document.createElement('mark');m.className=f;try{r.surroundContents(m)}catch(x){m.appendChild(r.extractContents());r.insertNode(m)}sel.removeAllRanges()}
-  else if(f==='ul')document.execCommand('insertUnorderedList');else if(f==='hr')document.execCommand('insertHorizontalRule');
-  else if(f==='bold'||f==='italic')document.execCommand(f);else document.execCommand('formatBlock',false,f);
-  ed.oninput()}}
+ if(BODY[n.id]==null&&live()){try{const j=await api({action:'note',id:n.id});BODY[n.id]=j.html||`<h1>${esc(n.title)}</h1><p><br></p>`;persist();if($('#ed')===ed)ed.innerHTML=BODY[n.id]}catch(e){ed.innerHTML='';say("Couldn't open the note: "+e.message)}}
+ else if(BODY[n.id]==null){BODY[n.id]=`<h1>${esc(n.title)}</h1><p><br></p>`;ed.innerHTML=BODY[n.id]}
+ applyCollapse(ed);
+ const fillSecs=()=>{const box=$('#nsecs');if(!box)return;const hs=sections(ed);box.innerHTML=hs.map(h=>`<button class="chip" data-h="${h.dataset.h}">${esc(plain(h.innerHTML).slice(0,40))}</button>`).join('')||'<span class="meta">Add a Title, Heading or Subheading to make sections.</span>'};
+ const changed=()=>{BODY[n.id]=ed.innerHTML;const first=ed.querySelector('h1,h2,h3,p,li,div');n.title=(plain(first?first.innerHTML:ed.innerHTML)||plain(ed.innerHTML)).slice(0,80)||'New Note';n.text=plain(ed.innerHTML).slice(0,4000);n.date=TODAY;touchNote(n.id)};
+ ed.oninput=changed;
+ ed.onclick=e=>{const li=e.target.closest('ul.check>li');if(li&&e.offsetX<30){li.classList.toggle('on');changed();return}
+  const hd=e.target.closest('h1,h2,h3');if(hd&&hd.parentNode===ed&&e.offsetX<0){hd.dataset.collapsed=hd.dataset.collapsed==='1'?'':'1';applyCollapse(ed);changed();return}
+  const a=e.target.closest('a');if(a&&a.classList.contains('sec')){e.preventDefault();const t=ed.querySelector(`[data-h="${a.dataset.sec}"]`);if(t){t.dataset.collapsed='';applyCollapse(ed);t.scrollIntoView({behavior:'smooth',block:'start'})}else say('That section no longer exists.');return}
+  if(a&&a.href&&!a.isContentEditable){e.preventDefault();window.open(a.href,'_blank','noopener')}};
+ ed.onpaste=e=>{const cd=e.clipboardData;if(!cd)return;const t=cd.getData('text/plain');if(cd.getData('text/html')||!t||!looksMd(t))return;e.preventDefault();document.execCommand('insertHTML',false,fromMd(t));applyCollapse(ed);changed();say('Markdown turned into formatting.')};
+ pane.querySelector('.nmore').addEventListener('click',async e=>{const b=e.target.closest('[data-h]');if(b){const t=ed.querySelector(`[data-h="${b.dataset.h}"]`);if(t){t.dataset.collapsed='';applyCollapse(ed);$('#nmore').hidden=true;t.scrollIntoView({behavior:'smooth',block:'start'})}return}
+  if(e.target.closest('[data-a=nmd]'))copyOut(toMd(ed),'Markdown');if(e.target.closest('[data-a=ntxt]'))copyOut(ed.innerText,'Text')});
+ pane.querySelector('[data-a=nmore]').addEventListener('click',()=>{const m=$('#nmore');m.hidden=!m.hidden;if(!m.hidden)fillSecs()});
+ pane.querySelector('[data-a=nshare]').addEventListener('click',async()=>{const text=ed.innerText;if(navigator.share){try{await navigator.share({title:n.title,text});return}catch(x){if(x.name==='AbortError')return}}copyOut(text,'Note')});
+ pane.querySelector('[data-a=ndone]').addEventListener('click',()=>{ed.blur();$('#fmt').hidden=true;getSelection().removeAllRanges()});
+ $('#nm-f').onchange=e=>{n.folder=e.target.value;touch('notes_index');if(UI.view==='notes')notes();say('Moved to '+fname(n.folder)+'.')};
+ $('#nm-t').onchange=e=>{n.type=e.target.value;touch('notes_index')};
+ const dock=pane.querySelector('.ndock');
+ ['pointerdown','mousedown'].forEach(ev=>dock.addEventListener(ev,e=>{if(!e.target.closest('label,input'))e.preventDefault()}));
+ const fmt=$('#fmt'),acc=$('#acc');
+ const closestIn=(sel)=>{const s=getSelection();let el=s.anchorNode;el=el&&el.nodeType===3?el.parentNode:el;const x=el&&el.closest?el.closest(sel):null;return x&&ed.contains(x)?x:null};
+ const listAs=(kind)=>{const ul=closestIn('ul,ol');const want=kind==='ol'?'OL':'UL';
+  if(ul&&ul.tagName===want&&(ul.classList.contains(kind)||(kind==='ul'&&!ul.className)||kind==='ol')){document.execCommand(kind==='ol'?'insertOrderedList':'insertUnorderedList');return}
+  if(!ul||ul.tagName!==want)document.execCommand(kind==='ol'?'insertOrderedList':'insertUnorderedList');
+  const nl=closestIn('ul,ol');if(nl){nl.className=kind==='ul'||kind==='ol'?'':kind}};
+ dock.addEventListener('click',async e=>{const b=e.target.closest('[data-f]');if(!b)return;const f=b.dataset.f;
+  if(f==='fmt'){fmt.hidden=!fmt.hidden;$('#colors').hidden=true;markFormat();return}
+  if(f==='closefmt'){fmt.hidden=true;return}
+  if(f==='colors'){$('#colors').hidden=!$('#colors').hidden;return}
+  if(f==='seclink'){const sl=$('#seclist');const s=getSelection();if(!savedRange||savedRange.collapsed){say('Select the words to turn into a link first.');return}const hs=sections(ed);if(!hs.length){say('This note has no headings to link to yet.');return}sl.innerHTML=hs.map(h=>`<button class="chip" data-f="dolink" data-h="${h.dataset.h}">${esc(plain(h.innerHTML).slice(0,40))}</button>`).join('');sl.hidden=!sl.hidden;return}
+  if(f==='dolink'){restoreRange();const s=getSelection();if(!s.rangeCount||s.isCollapsed){say('Select the words first.');return}const r=s.getRangeAt(0);const a=document.createElement('a');a.className='sec';a.dataset.sec=b.dataset.h;a.href='#';a.appendChild(r.extractContents());r.insertNode(a);s.removeAllRanges();$('#seclist').hidden=true;changed();say('Section link added.');return}
+  restoreRange();
+  if(['h1','h2','h3','p'].includes(f))document.execCommand('formatBlock',false,f);
+  else if(['bold','italic','underline','strikeThrough'].includes(f))document.execCommand(f);
+  else if(f==='color'){document.execCommand('styleWithCSS',false,true);document.execCommand('foreColor',false,b.dataset.c||getComputedStyle(ed).color);document.execCommand('styleWithCSS',false,false)}
+  else if(f==='mark'){const s=getSelection();if(!s.rangeCount||s.isCollapsed){say('Select some text first.');return}const r=s.getRangeAt(0);const m=document.createElement('mark');m.className=b.dataset.c||'m-y';try{r.surroundContents(m)}catch(x){m.appendChild(r.extractContents());r.insertNode(m)}s.removeAllRanges()}
+  else if(f==='ul'||f==='dash'||f==='ol'||f==='check')listAs(f);
+  else if(f==='outdent'||f==='indent')document.execCommand(f);
+  else if(f==='quote'){const q=closestIn('blockquote');document.execCommand('formatBlock',false,q?'p':'blockquote')}
+  else if(f==='hr')document.execCommand('insertHTML',false,'<hr><p><br></p>');
+  else if(f==='table')document.execCommand('insertHTML',false,'<table class="ntable"><tbody><tr><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td></tr></tbody></table><p><br></p>');
+  else if(f==='mic'){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+   if(!SR){say('Tap the microphone on your keyboard to dictate into this note.');return}
+   if(window.__rec){window.__rec.stop();return}
+   const rec=new SR();rec.lang=UI.dictLang||'en-US';rec.interimResults=false;rec.continuous=true;window.__rec=rec;b.classList.add('rec');say('Listening… tap the mic again to stop.');
+   rec.onresult=ev=>{const t=[...ev.results].slice(ev.resultIndex).filter(r=>r.isFinal).map(r=>r[0].transcript).join(' ');if(t){restoreRange();document.execCommand('insertText',false,t.trim()+' ');changed()}};
+   rec.onerror=ev=>{say(ev.error==='not-allowed'?'Microphone access was blocked. Allow it in your browser settings.':'Dictation stopped: '+ev.error)};
+   rec.onend=()=>{window.__rec=null;b.classList.remove('rec')};try{rec.start()}catch(x){say("Couldn't start dictation.")}return}
+  changed();markFormat()});
+ $('#attach').onchange=async e=>{const file=e.target.files[0];e.target.value='';if(!file)return;
+  try{
+   if(file.type.startsWith('image/')){const src=await shrinkImage(file);restoreRange();document.execCommand('insertHTML',false,`<img src="${src}" alt=""><p><br></p>`);changed();say('Photo added.');return}
+   if(!live()){say('Connect your Google Sheet first to attach files.');return}
+   if(file.size>20e6){say('That file is over 20 MB. Put it in Drive and paste the link instead.');return}
+   say('Uploading '+file.name+'…');const j=await post({action:'attach',name:file.name,mime:file.type||'application/octet-stream',data:await fileB64(file)});
+   restoreRange();document.execCommand('insertHTML',false,`<a class="att" href="${esc(j.url)}" target="_blank" rel="noopener" contenteditable="false">📎 ${esc(file.name)}</a>&nbsp;`);changed();say('File attached. It is saved in Drive.')}
+  catch(err){say(/Unknown action/.test(err.message)?'Attaching files needs the updated bridge script. Photos already work.':"Couldn't attach: "+err.message)}};
+}
+const vv=window.visualViewport;
+if(vv){const kb=()=>{const h=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty('--kb',h+'px')};vv.addEventListener('resize',kb);vv.addEventListener('scroll',kb)}
+/* Apple Notes extras: collapsible headings, section links, Markdown copy/paste */
+function applyCollapse(ed){
+ [...ed.children].forEach(c=>c.classList.remove('hid'));
+ const kids=[...ed.children];
+ kids.forEach((h,i)=>{if(!/^H[123]$/.test(h.tagName)||h.dataset.collapsed!=='1')return;const lv=+h.tagName[1];
+  for(let j=i+1;j<kids.length;j++){const k=kids[j];if(/^H[123]$/.test(k.tagName)&&+k.tagName[1]<=lv)break;k.classList.add('hid')}})}
+function sections(ed){return[...ed.querySelectorAll('h1,h2,h3')].filter(h=>plain(h.innerHTML)).map(h=>{if(!h.dataset.h)h.dataset.h='h'+Math.random().toString(36).slice(2,7);return h})}
+const inl=el=>[...el.childNodes].map(n=>{if(n.nodeType===3)return n.textContent;if(n.nodeType!==1)return'';const t=n.tagName,s=inl(n);
+ if(t==='B'||t==='STRONG')return s.trim()?`**${s}**`:s;if(t==='I'||t==='EM')return s.trim()?`*${s}*`:s;if(t==='S'||t==='STRIKE')return`~~${s}~~`;if(t==='A')return n.href&&!n.classList.contains('sec')?`[${s}](${n.href})`:s;if(t==='BR')return'\n';if(t==='IMG')return'';return s}).join('');
+function toMd(ed){const out=[];[...ed.children].forEach(el=>{const t=el.tagName;
+ if(t==='H1')out.push('# '+inl(el));else if(t==='H2')out.push('## '+inl(el));else if(t==='H3')out.push('### '+inl(el));
+ else if(t==='HR')out.push('---');else if(t==='BLOCKQUOTE')out.push('> '+inl(el));
+ else if(t==='UL'||t==='OL')out.push([...el.children].map((li,i)=>(t==='OL'?(i+1)+'. ':el.classList.contains('check')?(li.classList.contains('on')?'- [x] ':'- [ ] '):'- ')+inl(li)).join('\n'));
+ else if(t==='TABLE'){const rows=[];[...el.rows].forEach((r,i)=>{rows.push('| '+[...r.cells].map(c=>inl(c).trim()).join(' | ')+' |');if(!i)rows.push('|'+[...r.cells].map(()=>' --- ').join('|')+'|')});out.push(rows.join('\n'))}
+ else{const s=inl(el);if(s.trim())out.push(s)}});return out.join('\n\n').replace(/\n{3,}/g,'\n\n').trim()}
+const mdInl=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*(?!\s)(.+?)\*/g,'$1<i>$2</i>').replace(/~~(.+?)~~/g,'<s>$1</s>').replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+function fromMd(md){const L=md.replace(/\r/g,'').split('\n');let h='',list=null;const close=()=>{if(list){h+=`</${list.tag}>`;list=null}};
+ L.forEach(l=>{let m;
+  if(m=l.match(/^\s*[-*] \[( |x|X)\] (.*)/)){if(!list||list.cls!=='check'){close();list={tag:'ul',cls:'check'};h+='<ul class="check">'}h+=`<li class="${m[1]===' '?'':'on'}">${mdInl(m[2])}</li>`;return}
+  if(m=l.match(/^\s*[-*+] (.*)/)){if(!list||list.tag!=='ul'||list.cls){close();list={tag:'ul',cls:''};h+='<ul>'}h+=`<li>${mdInl(m[1])}</li>`;return}
+  if(m=l.match(/^\s*\d+[.)] (.*)/)){if(!list||list.tag!=='ol'){close();list={tag:'ol'};h+='<ol>'}h+=`<li>${mdInl(m[1])}</li>`;return}
+  close();
+  if(m=l.match(/^(#{1,3}) (.*)/))h+=`<h${m[1].length}>${mdInl(m[2])}</h${m[1].length}>`;
+  else if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l))h+='<hr>';
+  else if(m=l.match(/^> ?(.*)/))h+=`<blockquote>${mdInl(m[1])}</blockquote>`;
+  else if(/^\|.*\|$/.test(l.trim())){if(/^\|[\s:|-]+\|$/.test(l.trim()))return;const cells=l.trim().slice(1,-1).split('|').map(c=>`<td>${mdInl(c.trim())}</td>`).join('');h=h.replace(/<\/tbody><\/table>$/,'');if(!h.endsWith('</tr>')||!/<table class="ntable"><tbody>(?:(?!<\/table>).)*$/.test(h))h+='<table class="ntable"><tbody>';h+=`<tr>${cells}</tr></tbody></table>`}
+  else if(l.trim())h+=`<p>${mdInl(l)}</p>`;});close();return h}
+const looksMd=t=>/^(#{1,3} |\s*[-*+] |\s*\d+[.)] |>\s|---\s*$|\|.*\|)/m.test(t)||/\*\*.+\*\*/.test(t);
+async function copyOut(text,label){try{await navigator.clipboard.writeText(text);say(label+' copied.')}catch(e){say("Couldn't copy. Your browser blocked the clipboard.")}}
 
 /* ---------- PEOPLE ---------- */
 const wa=p=>p.phone?`<a class="wa" href="https://wa.me/${esc(String(p.phone).replace(/\D/g,''))}" target="_blank" rel="noopener">WhatsApp</a>`:'';
@@ -469,10 +731,15 @@ document.addEventListener('click',async e=>{
  if(a==='hsave'){const h=find('habits',id);h.name=$('#f-t').value.trim()||h.name;h.part=$('#f-p').value;touch('habits');render();closePane();say('Saved.')}
  if(a==='hvoid'){find('habits',id).void='1';touch('habits');render();closePane();say('Habit removed. Its history stays in the Sheet.')}
  if(a==='fresh'){const o=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done');o.forEach((t,i)=>{t.date=i<2?TODAY:TMRW;t.updated=TODAY});touch('tasks');render();say(`Moved ${o.length}: two to today, the rest to tomorrow.`)}
- if(a==='nf'){UI.nf=v;UI.q='';saveUI();notes()}
+ if(a==='fopen'){UI.folder=v;UI.q='';saveUI();notes();$('#main').scrollTop=0}
+ if(a==='fx'){e.stopPropagation();UI.open=UI.open||{};UI.open[v]=!UI.open[v];saveUI();notes()}
+ if(a==='newfolder')newFolderForm();
+ if(a==='fcancel'){const b=$('#nf-new');if(b)b.innerHTML=''}
  if(a==='note')notePane(find('notes_index',id));
- if(a==='newnote'){const n={id:uid(),title:'New note',para:PARA.includes(UI.nf)?UI.nf:'Areas',type:TYPES.includes(UI.nf)?UI.nf:'Personal',people:'',date:TODAY,driveLink:'',tags:'',void:'',text:''};BODY[n.id]='<h1>New note</h1><p></p>';D.notes_index.push(n);touch('notes_index');touchNote(n.id);notes();notePane(n)}
- if(a==='nvoid'){find('notes_index',id).void='1';touch('notes_index');closePane();notes();say('Archived. The note stays in Drive.')}
+ if(a==='newnote'){const f=UI.folder&&UI.folder!=='__deleted'?UI.folder:'Notes';const n={id:uid(),kind:'note',title:'New Note',folder:f,para:'',type:'Personal',people:'',date:TODAY,driveLink:'',tags:'',void:'',pinned:'',text:''};BODY[n.id]='<h1><br></h1>';D.notes_index.push(n);touch('notes_index');touchNote(n.id);notes();notePane(n).then(()=>{const ed=$('#ed');if(ed){ed.focus();const r=document.createRange();r.selectNodeContents(ed.firstChild||ed);r.collapse(true);const s2=getSelection();s2.removeAllRanges();s2.addRange(r)}})}
+ if(a==='nvoid'){find('notes_index',id).void='1';touch('notes_index');closePane();notes();say('Moved to Recently Deleted. You can put it back any time.')}
+ if(a==='nrestore'){const n=find('notes_index',id);n.void='';touch('notes_index');notes();say('Note restored to '+fname(fpath(n))+'.')}
+ if(a==='npin'){const n=find('notes_index',id);n.pinned=yes(n.pinned)?'':'1';touch('notes_index');notes();el.textContent=yes(n.pinned)?'Unpin note':'Pin note';say(yes(n.pinned)?'Pinned to the top of its folder.':'Unpinned.')}
  if(a==='pw'){UI.pw=v;UI.bf='';saveUI();people()}
  if(a==='bf'){UI.bf=UI.bf===v?'':v;saveUI();people()}
  if(a==='person')personPane(find('people',id));

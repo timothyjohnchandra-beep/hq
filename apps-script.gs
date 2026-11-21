@@ -6,6 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
+const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
 const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights'];
@@ -32,6 +33,7 @@ function doPost(e) {
     if (b.action === 'save') { writeTab_(b.name, b.rows); return { ok: true, saved: b.rows.length }; }
     if (b.action === 'note') return { ok: true, driveLink: writeNote_(b.id, b.title, b.html) };
     if (b.action === 'addEvent') return { ok: true, id: addEvent_(b) };
+    if (b.action === 'attach') return { ok: true, url: attach_(b) };
     throw new Error('Unknown action: ' + b.action);
   });
 }
@@ -181,9 +183,27 @@ function brief_() {
 }
 
 /* ---------- Notes bodies in Drive ---------- */
+function sub_(parent, name) {
+  const it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : parent.createFolder(name);
+}
+function rootFolder_() {
+  const it = DriveApp.getFoldersByName(ROOT_FOLDER);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(ROOT_FOLDER);
+}
 function notesFolder_() {
-  const it = DriveApp.getFoldersByName(NOTES_FOLDER);
-  return it.hasNext() ? it.next() : DriveApp.createFolder(NOTES_FOLDER);
+  const root = rootFolder_();
+  const inRoot = root.getFoldersByName(NOTES_FOLDER);
+  if (inRoot.hasNext()) return inRoot.next();
+  const anywhere = DriveApp.getFoldersByName(NOTES_FOLDER);   // older setups: move it into Claude
+  if (anywhere.hasNext()) { const f = anywhere.next(); f.moveTo(root); return f; }
+  return root.createFolder(NOTES_FOLDER);
+}
+function attach_(b) {
+  if (!b.data) throw new Error('No file came through.');
+  const blob = Utilities.newBlob(Utilities.base64Decode(b.data), b.mime || 'application/octet-stream', b.name || 'attachment');
+  const f = sub_(notesFolder_(), 'Attachments').createFile(blob);
+  return f.getUrl();
 }
 function readNote_(id) {
   const it = notesFolder_().getFilesByName(id + '.html');
