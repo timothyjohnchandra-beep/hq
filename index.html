@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffd60a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="HQ">
+<title>Timothy HQ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday, calm, personal: a daily notebook that runs a busy week
+   IDEA Apple Notes: paper-white sheets, grouped lists, one warm yellow
+   PICTURE the Today list itself, times hanging large on the left
+   COLOUR paper white, graphite ink, notes yellow accent, soft world tints
+   TYPE Inter (system feel) + Source Serif 4 for reading
+   LAYOUT phone: one column + bottom tabs; wide: sidebar, list, detail pane */
+:root{color-scheme:light dark;
+--bg:light-dark(#f2f2f7,#000);--card:light-dark(#fff,#1c1c1e);--ink:light-dark(#1c1c1e,#f2f2f7);
+--mut:light-dark(#86868b,#98989d);--line:light-dark(#e3e3e8,#2c2c2e);--fill:light-dark(#ececf0,#2c2c2e);
+--acc:light-dark(#d69e00,#ffd60a);--accfill:#ffd60a;--accsoft:light-dark(#fff6d1,#3a3210);
+--church:light-dark(#5b5bd6,#9d9df5);--company:light-dark(#0a84a0,#5ac8e0);--personal:light-dark(#d1547a,#ff8fb0);
+--red:light-dark(#d70015,#ff6961);--green:light-dark(#248a3d,#30d158);
+--hl-y:light-dark(#ffe98a,#6b5a00);--hl-g:light-dark(#c9f2c2,#1f4d24);--hl-b:light-dark(#cfe4ff,#173a63);--hl-p:light-dark(#ffd3e2,#5c1f33)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.app{display:grid;height:100%;grid-template-columns:220px minmax(0,1fr) minmax(0,1.1fr)}
+.side{background:var(--card);border-right:1px solid var(--line);padding:calc(18px + env(safe-area-inset-top,0px)) 12px 16px;display:flex;flex-direction:column;gap:4px}
+.brand{font-weight:700;font-size:20px;padding:4px 10px 14px;letter-spacing:-.02em}
+.brand span{color:var(--acc)}
+.brand{display:flex;align-items:center;gap:10px}
+.mono{width:34px;height:34px;border-radius:9px;background:#fff;color:#1c1c1e !important;border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:.04em}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.lk{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:8px 14px;background:var(--card);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;min-height:40px;border:1px solid var(--line)}
+.lk i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.meta a{color:var(--acc);font-weight:600;text-decoration:none}
+.tab{display:flex;align-items:center;gap:10px;border:0;background:none;padding:10px 12px;border-radius:10px;text-align:left;font-weight:500;min-height:44px}
+.tab svg{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current=true]{background:var(--accsoft);color:var(--ink)}
+.tab[aria-current=true] svg{stroke:var(--acc)}
+.sidefoot{margin-top:auto;font-size:13px;color:var(--mut);padding:10px}
+main{overflow-y:auto;padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 40px max(20px,env(safe-area-inset-left,0px))}
+.pane{background:var(--card);border-left:1px solid var(--line);overflow-y:auto;position:relative}
+.pane-empty{height:100%;display:grid;place-items:center;color:var(--mut);padding:24px;text-align:center}
+h1{font-size:34px;line-height:1.05;letter-spacing:-.02em;margin:0 0 2px;font-weight:700}
+.sub{color:var(--mut);font-size:15px;margin:0 0 18px}
+h2{font-size:20px;letter-spacing:-.01em;margin:26px 0 8px;font-weight:700;display:flex;align-items:center;gap:8px}
+h2 .n{font-size:13px;font-weight:600;color:var(--mut)}
+h2 .act{margin-left:auto}
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.row{display:grid;grid-template-columns:auto 58px minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;min-height:52px}
+.row:last-child{border-bottom:0}
+.row:hover{background:color-mix(in srgb,var(--fill) 50%,transparent)}
+.row.nt{grid-template-columns:auto minmax(0,1fr) auto}
+.time{font-weight:600;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.time small{display:block;font-weight:400;color:var(--mut);font-size:13px}
+.ttl{font-weight:500;overflow-wrap:anywhere}
+.meta{font-size:13px;color:var(--mut);margin-top:1px}
+.leave{color:var(--red);font-weight:600}
+.done .ttl{text-decoration:line-through;color:var(--mut)}
+.chk{width:26px;height:26px;border-radius:50%;border:2px solid color-mix(in srgb,var(--mut) 60%,transparent);background:none;display:grid;place-items:center;padding:0;flex:none}
+.chk.sq{border-radius:7px}
+.chk svg{width:14px;height:14px;stroke:#1c1c1e;stroke-width:3;fill:none;opacity:0}
+.done .chk,.chk.on{background:var(--accfill);border-color:var(--accfill)}
+.done .chk svg,.chk.on svg{opacity:1}
+.pop{animation:pop .42s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
+.w-church{background:var(--church)}.w-company{background:var(--company)}.w-personal{background:var(--personal)}
+.pill{font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;background:var(--fill);color:var(--mut);white-space:nowrap}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:600;font-size:15px;background:var(--fill);min-height:40px}
+.btn.y{background:var(--accfill);color:#1c1c1e}
+.btn.link{background:none;color:var(--acc);padding:6px 4px;min-height:0}
+.brief{background:var(--accsoft);border-radius:16px;padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(13em,1fr));gap:14px 22px}
+.brief b{display:block;font-size:13px;color:var(--mut);font-weight:600;margin-bottom:3px}
+.brief p{margin:0;font-size:15px}
+.big{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.quick input{flex:1 1 220px}
+input[type=text],input[type=date],input[type=search],select,textarea{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;min-height:44px;width:100%}
+.quick select{width:auto}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.seg{display:flex;background:var(--fill);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap;margin-bottom:14px}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:7px 10px;font-size:14px;font-weight:600;color:var(--mut);white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:10px 0 4px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:6px 12px;font-size:14px;font-weight:500;white-space:nowrap;flex:none}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.top3{display:grid;grid-template-columns:repeat(auto-fit,minmax(12em,1fr));gap:10px}
+.pcard{background:var(--card);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer}
+.pcard .ttl{font-size:17px}
+.prow{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
+.wa{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:8px 12px;background:#25d366;color:#04391a;font-weight:600;font-size:14px;text-decoration:none;min-height:40px}
+.blind{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.bcard{background:var(--card);border-radius:14px;padding:12px 14px;border:2px solid transparent;text-align:left}
+.bcard[aria-pressed=true]{border-color:var(--acc)}
+.bcard .big{font-size:26px}
+.bcard span{font-size:13px;color:var(--mut);display:block}
+.folders .row{grid-template-columns:auto minmax(0,1fr) auto}
+.folders svg{width:20px;height:20px;stroke:var(--acc);fill:none;stroke-width:1.8}
+.note-snip{font-size:14px;color:var(--mut);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.detail{padding:calc(16px + env(safe-area-inset-top,0px)) 22px 40px}
+.dhead{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-height:44px}
+.back{display:none}
+.tools{display:flex;gap:4px;flex-wrap:wrap;position:sticky;top:0;background:var(--card);padding:6px 0;border-bottom:1px solid var(--line);margin-bottom:10px;z-index:2}
+.tools button{border:0;background:var(--fill);border-radius:8px;min-width:38px;height:38px;padding:0 9px;font-size:14px;font-weight:600}
+.sw{width:22px;height:22px;border-radius:50%;display:inline-block;vertical-align:middle;border:1px solid var(--line)}
+.ed{min-height:50vh;outline:none;font-size:17px;line-height:1.55}
+.ed h1{font-size:28px;margin:.4em 0 .2em}
+.ed h2{font-size:21px;margin:.8em 0 .2em;display:block}
+.ed hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.ed mark,.reader mark{border-radius:3px;padding:0 1px;color:inherit}
+.m-y{background:var(--hl-y)}.m-g{background:var(--hl-g)}.m-b{background:var(--hl-b)}.m-p{background:var(--hl-p)}
+.field{display:grid;gap:4px;margin-bottom:12px}
+.field label{font-size:13px;font-weight:600;color:var(--mut)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:18px 14px}
+.book{border:0;background:none;padding:0;text-align:left}
+.cover{aspect-ratio:2/3;border-radius:4px 8px 8px 4px;padding:12px 10px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;box-shadow:inset 6px 0 0 rgba(0,0,0,.18),0 6px 14px rgba(0,0,0,.18);font-family:"Source Serif 4",Georgia,serif}
+.cover b{font-size:16px;line-height:1.15}
+.cover i{font-size:12px;opacity:.85;font-style:normal}
+.bar{height:4px;background:var(--fill);border-radius:2px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc)}
+.cont{display:grid;grid-template-columns:90px minmax(0,1fr);gap:16px;background:var(--card);border-radius:16px;padding:14px;align-items:center;margin-bottom:8px;cursor:pointer}
+.reader{font-family:"Source Serif 4",Georgia,serif;line-height:1.7;max-width:36em;margin:0 auto}
+.reader p{margin:0 0 1em}
+.reader h3{font-size:22px;margin:.4em 0 1em;font-weight:600}
+.hlbar{position:sticky;bottom:12px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.hlbar .btn{box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.hit mark{background:var(--hl-y)}
+.empty{padding:16px;color:var(--mut);font-size:15px}
+.samp{font-size:13px;color:var(--mut);margin:22px 0 0}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:15px;opacity:0;pointer-events:none;transition:.25s;max-width:min(92vw,460px);z-index:50}
+#toast.show{opacity:1;transform:translateX(-50%)}
+@media(max-width:1100px){.app{grid-template-columns:200px minmax(0,1fr)}.pane{position:fixed;inset:0 0 0 auto;width:min(560px,100%);transform:translateX(100%);transition:transform .28s;z-index:20;box-shadow:-8px 0 30px rgba(0,0,0,.15)}.pane.open{transform:none}.back{display:inline-flex}}
+@media(max-width:700px){.app{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+.side{grid-row:2;flex-direction:row;border-right:0;border-top:1px solid var(--line);padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px));justify-content:space-around}
+.brand,.sidefoot{display:none}.tab{flex-direction:column;gap:2px;font-size:11px;padding:6px 4px;flex:1;align-items:center}.tab[aria-current=true]{background:none;color:var(--acc)}
+.pane{width:100%}main{padding-left:16px;padding-right:16px}h1{font-size:32px}.blind{gap:6px}.bcard{padding:10px}.row{grid-template-columns:auto 50px minmax(0,1fr) auto;padding:10px 12px}}
+@media(prefers-reduced-motion:reduce){.pop{animation:none}.pane,#toast{transition:none}}
+
+.sync{font-size:13px;color:var(--mut);min-height:20px;margin:-6px 0 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sync.ok::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green)}
+.sync.err{color:var(--red);font-weight:600}
+.sync.note{color:var(--ink);background:var(--accsoft);padding:6px 12px;border-radius:10px;margin:0 0 14px}
+.sync .btn.link{padding:0 4px}
+textarea{resize:vertical;line-height:1.45}
+input[type=range]{width:100%;accent-color:var(--acc);min-height:32px}
+input[type=time]{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;min-height:44px}
+.meta a,.brief a{color:var(--acc);font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side" aria-label="Sections">
+    <div class="brand"><span class="mono" aria-hidden="true">TJC</span>Timothy <span>HQ</span></div>
+    <button class="tab" data-v="today" id="t-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Today</button>
+    <button class="tab" data-v="notes" id="t-notes"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Notes</button>
+    <button class="tab" data-v="people" id="t-people"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 5.4"/></svg>People</button>
+    <button class="tab" data-v="library" id="t-library"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2z"/><path d="M20 19V5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z"/></svg>Library</button>
+    <button class="tab" data-v="settings" id="t-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    <div class="sidefoot" id="sidefoot"></div>
+  </nav>
+  <main id="main"><div id="sync" class="sync" role="status"></div><div id="view" aria-live="polite"></div></main>
+  <aside class="pane" id="pane"><div class="pane-empty">Tap anything to see the details here.</div></aside>
+</div>
+<div id="toast" role="status"></div>
+<script>
+{
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=t=>`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+const iso=o=>{const t=new Date();t.setDate(t.getDate()+o);return ymd(t)};
+let TODAY=iso(0),TMRW=iso(1);
+const days=(a,b)=>a&&b?Math.round((new Date(b+'T00:00')-new Date(a+'T00:00'))/864e5):999;
+const nice=s=>s?new Date(s+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+const hm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const plain=h=>String(h||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+const bdayIn=b=>{if(!b||b.length<10)return 99;const t=new Date(TODAY+'T00:00');const d=new Date(t.getFullYear()+b.slice(4,10)+'T00:00');if(isNaN(d))return 99;if(d<t)d.setFullYear(d.getFullYear()+1);return Math.round((d-t)/864e5)};
+const partOf=h=>h<12?'morning':h<17?'noon':'evening';
+const yes=v=>v===true||v==='1'||v==='TRUE'||v==='true';
+const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- state ---------- */
+const TABS=['tasks','people','notes_index','places','habits','books','highlights'];
+let cfg=ls.get('hq-cfg',{});
+const live=()=>!!(cfg.url&&cfg.token);
+let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null);
+let BODY=ls.get('hq-notes',{});
+let UI=ls.get('hq-ui',{view:'today',nf:'All',pw:'all',fs:19});
+let dirty=new Set(ls.get('hq-dirty',[])),dirtyNotes=new Set(ls.get('hq-dirtynotes',[]));
+let evDone=ls.get('hq-evdone',{});
+const saveUI=()=>ls.set('hq-ui',UI);
+
+/* ---------- sample data (shown until the Sheet is connected) ---------- */
+function sample(){
+ const P=(id,name,world,stage,last,next,action,extra)=>({id,name,world,stage,tags:'',phone:'628120000010'+id.slice(1),lastContact:iso(last),nextDate:next==null?'':iso(next),nextAction:action,waiting:'',birthday:'',notes:'',void:'',...extra});
+ const t=new Date();const at=(h,m,dur,o=0)=>{const s=new Date(t.getFullYear(),t.getMonth(),t.getDate()+o,h,m);return[s.toISOString(),new Date(s.getTime()+dur*6e4).toISOString()]};
+ const ev=(id,title,h,m,dur,loc,travel,o,from)=>{const[s,e]=at(h,m,dur,o);const x={id,title,start:s,end:e,location:loc||'',calendar:'Sample',allDay:false};if(travel){x.travelMin=travel;x.from=from||'home';x.leave=new Date(new Date(s).getTime()-(travel+10)*6e4).toISOString()}return x};
+ EV=[ev('e1','Church staff meeting',13,0,90,'Jl. Jelambar Madya Utara No.145A',25),ev('e2','HQ session with Claude',17,0,60,''),ev('e3','Encounter Night',19,0,120,'Jl. Jelambar Madya Utara No.145A',30),ev('e4','Build: Komsel leaders',10,0,120,'Jl. Jelambar Madya Utara No.145A',25,1)];
+ BRIEF={unread:31,important:[{from:'Client (sample)',subject:'Revised quotation request',link:''},{from:'Finance (sample)',subject:'November cash report',link:''}]};
+ BODY={n1:'<h1>The Prodigal Son</h1><p>Luke 15:11–32. Series: <mark class="m-y">Parables of Jesus</mark>.</p><h2>Big idea</h2><p>The father runs first.</p><hr><ul><li>The younger son: lost far away</li><li>The older son: lost at home</li></ul>',n2:'<h1>Ops review</h1><p>With operations, maintenance and planning.</p>',n3:'<h1>HQ plan and email sort</h1><p>Decisions, to-dos and links from the session.</p>'};
+ return{tasks:[
+  {id:'t1',title:'Send Build agenda to Komsel leaders',world:'church',date:TODAY,part:'noon',status:''},
+  {id:'t2',title:'Review purchasing report',world:'company',date:iso(-2),part:'morning',status:''},
+  {id:'t3',title:'Outline sermon: The Prodigal Son',world:'church',date:'',part:'',status:''}],
+ people:[P('p1','Pastor Benny','church','Pastor · morning groups, music',-4,3,'Christmas music roster'),P('p2','Pastor Rika','church','Pastor · evening groups, children',-12,-1,'Christmas programme',{waiting:'1'}),P('p3','Small group leader (sample)','church','Komsel leader',-41,null,''),P('p4','Head of Operations','company','Staff · Cikarang',-3,0,'Monday review')],
+ notes_index:[{id:'n1',title:'The Prodigal Son',para:'Projects',type:'Church',date:iso(-1),text:''},{id:'n2',title:'Ops review',para:'Areas',type:'Work',date:iso(-4),text:''},{id:'n3',title:'HQ plan and email sort',para:'Projects',type:'Claude session',date:TODAY,text:''}],
+ places:[{id:'home',name:'Home',address:'Daan Mogot Baru'}],
+ habits:[{id:'h1',name:'Morning prayer',part:'morning',link:'',log:''},{id:'h2',name:'Bible reading plan',part:'morning',link:'youversion',log:''},{id:'h3',name:'Family time',part:'evening',link:'',log:''}],
+ books:[{id:'b1',title:'Building a Second Brain',author:'Tiago Forte',driveLink:'',position:'0.4'}],highlights:[]}}
+if(!D&&!live())D=sample();
+const ensure=()=>{if(!D)D={};TABS.forEach(t=>{if(!Array.isArray(D[t]))D[t]=[]})};
+
+/* ---------- sync ---------- */
+let syncState={s:live()?'loading':'sample',msg:''};
+function showSync(){
+ const el=$('#sync');const s=syncState;
+ const map={sample:['note','Sample data. Connect your Google Sheet in Settings.'],loading:['','Loading from Google…'],saving:['','Saving…'],ok:['ok','Saved to Google Sheet'+(s.at?' · '+s.at:'')],error:['err',"Couldn't sync: "+s.msg]};
+ const[c,t]=map[s.s]||['',''];
+ el.className='sync '+c;el.innerHTML=esc(t)+(s.s==='error'?' <button class="btn link" data-a="retry">Try again</button>':s.s==='sample'?' <button class="btn link" data-a="go" data-v="settings">Connect</button>':'');
+ $('#sidefoot').textContent=live()?'Connected to HQ Data':'Not connected yet';
+}
+async function api(params){
+ const u=new URL(cfg.url);u.searchParams.set('token',cfg.token);Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+ let r;try{r=await fetch(u.toString(),{redirect:'follow'})}catch(e){throw new Error(navigator.onLine?'Google could not be reached. Check the script address in Settings.':'You are offline. Changes are kept and will sync later.')}
+ if(!r.ok)throw new Error('Google answered with error '+r.status);
+ let j;try{j=await r.json()}catch(e){throw new Error('The script did not answer properly. Is it deployed with access for Anyone?')}
+ if(!j.ok)throw new Error(j.error||'Unknown error from the script');return j}
+async function post(body){
+ let r;try{r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...body,token:cfg.token})})}catch(e){throw new Error(navigator.onLine?'Google could not be reached.':'You are offline. Changes are kept and will sync later.')}
+ let j;try{j=await r.json()}catch(e){throw new Error('The script did not answer properly.')}
+ if(!j.ok)throw new Error(j.error||'Unknown error from the script');return j}
+const persist=()=>{ls.set('hq-data',D);ls.set('hq-dirty',[...dirty]);ls.set('hq-dirtynotes',[...dirtyNotes]);ls.set('hq-notes',BODY)};
+let flushT;
+function touch(tab){dirty.add(tab);persist();if(!live())return;clearTimeout(flushT);flushT=setTimeout(flush,700)}
+function touchNote(id){dirtyNotes.add(id);persist();if(!live())return;clearTimeout(flushT);flushT=setTimeout(flush,1500)}
+let flushing=false;
+async function flush(){
+ if(!live()||flushing||(!dirty.size&&!dirtyNotes.size))return;flushing=true;syncState={s:'saving'};showSync();
+ try{
+  for(const id of [...dirtyNotes]){const n=D.notes_index.find(x=>x.id===id);if(!n){dirtyNotes.delete(id);continue}
+   const j=await post({action:'note',id,title:n.title,html:BODY[id]||''});n.driveLink=j.driveLink;dirtyNotes.delete(id);dirty.add('notes_index')}
+  for(const t of [...dirty]){await post({action:'save',name:t,rows:D[t]});dirty.delete(t)}
+  syncState={s:'ok',at:hm(new Date())}}
+ catch(e){syncState={s:'error',msg:e.message}}
+ flushing=false;persist();showSync();if(dirty.size||dirtyNotes.size)if(syncState.s==='ok')flush()}
+async function load(){
+ if(!live()){syncState={s:'sample'};showSync();ensure();render();return}
+ if(D){ensure();render()}
+ syncState={s:'loading'};showSync();
+ try{
+  if(dirty.size||dirtyNotes.size)await flush();
+  const j=await api({action:'all'});const keep=D||{};D=j.data;TABS.forEach(t=>{if(dirty.has(t)&&keep[t])D[t]=keep[t]});ensure();persist();
+  syncState={s:'ok',at:hm(new Date())};render();
+  api({action:'calendar',days:2}).then(c=>{EV=c.events;ls.set('hq-ev',EV);if(UI.view==='today')render()}).catch(e=>{syncState={s:'error',msg:'Calendar: '+e.message};showSync()});
+  api({action:'brief'}).then(b=>{BRIEF=b.brief;ls.set('hq-brief',BRIEF);if(UI.view==='today')render()}).catch(()=>{});
+ }catch(e){ensure();syncState={s:'error',msg:e.message};render()}
+ showSync()}
+addEventListener('online',()=>flush());
+
+/* ---------- ui basics ---------- */
+const view=$('#view'),pane=$('#pane'),toast=$('#toast');
+let tt;const say=m=>{toast.textContent=m;toast.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toast.classList.remove('show'),3400)};
+const buzz=()=>{try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}};
+const openPane=h=>{pane.innerHTML=h;pane.classList.add('open');pane.scrollTop=0;pane.onscroll=null};
+const closePane=()=>pane.classList.remove('open');
+const back='<button class="btn link back" data-a="close">‹ Back</button>';
+const grp=(rows,empty)=>`<div class="group">${rows.length?rows.join(''):`<div class="empty">${empty}</div>`}</div>`;
+const maps=loc=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(loc)}`;
+
+/* ---------- TODAY ---------- */
+function todayItems(date){
+ const ev=EV.filter(e=>!e.allDay&&!e.birthday&&ymd(new Date(e.start))===date).map(e=>{const s=new Date(e.start),en=new Date(e.end);return{kind:'event',id:e.id,title:e.title,time:hm(s),end:hm(en),part:partOf(s.getHours()),place:e.location,leave:e.leave?hm(new Date(e.leave)):'',travel:e.travelMin,from:e.from,done:evDone[e.id+date]}});
+ const tk=D.tasks.filter(t=>!yes(t.void)&&t.date===date).map(t=>({kind:'task',id:t.id,title:t.title,part:t.part||'noon',world:t.world,done:t.status==='done'}));
+ const hb=date===TODAY?D.habits.filter(h=>!yes(h.void)).map(h=>({kind:'habit',id:h.id,title:h.name,part:h.part||'morning',link:h.link,done:(h.log||'').includes(date)})):[];
+ return[...hb,...ev,...tk].sort((a,b)=>(a.kind==='habit'?0:1)-(b.kind==='habit'?0:1)||(a.time||'99').localeCompare(b.time||'99'))}
+function row(i){
+ const t=i.time?`<span class="time">${i.time}<small>${i.end||''}</small></span>`:`<span class="time"><small>${i.kind==='habit'?'Habit':i.date&&i.date<TODAY?nice(i.date):'Task'}</small></span>`;
+ const meta=[];if(i.leave)meta.push(`<span class="leave">Leave by ${i.leave}</span>${i.travel?` · ${i.travel} min drive`:''}`);
+ if(i.place)meta.push(`<a href="${maps(i.place)}" target="_blank" rel="noopener">${esc(i.place.split(',')[0])}</a>`);
+ if(i.link==='youversion')meta.push(`<a href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener">Open in YouVersion</a>`);
+ return `<div class="row${i.done?' done':''}" data-a="item" data-k="${i.kind}" data-id="${esc(i.id)}"><button class="chk${i.kind==='habit'?' sq':''}" data-a="tick" data-k="${i.kind}" data-id="${esc(i.id)}" aria-label="Mark done">${CHECK}</button>${t}<div><div class="ttl">${i.world?`<span class="dot w-${i.world}"></span>`:''}${esc(i.title)}</div>${meta.length?`<div class="meta">${meta.join(' · ')}</div>`:''}</div><span></span></div>`}
+function today(){
+ const items=todayItems(TODAY),tm=todayItems(TMRW).filter(i=>i.kind!=='habit');
+ const over=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,date:t.date}));
+ const nod=D.tasks.filter(t=>!yes(t.void)&&!t.date&&t.status!=='done').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world}));
+ const now=hm(new Date());const next=items.filter(i=>i.kind==='event'&&!i.done).find(i=>(i.leave||i.time)>=now);
+ const bd=[...EV.filter(e=>e.birthday&&ymd(new Date(e.start))<=iso(7)).map(e=>esc(e.title)),...D.people.filter(p=>!yes(p.void)&&bdayIn(p.birthday)<=7).map(p=>esc(p.name)+(bdayIn(p.birthday)?' in '+bdayIn(p.birthday)+'d':' today'))];
+ const allday=EV.filter(e=>e.allDay&&!e.birthday&&ymd(new Date(e.start))===TODAY);
+ const d=new Date();
+ view.innerHTML=`<h1>${d.toLocaleDateString('en-GB',{weekday:'long'})}</h1><p class="sub">${d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}${allday.length?' · '+allday.map(e=>esc(e.title)).join(', '):''}</p>
+ <section class="brief" aria-label="Morning brief">
+  <div><b>Next</b><div class="big">${next?(next.leave?'Leave '+next.leave:next.time):'Free'}</div><p>${next?esc(next.title)+(next.travel?` · ${next.travel} min from ${esc(next.from==='home'?'home':next.from)}`:''):'Nothing else on the calendar'}</p></div>
+  <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
+  <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
+ </section>
+ <div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||'https://music.youtube.com')}" target="_blank" rel="noopener"><i style="background:#ff0033"></i>Worship playlist</a></div>
+ ${['morning','noon','evening'].map(p=>`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>${grp(items.filter(i=>i.part===p).map(row),'Nothing planned.')}`).join('')}
+ <h2 style="color:${over.length?'var(--red)':'inherit'}">Overdue <span class="n">${over.length}</span>${over.length?'<button class="btn link act" data-a="fresh">Fresh start</button>':''}</h2>${grp(over.map(row),'All caught up.')}
+ <h2>No date <span class="n">${nod.length}</span></h2>${grp(nod.map(row),'Nothing waiting for a date.')}
+ <h2>Anything missed?</h2>
+ <form class="quick" id="qa"><input type="text" id="qa-t" placeholder="Task, or a meeting with a time" aria-label="New item">
+  <select id="qa-w" aria-label="When"><option value="today">Today</option><option value="tmrw">Tomorrow</option><option value="">No date</option></select>
+  <input type="time" id="qa-time" aria-label="Time (makes it a meeting)" style="width:auto">
+  <select id="qa-c" aria-label="World"><option value="church">Church</option><option value="company">Company</option><option value="personal">Personal</option></select>
+  <select id="qa-p" aria-label="Place"><option value="">No place</option>${D.places.filter(p=>p.address&&p.id!=='home').map(p=>`<option value="${esc(p.address)}">${esc(p.name)}</option>`).join('')}</select>
+  <button class="btn y">Add</button></form>
+ <p class="samp">With a time, it goes on your Google Calendar for 2 hours. Without one, it becomes a task.</p>
+ <h2>Tomorrow</h2>${grp(tm.map(row),'Nothing yet.')}`;
+ $('#qa').onsubmit=async e=>{e.preventDefault();const title=$('#qa-t').value.trim();if(!title){say('Type something first.');return}
+  const w=$('#qa-w').value,time=$('#qa-time').value,date=w==='tmrw'?TMRW:w==='today'?TODAY:'';
+  if(time){if(!date){say('Pick today or tomorrow for a meeting.');return}if(!live()){say('Connect your Google Sheet first to add calendar events.');return}
+   try{say('Adding to your calendar…');await post({action:'addEvent',title,date,start:time,minutes:120,location:$('#qa-p').value});say('Added to Google Calendar.');const c=await api({action:'calendar',days:2});EV=c.events;ls.set('hq-ev',EV);render()}catch(err){say("Couldn't add it: "+err.message)}return}
+  D.tasks.push({id:uid(),title,world:$('#qa-c').value,date,part:new Date().getHours()<12?'morning':'noon',status:'',void:'',created:TODAY,updated:TODAY});touch('tasks');render();say('Added.')}}
+function itemPane(k,id){
+ if(k==='event'){const e=EV.find(x=>x.id===id);if(!e)return;const s=new Date(e.start);
+  openPane(`<div class="detail"><div class="dhead">${back}<span class="pill">${esc(e.calendar)}</span></div><h1 style="font-size:26px">${esc(e.title)}</h1><p class="sub">${s.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})} · ${hm(s)}–${hm(new Date(e.end))}</p>
+  ${e.location?`<p>${esc(e.location)}</p>`:'<p class="meta">No location, so no travel time. Add one in Google Calendar.</p>'}
+  ${e.leave?`<p class="leave" style="font-size:20px;margin:12px 0 4px">Leave by ${hm(new Date(e.leave))}</p><p class="meta">${e.travelMin} min drive from ${esc(e.from)}, plus 10 min buffer. Check live traffic before you go.</p>`:''}
+  ${e.location?`<div class="prow" style="margin-top:16px"><a class="btn y" style="text-decoration:none" href="${maps(e.location)}" target="_blank" rel="noopener">Open in Google Maps</a></div>`:''}</div>`);return}
+ if(k==='habit'){const h=D.habits.find(x=>x.id===id);if(!h)return;const n=(h.log||'').split(' ').filter(x=>x>=iso(-6)).length;
+  openPane(`<div class="detail"><div class="dhead">${back}<span class="pill">habit</span></div><div class="field"><label for="f-t">Name</label><input type="text" id="f-t" value="${esc(h.name)}"></div><div class="field"><label for="f-p">Part of day</label><select id="f-p">${['morning','noon','evening'].map(p=>`<option ${h.part===p?'selected':''}>${p}</option>`).join('')}</select></div><p class="meta">Done ${n} of the last 7 days.</p><div class="prow" style="margin-top:14px"><button class="btn y" data-a="hsave" data-id="${esc(id)}">Save</button><button class="btn" data-a="hvoid" data-id="${esc(id)}">Remove habit</button></div></div>`);return}
+ const t=D.tasks.find(x=>x.id===id);if(!t)return;
+ openPane(`<div class="detail"><div class="dhead">${back}<span class="pill">task</span></div>
+ <div class="field"><label for="f-t">Title</label><input type="text" id="f-t" value="${esc(t.title)}"></div>
+ <div class="two"><div class="field"><label for="f-d">Date</label><input type="date" id="f-d" value="${esc(t.date||'')}"></div><div class="field"><label for="f-p">Part of day</label><select id="f-p">${['morning','noon','evening'].map(p=>`<option ${t.part===p?'selected':''}>${p}</option>`).join('')}</select></div></div>
+ <div class="field"><label for="f-w">World</label><select id="f-w">${['church','company','personal'].map(p=>`<option ${t.world===p?'selected':''}>${p}</option>`).join('')}</select></div>
+ <div class="field"><label for="f-n">Notes</label><textarea id="f-n" rows="3">${esc(t.notes||'')}</textarea></div>
+ <div class="prow"><button class="btn y" data-a="tsave" data-id="${esc(id)}">Save</button><button class="btn" data-a="tvoid" data-id="${esc(id)}">Mark void</button></div>
+ <p class="samp">Void tasks stay in the Sheet's history instead of being deleted.</p></div>`)}
+
+/* ---------- NOTES ---------- */
+const PARA=['Projects','Areas','Resources','Archive'],TYPES=['Client','Work','Church staff','Church','Discipleship','Personal','Claude session'];
+function notes(){
+ const q=(UI.q||'').toLowerCase(),nf=UI.nf;
+ let list=D.notes_index.filter(n=>!yes(n.void));
+ if(PARA.includes(nf))list=list.filter(n=>n.para===nf);if(TYPES.includes(nf))list=list.filter(n=>n.type===nf);
+ const words=q.split(/\s+/).filter(Boolean);
+ const hay=n=>(n.title+' '+(n.text||'')+' '+plain(BODY[n.id])+' '+n.type+' '+n.para+' '+(n.people||'')+' '+(n.tags||'')).toLowerCase();
+ if(words.length)list=list.filter(n=>{const h=hay(n);return words.every(w=>h.includes(w))});
+ list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ const hl=words.length?D.highlights.filter(h=>words.every(w=>(h.passage+' '+(h.note||'')).toLowerCase().includes(w))):[];
+ const rx=words.length?new RegExp('('+words.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi'):null;
+ const mk=s=>rx?esc(s).replace(rx,'<mark>$1</mark>'):esc(s);
+ view.innerHTML=`<h1>Notes</h1><p class="sub">Sorted by PARA. Search looks through every note and your book highlights.</p>
+ <input type="search" id="nq" placeholder="Search words, people, places" value="${esc(UI.q||'')}" aria-label="Search notes">
+ <div class="chips">${['All',...PARA,...TYPES].map(c=>`<button class="chip" data-a="nf" data-v="${c}" aria-pressed="${nf===c}">${c}</button>`).join('')}</div>
+ ${!q&&nf==='All'?`<h2>Folders</h2><div class="group folders">${PARA.map(p=>`<div class="row" data-a="nf" data-v="${p}"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ttl">${p}</span><span class="pill">${D.notes_index.filter(n=>n.para===p&&!yes(n.void)).length}</span></div>`).join('')}</div>`:''}
+ <h2>${q?'Results':nf==='All'?'Recent':esc(nf)} <span class="n">${list.length}</span><button class="btn link act" data-a="newnote">New note</button></h2>
+ ${grp(list.slice(0,200).map(n=>`<div class="row nt hit" data-a="note" data-id="${esc(n.id)}"><span class="dot" style="background:var(--acc)"></span><div><div class="ttl">${mk(n.title||'Untitled')}</div><div class="note-snip">${nice(n.date)} · ${esc(n.type)} · ${mk((n.text||plain(BODY[n.id])).slice(0,100))}</div></div><span class="pill">${esc(n.para)}</span></div>`),words.length?'No notes match. Try fewer words.':'No notes here yet.')}
+ ${hl.length?`<h2>Book highlights <span class="n">${hl.length}</span></h2>${grp(hl.map(h=>{const b=D.books.find(x=>x.id===h.bookId);return `<div class="row nt hit"><span class="dot m-${esc(h.colour||'y')}"></span><div><div class="ttl">“${mk(h.passage)}”</div><div class="note-snip">${esc(b?b.title:'')}</div></div><span></span></div>`}),'')}`:''}`;
+ const nq=$('#nq');nq.oninput=()=>{UI.q=nq.value;saveUI();const p=nq.selectionStart;notes();const n2=$('#nq');n2.focus();n2.setSelectionRange(p,p)}}
+async function notePane(n){
+ openPane(`<div class="detail"><div class="dhead">${back}<select id="np" aria-label="PARA folder" style="width:auto">${PARA.map(p=>`<option ${n.para===p?'selected':''}>${p}</option>`).join('')}</select><select id="nt" aria-label="Type" style="width:auto">${TYPES.map(p=>`<option ${n.type===p?'selected':''}>${p}</option>`).join('')}</select><button class="btn link" data-a="nvoid" data-id="${esc(n.id)}" style="margin-left:auto">Archive</button></div>
+ <div class="tools" role="toolbar" aria-label="Formatting"><button data-f="h1" title="Heading">H1</button><button data-f="h2" title="Subheading">H2</button><button data-f="p" title="Body text">Aa</button><button data-f="bold"><b>B</b></button><button data-f="italic"><i>I</i></button><button data-f="ul" title="List">•</button><button data-f="hr" title="Divider">—</button>${['y','g','b','p'].map(c=>`<button data-f="m-${c}" aria-label="Highlight"><span class="sw m-${c}"></span></button>`).join('')}<button data-f="voice" title="Voice note">Mic</button></div>
+ <div class="ed" id="ed" contenteditable="true">${BODY[n.id]??'<p class="meta">Loading…</p>'}</div>
+ <p class="samp" id="nmeta">Edited ${nice(n.date)} · saves to Google Drive as you type</p></div>`);
+ const ed=$('#ed');
+ if(BODY[n.id]==null&&live()){try{const j=await api({action:'note',id:n.id});BODY[n.id]=j.html||'<h1>'+esc(n.title)+'</h1><p></p>';persist();if($('#ed')===ed)ed.innerHTML=BODY[n.id]}catch(e){ed.innerHTML='';say("Couldn't open the note: "+e.message)}}
+ else if(BODY[n.id]==null){BODY[n.id]='<h1>'+esc(n.title)+'</h1><p></p>';ed.innerHTML=BODY[n.id]}
+ ed.oninput=()=>{BODY[n.id]=ed.innerHTML;const first=ed.querySelector('h1,h2,p,li');n.title=plain(first?first.innerHTML:ed.innerHTML).slice(0,80)||'Untitled';n.text=plain(ed.innerHTML).slice(0,4000);n.date=TODAY;touchNote(n.id)};
+ $('#np').onchange=e=>{n.para=e.target.value;touch('notes_index');notes()};$('#nt').onchange=e=>{n.type=e.target.value;touch('notes_index');notes()};
+ const tb=pane.querySelector('.tools');tb.onmousedown=e=>e.preventDefault();
+ tb.onclick=e=>{const b=e.target.closest('button');if(!b)return;const f=b.dataset.f;ed.focus();
+  if(f==='voice'){say('Voice notes are coming in the next version. For now, use the Claude app to record and I will file it here.');return}
+  if(f.startsWith('m-')){const sel=getSelection();if(!sel.rangeCount||sel.isCollapsed){say('Select some text first.');return}const r=sel.getRangeAt(0);const m=document.createElement('mark');m.className=f;try{r.surroundContents(m)}catch(x){m.appendChild(r.extractContents());r.insertNode(m)}sel.removeAllRanges()}
+  else if(f==='ul')document.execCommand('insertUnorderedList');else if(f==='hr')document.execCommand('insertHorizontalRule');
+  else if(f==='bold'||f==='italic')document.execCommand(f);else document.execCommand('formatBlock',false,f);
+  ed.oninput()}}
+
+/* ---------- PEOPLE ---------- */
+const wa=p=>p.phone?`<a class="wa" href="https://wa.me/${esc(String(p.phone).replace(/\D/g,''))}" target="_blank" rel="noopener">WhatsApp</a>`:'';
+function people(){
+ const all=D.people.filter(p=>!yes(p.void)&&(UI.pw==='all'||p.world===UI.pw));
+ const noNext=all.filter(p=>!p.nextDate),quiet=all.filter(p=>days(p.lastContact,TODAY)>30),bd=all.filter(p=>bdayIn(p.birthday)<=7);
+ let top=ls.get('hq-top',{});
+ if(top.day!==TODAY){const due=all.filter(p=>p.nextDate&&p.nextDate<=TODAY&&!yes(p.waiting));const pool=[...due,...quiet.filter(p=>!due.includes(p)),...noNext.filter(p=>!due.includes(p)&&!quiet.includes(p))];top={day:TODAY,ids:pool.slice(0,3).map(p=>p.id)};ls.set('hq-top',top)}
+ const tp=top.ids.map(id=>D.people.find(p=>p.id===id)).filter(Boolean);
+ const bf=UI.bf;let list=bf==='nonext'?noNext:bf==='quiet'?quiet:bf==='bday'?bd:all;
+ list=[...list].sort((a,b)=>(a.nextDate||'9').localeCompare(b.nextDate||'9'));
+ const pr=p=>`<div class="row nt" data-a="person" data-id="${esc(p.id)}"><span class="dot w-${esc(p.world)}"></span><div><div class="ttl">${esc(p.name)}</div><div class="meta">${esc(p.stage)}${p.lastContact?' · last '+days(p.lastContact,TODAY)+'d ago':' · never logged'}${p.nextDate?' · next '+nice(p.nextDate):''}</div></div>${p.nextDate&&p.nextDate<TODAY?'<span class="pill" style="color:var(--red)">Due</span>':'<span></span>'}</div>`;
+ view.innerHTML=`<h1>People</h1><p class="sub">One record per person, across church, company and family.</p>
+ <div class="seg" role="group" aria-label="World">${[['all','All'],['church','Church'],['company','Company'],['personal','Personal']].map(([k,l])=>`<button data-a="pw" data-v="${k}" aria-pressed="${UI.pw===k}">${l}</button>`).join('')}</div>
+ <h2>Today's three</h2><div class="top3">${tp.length?tp.map(p=>`<div class="pcard" data-a="person" data-id="${esc(p.id)}"><div><div class="ttl"><span class="dot w-${esc(p.world)}"></span>${esc(p.name)}</div><div class="meta">${esc(p.nextAction||p.stage)}</div></div><div class="prow">${wa(p)}<button class="btn" data-a="contact" data-id="${esc(p.id)}">Contacted</button></div></div>`).join(''):'<div class="empty">No one due today. Add people below.</div>'}</div>
+ <h2>Blind spots</h2><div class="blind">
+  <button class="bcard" data-a="bf" data-v="nonext" aria-pressed="${bf==='nonext'}"><div class="big">${noNext.length}</div><span>No next date</span></button>
+  <button class="bcard" data-a="bf" data-v="quiet" aria-pressed="${bf==='quiet'}"><div class="big">${quiet.length}</div><span>Quiet 30+ days</span></button>
+  <button class="bcard" data-a="bf" data-v="bday" aria-pressed="${bf==='bday'}"><div class="big">${bd.length}</div><span>Birthdays this week</span></button></div>
+ <h2>Waiting for a reply <span class="n">${all.filter(p=>yes(p.waiting)).length}</span></h2>${grp(all.filter(p=>yes(p.waiting)).map(pr),'No one to wait on.')}
+ <h2>${bf?{nonext:'No next date',quiet:'Quiet 30+ days',bday:'Birthdays this week'}[bf]:'Everyone'} <span class="n">${list.length}</span>${bf?'<button class="btn link act" data-a="bf" data-v="">Show all</button>':'<button class="btn link act" data-a="newperson">Add person</button>'}</h2>${grp(list.map(pr),'Nobody here yet.')}`}
+function personPane(p){
+ openPane(`<div class="detail"><div class="dhead">${back}<button class="btn link" data-a="pvoid" data-id="${esc(p.id)}" style="margin-left:auto">Remove</button></div>
+ <div class="field"><label for="pf-n">Name</label><input type="text" id="pf-n" value="${esc(p.name)}"></div>
+ <div class="prow" style="margin-bottom:16px">${wa(p)}<button class="btn y" data-a="contact" data-id="${esc(p.id)}">Log contact today</button><button class="btn" data-a="wait" data-id="${esc(p.id)}">${yes(p.waiting)?'Got a reply':'Waiting for reply'}</button></div>
+ <div class="two"><div class="field"><label for="pf-w">World</label><select id="pf-w">${['church','company','personal'].map(w=>`<option ${p.world===w?'selected':''}>${w}</option>`).join('')}</select></div><div class="field"><label for="pf-s">Role or stage</label><input type="text" id="pf-s" value="${esc(p.stage)}"></div></div>
+ <div class="two"><div class="field"><label for="pf-ph">WhatsApp number</label><input type="text" id="pf-ph" inputmode="tel" value="${esc(p.phone)}" placeholder="62812..."></div><div class="field"><label for="pf-b">Birthday</label><input type="date" id="pf-b" value="${esc(p.birthday||'')}"></div></div>
+ <div class="two"><div class="field"><label>Last contact</label><input type="date" value="${esc(p.lastContact||'')}" disabled></div><div class="field"><label for="pf-nd">Next follow-up</label><input type="date" id="pf-nd" value="${esc(p.nextDate||'')}"></div></div>
+ <div class="field"><label for="pf-a">Next action</label><input type="text" id="pf-a" value="${esc(p.nextAction)}"></div>
+ <div class="field"><label for="pf-no">Notes</label><textarea id="pf-no" rows="3">${esc(p.notes||'')}</textarea></div>
+ <button class="btn y" data-a="psave" data-id="${esc(p.id)}">Save</button>
+ <p class="samp">Logging contact sets the next follow-up two weeks out.</p></div>`)}
+
+/* ---------- LIBRARY ---------- */
+function library(){
+ const bks=D.books.filter(b=>!yes(b.void));const col=['#3d5a4c','#7a3b2e','#1f4e8c','#b07d00','#5b3a7a','#2f6f6a'];
+ view.innerHTML=`<h1>Library</h1><p class="sub">Your books and highlights. The built-in reader for EPUBs comes in the next version.</p>
+ <div class="shelf">${bks.map((b,i)=>{const pos=Math.min(1,Number(b.position)||0);const n=D.highlights.filter(h=>h.bookId===b.id).length;return `<button class="book" data-a="book" data-id="${esc(b.id)}"><div class="cover" style="background:${col[i%col.length]}"><b>${esc(b.title)}</b><i>${esc(b.author)}</i></div><div class="bar"><i style="width:${pos*100}%"></i></div><div class="meta">${pos?Math.round(pos*100)+'%':'Not started'}${n?' · '+n+' highlights':''}</div></button>`}).join('')||'<div class="empty">No books yet.</div>'}</div>
+ <h2>Add a book</h2><form class="quick" id="ab"><input type="text" id="ab-t" placeholder="Title" aria-label="Title"><input type="text" id="ab-a" placeholder="Author" aria-label="Author"><input type="text" id="ab-l" placeholder="Google Drive link (optional)" aria-label="Drive link"><button class="btn y">Add</button></form>`;
+ $('#ab').onsubmit=e=>{e.preventDefault();const t=$('#ab-t').value.trim();if(!t){say('Type a title first.');return}D.books.push({id:uid(),title:t,author:$('#ab-a').value.trim(),driveLink:$('#ab-l').value.trim(),position:'0',updated:TODAY});touch('books');library();say('Book added.')}}
+function bookPane(b){
+ const hl=D.highlights.filter(h=>h.bookId===b.id&&!yes(h.void));
+ openPane(`<div class="detail"><div class="dhead">${back}</div><h1 style="font-size:26px">${esc(b.title)}</h1><p class="sub">${esc(b.author)}</p>
+ ${b.driveLink?`<a class="btn y" style="text-decoration:none;display:inline-block;margin-bottom:16px" href="${esc(b.driveLink)}" target="_blank" rel="noopener">Open in Google Drive</a>`:''}
+ <div class="field"><label for="bk-p">Progress: <span id="bk-v">${Math.round((Number(b.position)||0)*100)}%</span></label><input type="range" id="bk-p" min="0" max="100" value="${Math.round((Number(b.position)||0)*100)}"></div>
+ <h2>Highlights <span class="n">${hl.length}</span></h2>${grp(hl.map(h=>`<div class="row nt"><span class="dot m-${esc(h.colour||'y')}" style="width:10px;height:10px"></span><div><div class="ttl" style="font-family:'Source Serif 4',Georgia,serif">“${esc(h.passage)}”</div>${h.note?`<div class="meta">${esc(h.note)}</div>`:''}</div><span></span></div>`),'None yet.')}
+ <h2>Add a highlight</h2><div class="field"><textarea id="hl-t" rows="3" placeholder="Paste or type the passage" aria-label="Passage"></textarea></div><div class="field"><input type="text" id="hl-n" placeholder="Your note (optional)" aria-label="Note"></div>
+ <div class="prow">${['y','g','b','p'].map(c=>`<button class="btn" data-a="hl" data-v="${c}" data-id="${esc(b.id)}" aria-label="Save highlight"><span class="sw m-${c}"></span></button>`).join('')}</div></div>`);
+ const r=$('#bk-p');r.oninput=()=>{$('#bk-v').textContent=r.value+'%'};r.onchange=()=>{b.position=String(r.value/100);b.updated=TODAY;touch('books');if(UI.view==='library')library()}}
+
+/* ---------- SETTINGS ---------- */
+function settings(){
+ view.innerHTML=`<h1>Settings</h1><p class="sub">These stay on this device only. Enter them once on each phone, tablet or computer.</p>
+ <h2>Google Sheet</h2><div class="group" style="padding:16px">
+  <div class="field"><label for="s-url">Script web address</label><input type="text" id="s-url" value="${esc(cfg.url||'')}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
+  <div class="field"><label for="s-tok">Secret token</label><input type="text" id="s-tok" value="${esc(cfg.token||'')}" autocomplete="off"></div>
+  <div class="prow"><button class="btn y" data-a="connect">${live()?'Save and test':'Connect'}</button>${live()?'<button class="btn" data-a="disconnect">Disconnect</button>':''}</div>
+  <p class="meta" id="s-msg" style="margin-top:10px">${live()?'Connected.':'Not connected. The app shows sample data until you connect.'}</p></div>
+ <h2>Links</h2><div class="group" style="padding:16px">
+  <div class="field"><label for="s-plan">YouVersion reading plan link</label><input type="text" id="s-plan" value="${esc(cfg.plan||'')}" placeholder="https://www.bible.com/reading-plans/…"></div>
+  <div class="field"><label for="s-pl">Worship playlist link</label><input type="text" id="s-pl" value="${esc(cfg.playlist||'')}" placeholder="https://music.youtube.com/playlist?list=…"></div>
+  <button class="btn y" data-a="links">Save links</button></div>
+ <h2>Data</h2><div class="group" style="padding:16px"><div class="prow"><button class="btn" data-a="reload">Reload from Google</button></div><p class="meta" style="margin-top:10px">${dirty.size+dirtyNotes.size?`${dirty.size+dirtyNotes.size} change(s) waiting to sync.`:'Everything is synced.'}</p></div>`}
+
+/* ---------- routing & events ---------- */
+const V={today,notes,people,library,settings};
+function render(){ensure();TODAY=iso(0);TMRW=iso(1);document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===UI.view));(V[UI.view]||today)();showSync()}
+const find=(k,id)=>D[k].find(x=>x.id===id);
+document.addEventListener('click',async e=>{
+ const tab=e.target.closest('.tab');if(tab){UI.view=tab.dataset.v;saveUI();closePane();render();$('#main').scrollTop=0;return}
+ if(e.target.closest('a'))return;
+ const el=e.target.closest('[data-a]');if(!el)return;
+ const a=el.dataset.a,id=el.dataset.id,v=el.dataset.v,k=el.dataset.k;
+ if(a==='tick'){e.stopPropagation();buzz();
+  if(k==='task'){const t=find('tasks',id);t.status=t.status==='done'?'':'done';t.updated=TODAY;touch('tasks')}
+  else if(k==='habit'){const h=find('habits',id);const l=(h.log||'').split(' ').filter(Boolean);h.log=(l.includes(TODAY)?l.filter(x=>x!==TODAY):[...l,TODAY].slice(-400)).join(' ');touch('habits')}
+  else{evDone[id+TODAY]=!evDone[id+TODAY];ls.set('hq-evdone',evDone)}
+  render();const c=document.querySelector(`.chk[data-id="${CSS.escape(id)}"]`);c&&c.classList.add('pop');return}
+ if(a==='item')itemPane(k,id);
+ if(a==='close')closePane();
+ if(a==='go'){UI.view=v;saveUI();render()}
+ if(a==='retry'){syncState={s:'loading'};showSync();dirty.size||dirtyNotes.size?flush():load()}
+ if(a==='tsave'){const t=find('tasks',id);t.title=$('#f-t').value.trim()||t.title;t.date=$('#f-d').value;t.part=$('#f-p').value;t.world=$('#f-w').value;t.notes=$('#f-n').value;t.updated=TODAY;touch('tasks');render();closePane();say('Saved.')}
+ if(a==='tvoid'){find('tasks',id).void='1';touch('tasks');render();closePane();say('Marked void. It stays in history.')}
+ if(a==='hsave'){const h=find('habits',id);h.name=$('#f-t').value.trim()||h.name;h.part=$('#f-p').value;touch('habits');render();closePane();say('Saved.')}
+ if(a==='hvoid'){find('habits',id).void='1';touch('habits');render();closePane();say('Habit removed. Its history stays in the Sheet.')}
+ if(a==='fresh'){const o=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done');o.forEach((t,i)=>{t.date=i<2?TODAY:TMRW;t.updated=TODAY});touch('tasks');render();say(`Moved ${o.length}: two to today, the rest to tomorrow.`)}
+ if(a==='nf'){UI.nf=v;UI.q='';saveUI();notes()}
+ if(a==='note')notePane(find('notes_index',id));
+ if(a==='newnote'){const n={id:uid(),title:'New note',para:PARA.includes(UI.nf)?UI.nf:'Areas',type:TYPES.includes(UI.nf)?UI.nf:'Personal',people:'',date:TODAY,driveLink:'',tags:'',void:'',text:''};BODY[n.id]='<h1>New note</h1><p></p>';D.notes_index.push(n);touch('notes_index');touchNote(n.id);notes();notePane(n)}
+ if(a==='nvoid'){find('notes_index',id).void='1';touch('notes_index');closePane();notes();say('Archived. The note stays in Drive.')}
+ if(a==='pw'){UI.pw=v;UI.bf='';saveUI();people()}
+ if(a==='bf'){UI.bf=UI.bf===v?'':v;saveUI();people()}
+ if(a==='person')personPane(find('people',id));
+ if(a==='newperson'){const p={id:uid(),name:'New person',world:UI.pw==='all'?'church':UI.pw,stage:'',tags:'',phone:'',lastContact:'',nextDate:'',nextAction:'',waiting:'',birthday:'',notes:'',void:''};D.people.push(p);touch('people');people();personPane(p)}
+ if(a==='contact'){e.stopPropagation();const p=find('people',id);p.lastContact=TODAY;p.nextDate=iso(14);p.waiting='';touch('people');buzz();people();if(pane.classList.contains('open')||innerWidth>1100)personPane(p);say(`Logged. Next follow-up with ${p.name} on ${nice(p.nextDate)}.`)}
+ if(a==='wait'){const p=find('people',id);p.waiting=yes(p.waiting)?'':'1';touch('people');people();personPane(p)}
+ if(a==='psave'){const p=find('people',id);p.name=$('#pf-n').value.trim()||p.name;p.world=$('#pf-w').value;p.stage=$('#pf-s').value;p.phone=$('#pf-ph').value.trim();p.birthday=$('#pf-b').value;p.nextDate=$('#pf-nd').value;p.nextAction=$('#pf-a').value;p.notes=$('#pf-no').value;touch('people');people();say('Saved.')}
+ if(a==='pvoid'){find('people',id).void='1';touch('people');closePane();people();say('Removed from lists. The record stays in the Sheet.')}
+ if(a==='book')bookPane(find('books',id));
+ if(a==='hl'){const t=$('#hl-t').value.trim();if(!t){say('Type or paste the passage first.');return}const b=find('books',id);D.highlights.push({id:uid(),bookId:id,passage:t,colour:v,note:$('#hl-n').value.trim(),date:TODAY});touch('highlights');bookPane(b);if(UI.view==='library')library();say('Highlight saved. Notes search finds it too.')}
+ if(a==='connect'){const url=$('#s-url').value.trim(),token=$('#s-tok').value.trim(),msg=$('#s-msg');
+  if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)){msg.textContent='That address should start with https://script.google.com/ and end with /exec.';return}
+  if(!token){msg.textContent='Type the secret token too.';return}
+  const old=cfg;cfg={...cfg,url,token};msg.textContent='Testing…';
+  try{await api({action:'ping'});ls.set('hq-cfg',cfg);if(!live()||old.url!==url){D=null;BODY={};dirty.clear();dirtyNotes.clear();EV=[];BRIEF=null;persist()}msg.textContent='Connected. Loading your data…';await load();say('Connected to your Google Sheet.')}
+  catch(err){cfg=old;msg.textContent="Couldn't connect: "+err.message}}
+ if(a==='disconnect'){cfg={plan:cfg.plan,playlist:cfg.playlist};ls.set('hq-cfg',cfg);D=sample();dirty.clear();dirtyNotes.clear();persist();syncState={s:'sample'};render();say('Disconnected. Showing sample data.')}
+ if(a==='links'){cfg.plan=$('#s-plan').value.trim();cfg.playlist=$('#s-pl').value.trim();ls.set('hq-cfg',cfg);say('Links saved.')}
+ if(a==='reload')load();
+});
+addEventListener('keydown',e=>{if(e.key==='Escape')closePane()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&live()&&iso(0)!==TODAY)load()});
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+ensure();load();
+}
+</script>
+</body>
+</html>
