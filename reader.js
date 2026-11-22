@@ -3,6 +3,7 @@
    on this device in the Cache API ("hq-books"), so a book opens offline after the first time. */
 (function () {
 'use strict';
+const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js', PDFW = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 const LIBS = ['https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js', 'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js'];
 const THEMES = {
   original: { name: 'Original', bg: '#ffffff', fg: '#1d1d1f', ui: '#f2f2f7' },
@@ -17,6 +18,7 @@ const FONTS = { original: ['Original', ''], serif: ['Serif', '"Source Serif 4", 
 const COLS = { y: ['Yellow', '#ffe066'], g: ['Green', '#b6e3a8'], b: ['Blue', '#b5d3f3'], p: ['Pink', '#f5bcd4'], o: ['Orange', '#ffc78a'] };
 const DEF = { theme: 'paper', font: 'original', size: 100, lh: 1.5, sp: 0, margin: 2, justify: 1, flow: 'paginated', autoNight: 1, goal: 10, yearGoal: 24, ruler: 0, spp: 50 };
 
+let pdf = null, pdfPage = 1, pdfZoom = 1, pdfObs = null;
 let X, S, book, rend, B, el, chromeOn = true, sel = null, history = [], saveT, minT, lastAct = Date.now(), turnAt = Date.now(), speaking = false, locReady = false, curLoc = null;
 
 const $ = s => el.querySelector(s);
@@ -81,6 +83,9 @@ function shell() {
 #rdr .rcard{background:var(--rbg);border-radius:14px;padding:22px 18px;min-height:150px;display:grid;place-items:center;text-align:center;font:17px/1.5 "Source Serif 4",Georgia,serif}
 #rdr .rruler{position:absolute;left:0;right:0;height:64px;pointer-events:none;background:rgba(255,214,10,.16);border-top:1px solid rgba(198,97,63,.5);border-bottom:1px solid rgba(198,97,63,.5);z-index:3}
 #rdr input[type=search],#rdr textarea,#rdr input[type=number]{width:100%;padding:10px 12px;border-radius:10px;border:0;background:var(--rbg);color:var(--rfg);font:inherit;font-size:16px}
+#rdr .rpdf{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 0}#rdr .rpg{position:relative;margin:0 auto 10px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.15)}#rdr .rpg canvas{display:block;width:100%;height:100%}
+#rdr .textLayer{position:absolute;inset:0;overflow:hidden;line-height:1;opacity:1}#rdr .textLayer span,#rdr .textLayer br{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0}#rdr .textLayer ::selection{background:rgba(255,214,10,.45)}
+#rdr.pdfdark .rpg canvas{filter:invert(.92) hue-rotate(180deg)}#rdr.pdfwarm .rpg canvas{filter:sepia(.25)}
 #rdr .ring{display:flex;align-items:center;gap:14px;margin:6px 0 4px}#rdr .ring svg{width:64px;height:64px}
 </style>
 <div class="rtop"><button class="rib" data-r="close" aria-label="Close book"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -96,7 +101,7 @@ function shell() {
   document.documentElement.style.overflow = 'hidden';
   paint();
   el.addEventListener('click', onClick);
-  $('#r-slide').addEventListener('change', e => { if (!locReady) { X.say('Still working out pages. Try again in a moment.'); return; } remember(); rend.display(book.locations.cfiFromPercentage(e.target.value / 1000)); });
+  $('#r-slide').addEventListener('change', e => { if (pdf) { remember(); pdfGo(1 + Math.round(e.target.value / 1000 * (pdf.numPages - 1))); return; } if (!locReady) { X.say('Still working out pages. Try again in a moment.'); return; } remember(); rend.display(book.locations.cfiFromPercentage(e.target.value / 1000)); });
   document.addEventListener('keydown', onKey);
 }
 function status(t) { const s = $('#r-stat'); if (s) s.textContent = t; }
@@ -105,6 +110,7 @@ function paint() {
   const t = THEMES[themeKey()];
   el.style.setProperty('--rbg', t.bg); el.style.setProperty('--rfg', t.fg); el.style.setProperty('--rui', t.ui);
   const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = t.bg;
+  el.classList.toggle('pdfdark', !!(pdf && t.dark)); el.classList.toggle('pdfwarm', !!(pdf && /calm|paper/.test(themeKey())));
   if (!rend) return;
   const f = FONTS[S.font][1];
   const body = { 'background': t.bg + ' !important', 'color': t.fg + ' !important', 'line-height': S.lh + ' !important', 'letter-spacing': (S.sp / 100) + 'em', 'text-align': S.justify ? 'justify' : 'start', 'hyphens': S.justify ? 'auto' : 'manual', 'padding': '0 ' + (S.margin * 0.6) + 'em !important' };
@@ -120,7 +126,10 @@ async function open(b, ctx) {
   history = []; sel = null; locReady = false; curLoc = null;
   shell();
   try {
-    await Promise.all([load(LIBS[0]).then(() => load(LIBS[1])), bytes().then(buf => { B._buf = buf; })]);
+    const buf = await bytes();
+    const head = new Uint8Array(buf.slice(0, 5)); const isPdf = B.format === 'pdf' || String.fromCharCode(...head) === '%PDF-';
+    if (isPdf) { await openPdf(buf); clearInterval(minT); minT = setInterval(tick, 30000); return; }
+    await load(LIBS[0]); await load(LIBS[1]); B._buf = buf;
     status('Opening the book…');
     book = window.ePub(B._buf); delete B._buf;
     await book.ready;
@@ -153,22 +162,24 @@ function makeRendition() {
 }
 function attach() { marks().forEach(drawMark); bmState(); }
 function drawMark(h) {
-  if (!h.cfi || !rend) return;
+  if (!h.cfi || !rend || pdf) return;
   try {
     if (h.kind === 'bookmark' || h.kind === 'word') return;
     if (h.style === 'u') rend.annotations.underline(h.cfi, { id: h.id }, null, 'hq-u', { stroke: COLS[h.colour] ? COLS[h.colour][1] : '#c6613f', 'stroke-width': '2px', 'stroke-opacity': '1' });
     else rend.annotations.highlight(h.cfi, { id: h.id }, null, 'hq-h', { fill: (COLS[h.colour] || COLS.y)[1], 'fill-opacity': '0.45', 'mix-blend-mode': 'multiply' });
   } catch (e) {}
 }
-function undraw(h) { try { rend.annotations.remove(h.cfi, h.style === 'u' ? 'underline' : 'highlight'); } catch (e) {} }
+function undraw(h) { if (pdf) return; try { rend.annotations.remove(h.cfi, h.style === 'u' ? 'underline' : 'highlight'); } catch (e) {} }
 
 /* ---------- position, progress, time left ---------- */
 function chapterLabel(loc) {
+  if (pdf) return 'p. ' + pdfPage;
   const href = loc && loc.start && loc.start.href; if (!href || !B._toc) return '';
   let best = ''; const walk = (items) => items.forEach(i => { if (i.href && href.split('#')[0].endsWith(i.href.split('#')[0])) best = best || i.label.trim(); if (i.subitems) walk(i.subitems); }); walk(B._toc);
   return best;
 }
 function place() {
+  if (pdf) { $('#r-ttl').textContent = B.title; $('#r-slide').value = Math.round((pdfPage - 1) / Math.max(1, pdf.numPages - 1) * 1000); const pct = pdfPage / pdf.numPages; const tot = Number(B.minutes) || pdf.numPages * 2; $('#r-left').textContent = 'Page ' + pdfPage + ' of ' + pdf.numPages + (pct < 1 ? ' · ' + fmtMin(tot * (1 - pct)) + ' left' : ''); bmState(); return; }
   const loc = curLoc || (rend && rend.currentLocation()); if (!loc || !loc.start) return;
   const ch = chapterLabel(loc); $('#r-ttl').textContent = ch ? ch : B.title;
   let pct = null; if (locReady) { pct = book.locations.percentageFromCfi(loc.start.cfi); $('#r-slide').value = Math.round(pct * 1000); }
@@ -185,13 +196,13 @@ function queueSave() {
 }
 function savePos() {
   const loc = curLoc; if (!loc || !loc.start) return;
-  const pct = locReady ? book.locations.percentageFromCfi(loc.start.cfi) : Number(B.position) || 0;
+  const pct = pdf ? pdfPage / pdf.numPages : locReady ? book.locations.percentageFromCfi(loc.start.cfi) : Number(B.position) || 0;
   const fields = { cfi: loc.start.cfi, position: String(Math.round(pct * 1000) / 1000), lastRead: X.today(), updated: X.today() };
   if (pct >= 0.995 && !B.finished) fields.finished = X.today();
   Object.assign(B, fields); X.ls.set('hq-data', X.D);
   if (X.live()) X.post({ action: 'patch', name: 'books', id: B.id, fields }).catch(() => { B._unsaved = 1; });
 }
-function remember() { const l = curLoc || rend.currentLocation(); if (l && l.start) history.push(l.start.cfi); }
+function remember() { const l = curLoc || (rend && rend.currentLocation()); if (l && l.start) history.push(l.start.cfi); }
 
 /* ---------- reading goals (Apple Books) ---------- */
 function tick() {
@@ -222,8 +233,8 @@ function tapZone(e) {
 }
 function onKey(e) {
   if (!el || !el.isConnected) return; const t = e.target && e.target.tagName; if (t === 'INPUT' || t === 'TEXTAREA') return;
-  if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) { e.preventDefault && e.preventDefault(); rend && rend.next(); }
-  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { rend && rend.prev(); }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) { e.preventDefault && e.preventDefault(); if (pdf) pdfGo(pdfPage + 1); else rend && rend.next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { if (pdf) pdfGo(pdfPage - 1); else rend && rend.prev(); }
   else if (e.key === 'Escape') { if (el.querySelector('.rsheet,.rsel')) closeSheet(); else close(); }
 }
 
@@ -232,6 +243,7 @@ function sheet(html) { closeSheet(); el.insertAdjacentHTML('beforeend', `<div cl
 function closeSheet() { el.querySelectorAll('.rsheet,.rsel').forEach(x => x.remove()); }
 const hd = (t) => `<h3>${t}<button class="rbtn" data-r="x">Done</button></h3>`;
 function aaSheet() {
+  if (pdf) { sheet(`${hd('Themes &amp; Settings')}<div class="rline" style="justify-content:space-between"><button class="rbtn" data-r="zoom" data-v="-0.15" aria-label="Zoom out">−</button><span style="text-align:center;flex:1">Zoom ${Math.round(pdfZoom * 100)}%</span><button class="rbtn" data-r="zoom" data-v="0.15" aria-label="Zoom in">+</button></div><div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}"><b>Aa</b>${t.name}</button>`).join('')}</div><div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div><div class="rline"><span>Reading ruler</span><button class="rbtn" data-r="tog" data-v="ruler">${S.ruler ? 'On' : 'Off'}</button></div><p style="font-size:13px;opacity:.7">This is a PDF, so its pages keep their printed layout. Fonts and spacing apply to EPUB books.</p>`); return; }
   const s = sheet(`${hd('Themes &amp; Settings')}
   <div class="rline" style="justify-content:space-between"><button class="rbtn" data-r="fs" data-v="-10" aria-label="Smaller text" style="font-size:13px">A</button><span style="text-align:center;flex:1">${S.size}%</span><button class="rbtn" data-r="fs" data-v="10" aria-label="Larger text" style="font-size:19px">A</button></div>
   <div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}${t.weight ? ';font-weight:700' : ''}"><b>Aa</b>${t.name}</button>`).join('')}</div>
@@ -266,6 +278,7 @@ function moreSheet() {
   ${X.link(B) ? `<a class="rrow" style="color:inherit;text-decoration:none" href="${esc(X.link(B))}" target="_blank" rel="noopener">Open file in Google Drive</a>` : ''}`);
 }
 function tocSheet() {
+  if (pdf) { pdfToc(); return; }
   const href = curLoc && curLoc.start && curLoc.start.href || '';
   const rows = []; const walk = (items, d) => items.forEach(i => { rows.push(`<button class="rrow${href && href.endsWith(i.href.split('#')[0]) ? ' cur' : ''}" data-r="go" data-v="${esc(i.href)}" style="padding-left:${4 + d * 16}px">${esc(i.label.trim())}</button>`); if (i.subitems && i.subitems.length) walk(i.subitems, d + 1); });
   walk(B._toc || [], 0);
@@ -302,6 +315,8 @@ function searchSheet(q) {
 async function runSearch(q) {
   const out = el.querySelector('#r-res'); if (!out) return; if (q.length < 2) { out.innerHTML = ''; return; }
   out.innerHTML = '<p style="opacity:.6">Searching…</p>'; const found = [];
+  if (pdf) { const ql = q.toLowerCase(); for (let n = 1; n <= pdf.numPages && found.length <= 150; n++) { try { const tc = await (await pdf.getPage(n)).getTextContent(); const tx = tc.items.map(i => i.str).join(' '); let i = tx.toLowerCase().indexOf(ql); while (i >= 0 && found.length <= 150) { found.push({ cfi: 'pdf:' + n, excerpt: 'p. ' + n + ': …' + tx.slice(Math.max(0, i - 60), i + q.length + 60) + '…' }); i = tx.toLowerCase().indexOf(ql, i + q.length); } } catch (e) {} } }
+  else
   for (const item of book.spine.spineItems) {
     try { await item.load(book.load.bind(book)); (item.find(q) || []).forEach(r => found.push(r)); item.unload(); } catch (e) {}
     if (found.length > 150) break;
@@ -310,8 +325,8 @@ async function runSearch(q) {
   out.innerHTML = found.length ? `<p style="opacity:.6;font-size:13px">${found.length}${found.length > 150 ? '+' : ''} results</p>` + found.map(r => `<button class="rrow" data-r="jump" data-v="${esc(r.cfi)}" style="display:block;font-size:14px">${esc(r.excerpt).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), m => `<mark style="background:#ffe066;color:#000">${m}</mark>`)}</button>`).join('') : '<p>No matches in this book.</p>';
 }
 function gotoSheet() {
-  const total = locReady ? book.locations.length() : 0;
-  const s = sheet(`${hd('Go to')}${total ? `<p style="font-size:13px;opacity:.7">This book has about ${total} pages at this size.</p>` : '<p style="font-size:13px;opacity:.7">Still working out pages. Percent works already once that finishes.</p>'}
+  const total = pdf ? pdf.numPages : locReady ? book.locations.length() : 0;
+  const s = sheet(`${hd('Go to')}${total ? `<p style="font-size:13px;opacity:.7">This book has ${pdf ? '' : 'about '}${total} pages${pdf ? '' : ' at this size'}.</p>` : '<p style="font-size:13px;opacity:.7">Still working out pages. Percent works already once that finishes.</p>'}
   <div class="rline"><span>Page</span><input type="number" id="r-pg" min="1" max="${total || 1}" placeholder="${total ? '1–' + total : ''}"></div>
   <div class="rline"><span>Percent</span><input type="number" id="r-pc" min="0" max="100" placeholder="0–100"></div><button class="rbtn y" data-r="dogo">Go</button>`);
 }
@@ -360,6 +375,7 @@ function speakPage() {
   if (!('speechSynthesis' in window)) { X.say('Read aloud is not available in this browser.'); speaking = false; return; }
   speechSynthesis.cancel();
   let text = '';
+  if (pdf) { pdf.getPage(pdfPage).then(pg => pg.getTextContent()).then(tc => { const t = tc.items.map(i => i.str).join(' '); if (!t.trim()) { if (speaking) pdfGo(pdfPage + 1); return; } const u = new SpeechSynthesisUtterance(t); u.onend = () => { if (speaking) pdfGo(pdfPage + 1); }; speechSynthesis.speak(u); }); return; }
   try { const c = rend.getContents()[0]; const loc = rend.currentLocation(); const a = c.range(loc.start.cfi), b = c.range(loc.end.cfi); const r = c.document.createRange(); r.setStart(a.startContainer, a.startOffset); r.setEnd(b.endContainer, b.endOffset); text = r.toString(); } catch (e) { try { text = rend.getContents()[0].document.body.innerText.slice(0, 4000); } catch (e2) {} }
   if (!text.trim()) { if (speaking) rend.next(); return; }
   const u = new SpeechSynthesisUtterance(text); u.rate = 1; u.lang = (book.packaging && book.packaging.metadata.language) || 'en';
@@ -369,15 +385,77 @@ function speakPage() {
 function ruler(on) { el.querySelectorAll('.rruler').forEach(x => x.remove()); if (on) $('#r-view').insertAdjacentHTML('beforeend', '<div class="rruler" style="top:40%"></div>'); }
 
 /* ---------- bookmark ---------- */
-function bmHere() { const l = curLoc; if (!l || !l.start) return null; return marks().find(m => m.kind === 'bookmark' && m.cfi && (m.cfi === l.start.cfi || (l.end && book.locations && rend.epubcfi && within(m.cfi, l)))); }
+function bmHere() { if (pdf) return marks().find(m => m.kind === 'bookmark' && m.cfi === 'pdf:' + pdfPage); const l = curLoc; if (!l || !l.start) return null; return marks().find(m => m.kind === 'bookmark' && m.cfi && (m.cfi === l.start.cfi || (l.end && book.locations && rend.epubcfi && within(m.cfi, l)))); }
 function within(cfi, l) { try { const E = new window.ePub.CFI(); return E.compare(cfi, l.start.cfi) >= 0 && E.compare(cfi, l.end.cfi) <= 0; } catch (e) { return false; } }
 function bmState() { const b = $('#r-bm'); if (b) b.classList.toggle('on', !!bmHere()); }
 function toggleBm() {
   const ex = bmHere();
   if (ex) { ex.void = '1'; ex.updated = X.today(); X.touch('highlights'); X.say('Bookmark removed.'); }
-  else { const l = curLoc; let snip = ''; try { snip = rend.getContents()[0].document.body.innerText.trim().slice(0, 80); } catch (e) {} X.D.highlights.push({ id: 'h' + X.uid(), bookId: B.id, passage: snip, colour: 'r', note: '', date: X.today(), kind: 'bookmark', cfi: l.start.cfi, chapter: chapterLabel(l), style: '', void: '', updated: X.today() }); X.touch('highlights'); X.say('Page bookmarked.'); }
+  else { const l = curLoc || { start: { cfi: 'pdf:' + pdfPage } }; let snip = ''; try { snip = pdf ? 'Page ' + pdfPage : rend.getContents()[0].document.body.innerText.trim().slice(0, 80); } catch (e) {} X.D.highlights.push({ id: 'h' + X.uid(), bookId: B.id, passage: snip, colour: 'r', note: '', date: X.today(), kind: 'bookmark', cfi: l.start.cfi, chapter: chapterLabel(l), style: '', void: '', updated: X.today() }); X.touch('highlights'); X.say('Page bookmarked.'); }
   bmState();
 }
+
+
+/* ---------- PDF books (pdf.js): real printed pages, text you can select ---------- */
+async function openPdf(buf) {
+  status('Opening the PDF…');
+  await load(PDFJS); window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFW;
+  pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  B._toc = [];
+  const v = $('#r-view'); v.innerHTML = '<div class="rpdf" id="r-pdf"></div>';
+  const box = $('#r-pdf');
+  pdfLayout();
+  box.addEventListener('scroll', () => { lastAct = Date.now(); const pgs = box.querySelectorAll('.rpg'); const mid = box.scrollTop + box.clientHeight * 0.35; let n = 1; pgs.forEach((p, i) => { if (p.offsetTop <= mid) n = i + 1; }); if (n !== pdfPage) { const dt = (Date.now() - turnAt) / 1000; turnAt = Date.now(); if (dt > 4 && dt < 240) { S.spp = Math.round(S.spp * 0.85 + dt * 0.15); saveS(); } pdfPage = n; curLoc = { start: { cfi: 'pdf:' + n } }; place(); queueSave(); } }, { passive: true });
+  box.addEventListener('mouseup', pdfSel); box.addEventListener('touchend', () => setTimeout(pdfSel, 350));
+  box.addEventListener('click', e => { if (!getSelection().toString() && !e.target.closest('.rsel')) { if (sel) closeSel(); else { chromeOn = !chromeOn; el.classList.toggle('bare', !chromeOn); } } });
+  const start = /^pdf:\d+$/.test(B.cfi || '') ? Number(B.cfi.slice(4)) : 1;
+  pdfPage = start; curLoc = { start: { cfi: 'pdf:' + start } };
+  setTimeout(() => pdfGo(start, true), 50);
+  locReady = true; place(); paint(); bmState();
+  try { const ol = await pdf.getOutline(); if (ol) { const conv = async items => Promise.all(items.map(async i => { let n = null; try { const d = typeof i.dest === 'string' ? await pdf.getDestination(i.dest) : i.dest; if (d) n = (await pdf.getPageIndex(d[0])) + 1; } catch (e) {} return { label: i.title, href: n ? 'pdf:' + n : '', subitems: i.items && i.items.length ? await conv(i.items) : [] }; })); B._toc = await conv(ol); } } catch (e) {}
+}
+async function pdfLayout() {
+  const box = $('#r-pdf'); if (!box || !pdf) return;
+  const keep = pdfPage; const p1 = await pdf.getPage(1); const vp = p1.getViewport({ scale: 1 });
+  const w = Math.min(box.clientWidth - 16, 900) * pdfZoom, ratio = vp.height / vp.width;
+  box.innerHTML = Array.from({ length: pdf.numPages }, (_, i) => `<div class="rpg" data-n="${i + 1}" style="width:${w}px;height:${Math.round(w * ratio)}px"></div>`).join('');
+  pdfObs && pdfObs.disconnect();
+  pdfObs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) drawPage(e.target); }), { root: box, rootMargin: '800px 0px' });
+  box.querySelectorAll('.rpg').forEach(d => pdfObs.observe(d));
+  pdfGo(keep, true);
+}
+async function drawPage(div) {
+  if (div.dataset.done) return; div.dataset.done = '1';
+  try {
+    const n = Number(div.dataset.n), page = await pdf.getPage(n);
+    const w = div.clientWidth, base = page.getViewport({ scale: 1 }), scale = w / base.width, vp = page.getViewport({ scale });
+    div.style.height = Math.round(vp.height) + 'px';
+    const c = document.createElement('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1);
+    c.width = Math.floor(vp.width * dpr); c.height = Math.floor(vp.height * dpr); div.appendChild(c);
+    await page.render({ canvasContext: c.getContext('2d'), viewport: page.getViewport({ scale: scale * dpr }) }).promise;
+    const tl = document.createElement('div'); tl.className = 'textLayer'; tl.style.setProperty('--scale-factor', scale); div.appendChild(tl);
+    const tc = await page.getTextContent();
+    const task = window.pdfjsLib.renderTextLayer({ textContentSource: tc, container: tl, viewport: vp, textDivs: [] }); if (task && task.promise) await task.promise;
+  } catch (e) { div.dataset.done = ''; }
+}
+function pdfGo(n, quiet) {
+  if (!pdf) return; n = Math.min(pdf.numPages, Math.max(1, Math.round(n) || 1));
+  const d = el.querySelector(`.rpg[data-n="${n}"]`); if (d) $('#r-pdf').scrollTop = d.offsetTop - 8;
+  pdfPage = n; curLoc = { start: { cfi: 'pdf:' + n } }; place(); if (!quiet) queueSave();
+}
+function pdfSel() {
+  const s = getSelection(), t = s.toString().trim(); if (!t) return;
+  const pg = s.anchorNode && s.anchorNode.parentElement && s.anchorNode.parentElement.closest('.rpg');
+  if (pg) pdfPage = Number(pg.dataset.n);
+  sel = { cfi: 'pdf:' + pdfPage, text: t.replace(/\s+/g, ' '), contents: { window } }; selBar();
+}
+function pdfToc() {
+  const rows = []; const walk = (items, d) => items.forEach(i => { rows.push(`<button class="rrow" ${i.href ? `data-r="go" data-v="${esc(i.href)}"` : ''} style="padding-left:${4 + d * 16}px">${esc((i.label || '').trim())}${i.href ? `<small>p. ${i.href.slice(4)}</small>` : ''}</button>`); if (i.subitems && i.subitems.length) walk(i.subitems, d + 1); });
+  walk(B._toc || [], 0);
+  sheet(hd('Contents') + (rows.join('') || `<p>This PDF has no table of contents. Use Go to page instead (it has ${pdf.numPages} pages).</p>`));
+}
+
+function goTo(cfi) { if (String(cfi).startsWith('pdf:')) return pdfGo(Number(String(cfi).slice(4))); return rend.display(cfi); }
 
 /* ---------- clicks ---------- */
 async function onClick(e) {
@@ -390,7 +468,7 @@ async function onClick(e) {
     case 'more': return moreSheet();
     case 'search': return searchSheet();
     case 'bm': return toggleBm();
-    case 'back': if (history.length) rend.display(history.pop()); else X.say('Nothing to go back to yet.'); return;
+    case 'back': if (history.length) goTo(history.pop()); else X.say('Nothing to go back to yet.'); return;
     case 'toc': return tocSheet();
     case 'notes': return notesSheet();
     case 'bms': return bmsSheet();
@@ -400,16 +478,17 @@ async function onClick(e) {
     case 'cardp': cardI = Math.max(0, cardI - 1); cardFlip = false; return cardsSheet();
     case 'words': return wordsSheet();
     case 'goto': return gotoSheet();
-    case 'dogo': { const pg = Number(el.querySelector('#r-pg').value), pc = Number(el.querySelector('#r-pc').value); if (!locReady) { X.say('Pages are still being worked out.'); return; } remember(); if (pg) rend.display(book.locations.cfiFromLocation(pg - 1)); else if (el.querySelector('#r-pc').value !== '') rend.display(book.locations.cfiFromPercentage(Math.min(100, Math.max(0, pc)) / 100)); else { X.say('Type a page or a percent first.'); return; } closeSheet(); return; }
-    case 'go': remember(); closeSheet(); rend.display(v); return;
-    case 'jump': remember(); closeSheet(); rend.display(v); return;
+    case 'dogo': { const pg = Number(el.querySelector('#r-pg').value), pc = Number(el.querySelector('#r-pc').value); if (pdf) { remember(); if (pg) pdfGo(pg); else if (el.querySelector('#r-pc').value !== '') pdfGo(Math.max(1, Math.round(pc / 100 * pdf.numPages))); closeSheet(); return; } if (!locReady) { X.say('Pages are still being worked out.'); return; } remember(); if (pg) rend.display(book.locations.cfiFromLocation(pg - 1)); else if (el.querySelector('#r-pc').value !== '') rend.display(book.locations.cfiFromPercentage(Math.min(100, Math.max(0, pc)) / 100)); else { X.say('Type a page or a percent first.'); return; } closeSheet(); return; }
+    case 'go': remember(); closeSheet(); goTo(v); return;
+    case 'jump': remember(); closeSheet(); goTo(v); return;
     case 'speak': speaking = !speaking; closeSheet(); if (speaking) { X.say('Reading aloud. Open the menu to stop.'); speakPage(); } else speechSynthesis.cancel(); return;
-    case 'recap': closeSheet(); askClaude('', `Give me a short, spoiler-free recap of this book up to ${chapterLabel(curLoc) || 'where I am now'}${locReady ? ' (about ' + Math.round(book.locations.percentageFromCfi(curLoc.start.cfi) * 100) + '% through)' : ''}: the main argument or story so far, key people, and the ideas I should remember. Do not reveal anything from later chapters.`); return;
+    case 'recap': closeSheet(); askClaude('', `Give me a short, spoiler-free recap of this book up to ${chapterLabel(curLoc) || 'where I am now'}${pdf ? ' (page ' + pdfPage + ' of ' + pdf.numPages + ')' : locReady ? ' (about ' + Math.round(book.locations.percentageFromCfi(curLoc.start.cfi) * 100) + '% through)' : ''}: the main argument or story so far, key people, and the ideas I should remember. Do not reveal anything from later chapters.`); return;
     case 'export': closeSheet(); return exportNotes();
     case 'copyall': return copy(marks().filter(m => !m.kind || m.kind === 'highlight').map(m => cite(m.passage) + (m.note ? '\nNote: ' + m.note : '')).join('\n\n'));
     case 'goal': return goalSheet();
     case 'savegoal': S.goal = Math.max(1, Number(el.querySelector('#r-g1').value) || 10); S.yearGoal = Math.max(1, Number(el.querySelector('#r-g2').value) || 24); saveS(); X.say('Goals saved.'); return moreSheet();
     case 'finish': { const f = B.finished ? '' : X.today(); B.finished = f; X.ls.set('hq-data', X.D); if (X.live()) X.post({ action: 'patch', name: 'books', id: B.id, fields: { finished: f, updated: X.today() } }).catch(err => X.say("Couldn't save: " + err.message)); X.say(f ? 'Marked as finished. Nice work.' : 'Back in Reading now.'); return moreSheet(); }
+    case 'zoom': pdfZoom = Math.min(3, Math.max(0.5, pdfZoom + Number(v))); pdfLayout(); return aaSheet();
     case 'fs': S.size = Math.min(220, Math.max(60, S.size + Number(v))); saveS(); paint(); return aaSheet();
     case 'th': S.theme = v; saveS(); paint(); return aaSheet();
     case 'font': S.font = v; saveS(); paint(); return aaSheet();
@@ -441,6 +520,7 @@ function close() {
   clearInterval(minT); speaking = false; try { speechSynthesis.cancel(); } catch (e) {}
   document.removeEventListener('keydown', onKey);
   try { book && book.destroy(); } catch (e) {}
+  try { pdfObs && pdfObs.disconnect(); pdf && pdf.destroy(); } catch (e) {} pdf = null; pdfObs = null;
   book = rend = null; if (el) el.remove(); el = null;
   document.documentElement.style.overflow = '';
   X.done && X.done();

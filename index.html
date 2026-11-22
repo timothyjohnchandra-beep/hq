@@ -366,7 +366,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='11 · 22 Nov 2026';
+const VERSION='12 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -886,24 +886,37 @@ function bookDetail(b){const pts=String(b.keyPoints||'').split(/\n|\s\|\s/).map(
  ${b.summary?`<p>${esc(b.summary)}</p>`:'<p class="meta">Summary, uses and key points are being written. They appear here as each batch is done.</p>'}
  ${b.usefulFor?`<h4>Useful for</h4><p>${esc(b.usefulFor)}</p>`:''}
  ${pts.length?`<h4>Key points</h4><ul>${pts.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
- <div class="prow"><button class="btn y" data-a="read" data-id="${esc(b.id)}">${pos?'Continue reading':'Read'}</button>${lk?`<a class="btn" style="text-decoration:none" href="${esc(lk)}" target="_blank" rel="noopener">Open in Drive</a>`:''}<button class="btn" data-a="book" data-id="${esc(b.id)}">Progress${pos?' '+pos+'%':''} &amp; highlights</button></div></div>`}
+ <div class="prow"><button class="btn y" data-a="read" data-id="${esc(b.id)}">${pos?'Continue reading':'Read'}</button>${lk?`<a class="btn" style="text-decoration:none" href="${esc(lk)}" target="_blank" rel="noopener">Open in Drive</a>`:''}<button class="btn" data-a="book" data-id="${esc(b.id)}">Progress${pos?' '+pos+'%':''} &amp; highlights</button><button class="btn" data-a="paper" data-id="${esc(b.id)}">${papersOf(b).length?'Papers ('+papersOf(b).length+')':'Add to a paper'}</button></div>${papersOf(b).length?`<p class="meta" style="margin-top:8px">For: ${papersOf(b).map(esc).join(', ')}</p>`:''}</div>`}
+const papersOf=b=>String(b.paper||'').split(';').map(x=>x.trim()).filter(Boolean);
+function paperPane(b){const all=[...new Set(D.books.flatMap(papersOf))].sort();const mine=papersOf(b);
+ openPane(`<div class="detail"><div class="dhead">${back}<span class="pill">paper</span></div><h1 style="font-size:24px">Use “${esc(b.title)}” for a paper</h1>
+ <p class="meta">Papers group the books you'll cite. You can also drop files into Drive › Claude › Papers › your paper title, and HQ adds them within the hour.</p>
+ ${all.length?`<h2>Your papers</h2>${grp(all.map(pp=>`<label class="row nt" style="cursor:pointer"><input type="checkbox" class="pp" value="${esc(pp)}" ${mine.includes(pp)?'checked':''}><div><div class="ttl">${esc(pp)}</div><div class="meta">${D.books.filter(x=>!yes(x.void)&&papersOf(x).includes(pp)).length} books</div></div><span></span></label>`),'')}`:''}
+ <div class="field"><label for="pp-new">New paper title</label><input type="text" id="pp-new" placeholder="The Holy Spirit in Pentecostal ecclesiology"></div>
+ <div class="prow"><button class="btn y" id="pp-save">Save</button></div></div>`);
+ $('#pp-save').onclick=()=>{const list=[...document.querySelectorAll('.pp')].filter(c=>c.checked).map(c=>c.value);const n=$('#pp-new').value.trim();if(n&&!list.includes(n))list.push(n);
+  b.paper=list.join('; ');b.updated=TODAY;persist();if(live())post({action:'patch',name:'books',id:b.id,fields:{paper:b.paper,updated:TODAY}}).then(()=>say('Saved to your papers.')).catch(e=>say("Couldn't save: "+e.message));else say('Saved on this device.');closePane();library()}}
+async function checkDrive(){if(!live()){say('Connect your Google Sheet in Settings first.');return}say('Checking Drive for new books…');
+ try{const j=await api({action:'sortbooks'});say(j.log&&j.log.length?j.log.length+' change'+(j.log.length>1?'s':'')+'. Refreshing the Library…':'No new books found.');if(j.log&&j.log.length)await load()}
+ catch(e){say(/Unknown action/.test(e.message)?'Update the bridge script first. Then this button works.':"Couldn't check Drive: "+e.message)}}
 function library(){
  const all=D.books.filter(b=>!yes(b.void));const q=(UI.libq||'').toLowerCase();
  const bks=q?all.filter(b=>(b.title+' '+b.author+' '+(b.summary||'')).toLowerCase().includes(q)):all;
  const open=UI.libOpen||{};const groups={};bks.forEach(b=>{const c=LIBCATS[b.category]?b.category:'00';(groups[c]=groups[c]||[]).push(b)});
  const reading=all.filter(b=>{const p=Number(b.position)||0;return p>0&&!b.finished}).sort((x,y)=>String(y.lastRead||'').localeCompare(String(x.lastRead||'')));
  const rowB=b=>{const ex=UI.bookOpen===b.id;const rt=readTime(b.minutes);const pos=Math.round((Number(b.position)||0)*100);
-  return `<div class="brow${ex?' open':''}"><button class="bhead" data-a="bexp" data-id="${esc(b.id)}" aria-expanded="${ex}"><span data-cover="${esc(b.id)}" class="bthumb${COVERS[b.id]?' img':''}">${COVERS[b.id]?`<img src="${esc(COVERS[b.id])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}${COVERS[b.id]?'':`<b style="background:${CATCOL[b.category]||'#3d5a4c'}">${esc(b.title.slice(0,40))}</b>`}</span><span class="bt"><span class="ttl">${esc(b.title)}</span><span class="meta">${esc(b.author||'')}${rt?' · '+rt:''}${pos?' · '+pos+'%':''}</span></span><span class="chev">›</span></button>${ex?bookDetail(b):''}</div>`};
+  return `<div class="brow${ex?' open':''}"><button class="bhead" data-a="bexp" data-id="${esc(b.id)}" aria-expanded="${ex}"><span data-cover="${esc(b.id)}" class="bthumb${COVERS[b.id]?' img':''}">${COVERS[b.id]?`<img src="${esc(COVERS[b.id])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}${COVERS[b.id]?'':`<b style="background:${CATCOL[b.category]||'#3d5a4c'}">${esc(b.title.slice(0,40))}</b>`}</span><span class="bt"><span class="ttl">${esc(b.title)}</span><span class="meta">${b.format==='pdf'?'PDF · ':''}${esc(b.author||'')}${rt?' · '+rt:''}${pos?' · '+pos+'%':''}${b.finished?' · Finished':''}</span></span><span class="chev">›</span></button>${ex?bookDetail(b):''}</div>`};
  const cats=Object.keys(groups).sort();
  view.innerHTML=`<h1>Library</h1><p class="sub">${all.length} books in ${CATKEYS.filter(c=>all.some(b=>b.category===c)).length} categor${CATKEYS.filter(c=>all.some(b=>b.category===c)).length===1?'y':'ies'}, the same as your Drive Library folder.</p>
  ${goalCard()}
  <input type="search" id="lib-q" class="search" placeholder="Search titles, authors, summaries" value="${esc(UI.libq||'')}" aria-label="Search the library">
  ${reading.length&&!q?`<h2>Continue reading</h2><div class="group">${reading.map(rowB).join('')}</div>`:''}
+ ${(()=>{const ps=[...new Set(all.flatMap(papersOf))].sort();if(!ps.length||q)return'';return ps.map(pp=>{const k='paper:'+pp,isOpen=open[k];const list=all.filter(b=>papersOf(b).includes(pp));return `<h2 class="lcat"><button data-a="lcat" data-v="${esc(k)}" aria-expanded="${!!isOpen}"><span class="dot" style="background:#ffd60a"></span>Paper: ${esc(pp)} <span class="n">${list.length}</span><span class="chev">${isOpen?'⌄':'›'}</span></button></h2>${isOpen?`<div class="group">${list.map(rowB).join('')}</div>`:''}`}).join('')})()}
  ${cats.map(c=>{const isOpen=q||open[c];return `<h2 class="lcat"><button data-a="lcat" data-v="${c}" aria-expanded="${!!isOpen}"><span class="dot" style="background:${CATCOL[c]||'#999'}"></span>${esc(LIBCATS[c]||'Other')} <span class="n">${groups[c].length}</span><span class="chev">${isOpen?'⌄':'›'}</span></button></h2>${isOpen?`<div class="group">${groups[c].sort((x,y)=>x.title.localeCompare(y.title)).map(rowB).join('')}</div>`:''}`}).join('')||'<div class="empty">No books match.</div>'}
  <h2>Add a book</h2><form class="quick" id="ab"><input type="text" id="ab-t" placeholder="Title" aria-label="Title"><input type="text" id="ab-a" placeholder="Author" aria-label="Author"><select id="ab-c" aria-label="Category">${CATKEYS.map(k=>`<option value="${k}">${esc(LIBCATS[k])}</option>`).join('')}</select><input type="text" id="ab-l" placeholder="Google Drive link (optional)" aria-label="Drive link"><button class="btn y">Add</button></form>
- <p class="samp">New EPUBs you drop anywhere in Drive are sorted into these folders each night.</p>`;
+ <p class="samp">New EPUBs you drop anywhere in Drive are filed into these folders and listed here every hour. PDFs are listed when you put them in a Library or Papers folder. <button class="btn link" data-a="checkdrive">Check Drive now</button></p>`;
  const qi=$('#lib-q');qi.oninput=()=>{UI.libq=qi.value;saveUI();const pos=qi.selectionStart;library();const n=$('#lib-q');n.focus();n.setSelectionRange(pos,pos)};
- wantCovers(cats.filter(c=>q||open[c]).flatMap(c=>groups[c]).concat(reading).slice(0,80));
+ wantCovers(cats.filter(c=>q||open[c]).flatMap(c=>groups[c]).concat(reading,all.filter(b=>papersOf(b).some(pp=>open['paper:'+pp]))).slice(0,80));
  $('#ab').onsubmit=e=>{e.preventDefault();const t=$('#ab-t').value.trim();if(!t){say('Type a title first.');return}D.books.push({id:uid(),title:t,author:$('#ab-a').value.trim(),category:$('#ab-c').value,driveLink:$('#ab-l').value.trim(),position:'0',updated:TODAY});touch('books');library();say('Book added.')}}
 function bookPane(b){
  const hl=D.highlights.filter(h=>h.bookId===b.id&&!yes(h.void)&&(!h.kind||h.kind==='highlight'));
@@ -1059,6 +1072,8 @@ document.addEventListener('click',async e=>{
  if(a==='go'){UI.view=v;saveUI();render()}
  if(a==='askclaude')claudePane();
  if(a==='read'){openReader(find('books',id));return}
+ if(a==='paper'){paperPane(find('books',id));return}
+ if(a==='checkdrive'){checkDrive();return}
  if(a==='bexp'){UI.bookOpen=UI.bookOpen===id?'':id;saveUI();library();return}
  if(a==='lcat'){UI.libOpen=UI.libOpen||{};UI.libOpen[v]=!UI.libOpen[v];saveUI();library();return}
  if(a==='retry'){syncState={s:'loading'};showSync();dirty.size||dirtyNotes.size?flush():load()}

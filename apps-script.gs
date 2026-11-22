@@ -25,6 +25,7 @@ function doGet(e) {
     if (a === 'verse') return { ok: true, verse: verse_() };
     if (a === 'contacts') return { ok: true, contacts: contacts_() };
     if (a === 'book') return bookFile_(p.id);
+    if (a === 'sortbooks') return { ok: true, log: sortNewBooks() };
     throw new Error('Unknown action: ' + a);
   });
 }
@@ -321,26 +322,65 @@ function isUnder_(file, folderId) {
   }
   return false;
 }
+function bookTitle_(name) { return name.replace(/\.(epub|pdf)$/i, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim(); }
+function bookFormat_(f) { return /pdf/i.test(f.getMimeType()) || /\.pdf$/i.test(f.getName()) ? 'pdf' : 'epub'; }
+function folderCode_(file) {
+  const ps = file.getParents(); while (ps.hasNext()) { const m = /^(\d\d) /.exec(ps.next().getName()); if (m) return m[1]; } return '00';
+}
+/** Adds a book to the HQ Library list (books tab), or adds a paper name to a book already there. */
+function registerBook_(known, file, code, paper) {
+  const id = file.getId(), today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  if (known[id] !== undefined) {
+    if (!paper) return false;
+    const list = String(known[id] || '').split(';').map(x => x.trim()).filter(String);
+    if (list.indexOf(paper) >= 0) return false;
+    list.push(paper); known[id] = list.join('; ');
+    patchRow_('books', id, { paper: known[id], updated: today }); return true;
+  }
+  known[id] = paper || '';
+  patchRow_('books', id, { title: bookTitle_(file.getName()), author: '', category: code, position: '0', format: bookFormat_(file), paper: paper || '', added: today, updated: today });
+  return true;
+}
+function knownBooks_() {
+  const s = sheet_('books'), v = s.getDataRange().getDisplayValues(), h = v[0], pi = h.indexOf('paper'), out = {};
+  v.slice(1).forEach(r => { if (r[0]) out[r[0]] = pi >= 0 ? r[pi] : ''; }); return out;
+}
+/** Hourly (and from the app's "Check Drive" button): files new books and lists them in HQ. */
 function sortNewBooks() {
   const props = PropertiesService.getScriptProperties();
   const since = props.getProperty('booksSince') || new Date(Date.now() - 2 * 864e5).toISOString();
-  const lib = sub_(rootFolder_(), 'Library');
+  const root = rootFolder_(), lib = sub_(root, 'Library'), papers = sub_(root, 'Papers');
   const teachIt = DriveApp.getFoldersByName('[Teaching]');
   const teachId = teachIt.hasNext() ? teachIt.next().getId() : '';
   const copied = JSON.parse(props.getProperty('booksCopied') || '{}');
-  const started = new Date().toISOString(), log = [];
+  const known = knownBooks_(), started = new Date().toISOString(), log = [];
+  // 1. Paper folders: Claude/Papers/<paper title>/ — EPUBs and PDFs stay there and are tagged with that paper.
+  const walk = (fo, paper) => {
+    const fs = fo.getFiles();
+    while (fs.hasNext()) { let f = fs.next();
+      if (f.getMimeType() === 'application/vnd.google-apps.shortcut') { try { f = DriveApp.getFileById(f.getTargetId()); } catch (e) { continue; } } // shortcut to a Library book
+      if (!/\.(epub|pdf)$/i.test(f.getName()) && !/epub|pdf/.test(f.getMimeType())) continue;
+      if (registerBook_(known, f, classifyBook_(f.getName()), paper)) log.push('Added to paper "' + paper + '": ' + f.getName()); }
+    const sf = fo.getFolders(); while (sf.hasNext()) walk(sf.next(), paper);
+  };
+  const pf = papers.getFolders(); while (pf.hasNext()) { const folder = pf.next(); walk(folder, folder.getName()); }
+  // 2. New EPUBs anywhere else in Drive are filed into the Library and listed.
   const it = DriveApp.searchFiles('mimeType = "application/epub+zip" and trashed = false and createdDate > "' + since + '"');
   while (it.hasNext()) {
     const f = it.next();
-    if (isUnder_(f, lib.getId())) continue;                       // already in the Library
+    if (isUnder_(f, papers.getId())) continue;
+    if (isUnder_(f, lib.getId())) { if (registerBook_(known, f, folderCode_(f), '')) log.push('Listed ' + f.getName()); continue; }
     const code = classifyBook_(f.getName()), dest = libFolder_(code), name = cleanBookName_(f.getName());
     if (teachId && isUnder_(f, teachId)) {
       if (copied[f.getId()]) continue;
-      const c = f.makeCopy(name, dest); copied[f.getId()] = c.getId(); log.push('Copied ' + name + ' → ' + dest.getName());
+      const c = f.makeCopy(name, dest); copied[f.getId()] = c.getId(); registerBook_(known, c, code, ''); log.push('Copied ' + name + ' → ' + dest.getName());
     } else {
-      f.moveTo(dest); if (f.getName() !== name) f.setName(name); log.push('Moved ' + name + ' → ' + dest.getName());
+      f.moveTo(dest); if (f.getName() !== name) f.setName(name); registerBook_(known, f, code, ''); log.push('Moved ' + name + ' → ' + dest.getName());
     }
   }
+  // 3. PDFs put inside a Library folder are listed too. PDFs elsewhere in Drive are left alone.
+  const pit = DriveApp.searchFiles('mimeType = "application/pdf" and trashed = false and createdDate > "' + since + '"');
+  while (pit.hasNext()) { const f = pit.next(); if (isUnder_(f, lib.getId()) && registerBook_(known, f, folderCode_(f), '')) log.push('Listed PDF ' + f.getName()); }
   props.setProperty('booksCopied', JSON.stringify(copied));
   props.setProperty('booksSince', started);
   Logger.log(log.length ? log.join('\n') : 'No new books.');
@@ -348,10 +388,8 @@ function sortNewBooks() {
 }
 function setupBookTrigger() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sortNewBooks').forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('sortNewBooks').timeBased().everyDays(1).atHour(3).inTimezone(TZ).create();
+  ScriptApp.newTrigger('sortNewBooks').timeBased().everyHours(1).create();
 }
-
-
 
 /** Change a few cells of one row (found by id) without rewriting the tab. Used for reading position. */
 function patchRow_(name, id, fields) {
@@ -375,10 +413,11 @@ function bookFile_(id) {
   if (!id) throw new Error('No book chosen.');
   const f = DriveApp.getFileById(id);
   const name = f.getName();
-  if (f.getMimeType() !== 'application/epub+zip' && !/\.epub$/i.test(name)) throw new Error('This file is not an EPUB, so HQ cannot open it. Open it in Drive instead.');
+  const pdf = f.getMimeType() === 'application/pdf' || /\.pdf$/i.test(name);
+  if (!pdf && f.getMimeType() !== 'application/epub+zip' && !/\.epub$/i.test(name)) throw new Error('HQ can open EPUB and PDF books only. Open this file in Drive instead.');
   const size = f.getSize();
   if (size > 40 * 1024 * 1024) throw new Error('This book is ' + Math.round(size / 1048576) + ' MB, too big to open in HQ. Open it in Drive instead.');
-  return { ok: true, name: name, size: size, data: Utilities.base64Encode(f.getBlob().getBytes()) };
+  return { ok: true, name: name, size: size, format: pdf ? 'pdf' : 'epub', data: Utilities.base64Encode(f.getBlob().getBytes()) };
 }
 
 /** Run once from the editor to check everything is wired up. */
