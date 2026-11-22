@@ -61,6 +61,7 @@ h2{font-size:20px;letter-spacing:-.01em;margin:26px 0 8px;font-weight:700;displa
 .em-t{min-width:0;display:flex;flex-direction:column}.em-t b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.em-t span{font-size:14px;color:var(--mut,#6e6e73);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .em[open] .em-t span{white-space:normal}.em-w{font-size:12px;color:var(--mut,#6e6e73);align-self:start;padding-top:3px;white-space:nowrap}
 .em-b{padding:0 14px 12px 34px}.em-g{white-space:pre-line;font-size:14px;line-height:1.5;margin:0 0 8px;max-height:16em;overflow:auto}
+.edgeback{position:fixed;left:0;width:44px;height:44px;border-radius:22px;background:rgba(120,120,128,.25);color:#111;font-size:30px;line-height:40px;text-align:center;z-index:99;pointer-events:none;transition:background .15s}.edgeback.go{background:#ffd60a}
 .tsec>summary{list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent}.tsec>summary::-webkit-details-marker{display:none}
 .tsec>summary h2{margin:22px 0 8px}.tsec>summary h2::before{content:'';width:8px;height:8px;border-right:2px solid var(--y2,#c69500);border-bottom:2px solid var(--y2,#c69500);transform:rotate(45deg);margin:0 4px 3px 2px;transition:transform .2s;flex:none}
 .tsec:not([open])>summary h2::before{transform:rotate(-45deg);margin-bottom:0}.tsec:not([open])>summary h2{margin:14px 0 4px;opacity:.85}
@@ -376,7 +377,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='20 · 22 Nov 2026';
+const VERSION='21 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -1170,6 +1171,15 @@ addEventListener('popstate',()=>{
  if(!backArmed){backArmed=true;say('Press back again to leave HQ.');guard();setTimeout(()=>backArmed=false,2500);return}
  history.back();
 });
+/* iPhone home-screen apps have no back gesture, so HQ adds one: swipe from the left edge to the right to go back.
+   (Inside the reader, swipes turn pages instead.) */
+(()=>{let x0=null,y0=0,ar=null;
+ addEventListener('touchstart',e=>{if(e.touches.length!==1||document.getElementById('rdr'))return;const t=e.touches[0];if(t.clientX>24)return;
+  if(!pane.classList.contains('open')&&UI.view==='today')return;x0=t.clientX;y0=t.clientY},{passive:true});
+ addEventListener('touchmove',e=>{if(x0===null)return;const t=e.touches[0],dx=t.clientX-x0;if(Math.abs(t.clientY-y0)>Math.max(40,dx)){x0=null;ar&&ar.remove();ar=null;return}
+  if(!ar){ar=document.createElement('div');ar.className='edgeback';ar.innerHTML='‹';document.body.appendChild(ar)}ar.style.top=(t.clientY-22)+'px';ar.style.transform=`translateX(${Math.min(dx,90)-44}px)`;ar.classList.toggle('go',dx>80)},{passive:true});
+ const end=e=>{if(x0===null)return;const t=e.changedTouches[0],dx=t.clientX-x0;x0=null;if(ar){ar.remove();ar=null}if(dx>80)history.back()};
+ addEventListener('touchend',end,{passive:true});addEventListener('touchcancel',end,{passive:true})})();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&live()&&iso(0)!==TODAY)load()});
 if('serviceWorker' in navigator&&location.protocol==='https:'){
  navigator.serviceWorker.register('sw.js').then(reg=>{reg.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update()})}).catch(()=>{});
