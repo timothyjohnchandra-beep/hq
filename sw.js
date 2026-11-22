@@ -1,6 +1,6 @@
 // Network first for the app itself; cached copy when offline or slow. Data calls are never cached.
-const CACHE = 'hq-v17';
-const SHELL = ['./', './index.html', './reader.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const CACHE = 'hq-v18';
+const SHELL = ['./', './index.html', './reader.js', './fonts/reader.css', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE && x !== 'hq-books').map(x => caches.delete(x))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {

@@ -14,7 +14,26 @@ const THEMES = {
   focus:    { name: 'Focus',    bg: '#fffcf2', fg: '#1d1d1f', ui: '#f3eedc' },
   night:    { name: 'Night',    bg: '#000000', fg: '#cfcfd4', ui: '#1c1c1e', dark: 1 }
 };
-const FONTS = { original: ['Original', ''], serif: ['Serif', 'Charter, "Iowan Old Style", "Source Serif 4", Georgia, serif'], sans: ['Sans', '-apple-system, "SF Pro Text", Inter, system-ui, sans-serif'], georgia: ['Georgia', 'Georgia, serif'], palatino: ['Palatino', 'Palatino, "Palatino Linotype", "Book Antiqua", serif'], times: ['Times', '"Times New Roman", Times, serif'], dyslexic: ['Easy read', 'Verdana, Tahoma, sans-serif'] };
+/* [label, CSS stack, what it is like]. Free look-alikes of the Apple Books and Kindle fonts, shipped in fonts/ so they work on every phone and offline. */
+const FONTS = {
+  original: ['Original', '', 'Book\'s own'],
+  literata: ['Literata', 'Literata, Georgia, serif', 'like Bookerly'],
+  charis: ['Charis', '"Charis SIL", Charter, Georgia, serif', 'like Charter'],
+  georgia: ['Georgia', 'Georgia, Gelasio, serif', 'classic'],
+  newyork: ['Source Serif', '"Source Serif 4", "New York", Georgia, serif', 'like New York'],
+  athelas: ['Crimson', '"Crimson Pro", Athelas, Georgia, serif', 'like Athelas'],
+  baskerville: ['Baskerville', '"Libre Baskerville", Baskerville, serif', 'Kindle'],
+  garamond: ['Garamond', '"EB Garamond", Garamond, serif', 'like Palatino'],
+  lora: ['Lora', 'Lora, Georgia, serif', 'soft serif'],
+  merri: ['Merriweather', 'Merriweather, Georgia, serif', 'sturdy'],
+  caecilia: ['Zilla Slab', '"Zilla Slab", Caecilia, serif', 'like Caecilia'],
+  sans: ['Inter', 'Inter, -apple-system, "SF Pro Text", system-ui, sans-serif', 'like San Francisco'],
+  seravek: ['Nunito Sans', '"Nunito Sans", Seravek, sans-serif', 'like Seravek'],
+  futura: ['Jost', 'Jost, Futura, sans-serif', 'like Futura'],
+  easy: ['Atkinson', '"Atkinson Hyperlegible", Verdana, sans-serif', 'easy to read'],
+  dyslexic: ['OpenDyslexic', 'OpenDyslexic, Verdana, sans-serif', 'Kindle'] };
+const FONTCSS = new URL('fonts/reader.css', document.baseURI).href;
+const fontOf = k => (FONTS[k] || FONTS.original)[1];
 const COLS = { y: ['Yellow', '#ffe066'], g: ['Green', '#b6e3a8'], b: ['Blue', '#b5d3f3'], p: ['Pink', '#f5bcd4'], o: ['Orange', '#ffc78a'] };
 const DEF = { theme: 'paper', font: 'original', size: 100, lh: 1.5, sp: 0, margin: 2, justify: 1, flow: 'paginated', anim: 'slide', autoNight: 1, goal: 10, yearGoal: 24, ruler: 0, spp: 50 };
 
@@ -49,6 +68,7 @@ async function storeLocations(s) { try { const c = await caches.open('hq-books')
 
 /* ---------- shell ---------- */
 function shell() {
+  if (!document.getElementById('hq-rfonts')) { const l = document.createElement('link'); l.id = 'hq-rfonts'; l.rel = 'stylesheet'; l.href = FONTCSS; document.head.appendChild(l); }
   el = document.createElement('div'); el.id = 'rdr'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Reading ' + B.title);
   el.innerHTML = `<style>
 #rdr{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--rbg);color:var(--rfg);font-family:Inter,-apple-system,system-ui,sans-serif}
@@ -74,7 +94,7 @@ function shell() {
 #rdr .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 #rdr .rth{border-radius:12px;padding:10px 8px;border:2px solid transparent;font-size:13px;text-align:center}#rdr .rth.on{border-color:#c6613f}
 #rdr .rth b{display:block;font:600 20px Georgia,serif;margin-bottom:2px}
-#rdr .rfonts{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 6px}#rdr .rfonts::-webkit-scrollbar{display:none}#rdr .rfonts button{flex:0 0 auto;min-width:74px;padding:10px 12px;border-radius:12px;background:rgba(128,128,128,.14);font-size:16px;line-height:1.1;text-align:center}#rdr .rfonts button small{display:block;font-size:11px;opacity:.7;margin-top:3px;font-family:-apple-system,system-ui,sans-serif}#rdr .rfonts button.on{outline:2px solid #c6613f;background:var(--rbg)}
+#rdr .rfonts{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 6px}#rdr .rfonts::-webkit-scrollbar{display:none}#rdr .rfonts button{flex:0 0 auto;min-width:74px;padding:10px 12px;border-radius:12px;background:rgba(128,128,128,.14);font-size:16px;line-height:1.1;text-align:center}#rdr .rfonts button small{display:block;font-size:11px;opacity:.7;margin-top:3px;font-family:-apple-system,system-ui,sans-serif}#rdr .rfonts button small.rlike{font-size:10px;opacity:.5;margin-top:1px}#rdr .rfonts button.on{outline:2px solid #c6613f;background:var(--rbg)}
 #rdr .rsize{display:flex;align-items:center;gap:8px}#rdr .rsize button{flex:1 1 0;min-width:0;height:44px;padding:0 10px;border-radius:12px;background:rgba(128,128,128,.14)}#rdr .rsize span{min-width:56px;text-align:center;font-size:13px;opacity:.8}
 #rdr .rseg{display:flex;background:rgba(128,128,128,.18);border-radius:10px;padding:2px;gap:2px}#rdr .rseg button{flex:1;padding:7px 4px;border-radius:8px;font-size:13px}#rdr .rseg button.on{background:var(--rbg);font-weight:600}
 #rdr .rline{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}#rdr .rline span{min-width:96px}#rdr .rline input[type=range]{flex:1;accent-color:#c6613f}
@@ -118,7 +138,8 @@ function paint() {
   const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = t.bg;
   el.classList.toggle('pdfdark', !!(pdf && t.dark)); el.classList.toggle('pdfwarm', !!(pdf && /calm|paper/.test(themeKey())));
   if (!rend) return;
-  const f = FONTS[S.font][1];
+  if (!FONTS[S.font]) S.font = ({ serif: 'newyork', palatino: 'garamond', times: 'georgia', rounded: 'seravek' })[S.font] || 'original';
+  const f = fontOf(S.font);
   const body = { 'background': t.bg + ' !important', 'color': t.fg + ' !important', 'line-height': S.lh + ' !important', 'letter-spacing': (S.sp / 100) + 'em', 'text-align': S.justify ? 'justify' : 'start', 'hyphens': S.justify ? 'auto' : 'manual', 'padding': '0 ' + (S.margin * 0.6) + 'em !important' };
   if (f) body['font-family'] = f + ' !important';
   if (t.weight) body['font-weight'] = t.weight + ' !important';
@@ -191,6 +212,7 @@ function makeRendition() {
   rend.on('click', e => { lastAct = Date.now(); if (Date.now() - swiped < 500) return; if (sel && !e.view.getSelection().toString()) { closeSel(); } else if (!e.view.getSelection().toString()) tapZone(e); });
   rend.on('keyup', onKey);
   rend.hooks.content.register(c => {
+    try { const l = c.document.createElement('link'); l.rel = 'stylesheet'; l.href = FONTCSS; c.document.head.appendChild(l); } catch (e) {}
     const d = c.document; let t0 = null;
     if (S.flow === 'paginated') d.documentElement.style.touchAction = 'pan-y pinch-zoom';
     d.addEventListener('touchstart', e => { lastAct = Date.now(); const t = e.touches[0]; t0 = e.touches.length === 1 && !turning ? { x: t.clientX, y: t.clientY, at: Date.now(), drag: false } : null; }, { passive: true });
@@ -305,7 +327,7 @@ function watchSecs(box) { box.querySelectorAll('details[data-sec]').forEach(d =>
 function aaSheet() {
   if (pdf) { sheet(`${hd('Themes &amp; Settings')}<div class="rline" style="justify-content:space-between"><button class="rbtn" data-r="zoom" data-v="-0.15" aria-label="Zoom out">−</button><span style="text-align:center;flex:1">Zoom ${Math.round(pdfZoom * 100)}%</span><button class="rbtn" data-r="zoom" data-v="0.15" aria-label="Zoom in">+</button></div><div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}"><b>Aa</b>${t.name}</button>`).join('')}</div><div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div><div class="rline"><span>Reading ruler</span><button class="rbtn" data-r="tog" data-v="ruler">${S.ruler ? 'On' : 'Off'}</button></div><p style="font-size:13px;opacity:.7">This is a PDF, so its pages keep their printed layout. Fonts and spacing apply to EPUB books.</p>`); return; }
   const s = sheet(`${hd('Themes &amp; Settings')}
-  ${sec('text', 'Text size &amp; font', `<div class="rsize"><button data-r="fs" data-v="-10" aria-label="Smaller text" style="font-size:14px">A</button><span id="r-fsv">${S.size}%</span><button data-r="fs" data-v="10" aria-label="Larger text" style="font-size:22px">A</button></div><div class="rfonts">${Object.entries(FONTS).map(([k, f]) => `<button class="${S.font === k ? 'on' : ''}" data-r="font" data-v="${k}" style="${f[1] ? 'font-family:' + f[1].replace(/"/g, "'") : ''}">Aa<small>${f[0]}</small></button>`).join('')}</div>`, true)}
+  ${sec('text', 'Text size &amp; font', `<div class="rsize"><button data-r="fs" data-v="-10" aria-label="Smaller text" style="font-size:14px">A</button><span id="r-fsv">${S.size}%</span><button data-r="fs" data-v="10" aria-label="Larger text" style="font-size:22px">A</button></div><div class="rfonts">${Object.entries(FONTS).map(([k, f]) => `<button class="${S.font === k ? 'on' : ''}" data-r="font" data-v="${k}" style="${f[1] ? 'font-family:' + f[1].replace(/"/g, "'") : ''}">Aa<small>${f[0]}</small><small class="rlike">${f[2]}</small></button>`).join('')}</div>`, true)}
   ${sec('theme', 'Theme', `<div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}${t.weight ? ';font-weight:700' : ''}"><b>Aa</b>${t.name}</button>`).join('')}</div><div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div>`, false)}
   ${sec('layout', 'Spacing &amp; margins', `<div class="rline"><span>Line spacing</span><input type="range" min="1.1" max="2.2" step="0.1" value="${S.lh}" data-set="lh"></div><div class="rline"><span>Letter spacing</span><input type="range" min="0" max="12" step="1" value="${S.sp}" data-set="sp"></div><div class="rline"><span>Margins</span><input type="range" min="0" max="5" step="1" value="${S.margin}" data-set="margin"></div><div class="rline"><span>Justify text</span><button class="rbtn" data-r="tog" data-v="justify">${S.justify ? 'On' : 'Off'}</button></div>`, false)}
   ${sec('turn', 'Page turning', `<div class="rline"><span>Page turn</span><div class="rseg" style="flex:1"><button class="${S.flow === 'paginated' ? 'on' : ''}" data-r="flow" data-v="paginated">Pages</button><button class="${S.flow === 'scrolled' ? 'on' : ''}" data-r="flow" data-v="scrolled">Scroll</button></div></div><div class="rline"><span>Animation</span><div class="rseg" style="flex:1">${[['slide', 'Slide'], ['fade', 'Fade'], ['none', 'None']].map(([k, n]) => `<button class="${S.anim === k ? 'on' : ''}" data-r="anim" data-v="${k}">${n}</button>`).join('')}</div></div>`, false)}

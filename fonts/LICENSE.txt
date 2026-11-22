@@ -1,0 +1,16 @@
+These fonts are licensed under the SIL Open Font License 1.1 (https://openfontlicense.org). Packaged by Fontsource (https://fontsource.org).
+Literata
+Charis SIL
+Gelasio
+EB Garamond
+Libre Baskerville
+Crimson Pro
+Source Serif 4
+Zilla Slab
+Jost
+Inter
+Nunito Sans
+OpenDyslexic
+Atkinson Hyperlegible
+Lora
+Merriweather
