@@ -61,6 +61,9 @@ h2{font-size:20px;letter-spacing:-.01em;margin:26px 0 8px;font-weight:700;displa
 .em-t{min-width:0;display:flex;flex-direction:column}.em-t b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.em-t span{font-size:14px;color:var(--mut,#6e6e73);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .em[open] .em-t span{white-space:normal}.em-w{font-size:12px;color:var(--mut,#6e6e73);align-self:start;padding-top:3px;white-space:nowrap}
 .em-b{padding:0 14px 12px 34px}.em-g{white-space:pre-line;font-size:14px;line-height:1.5;margin:0 0 8px;max-height:16em;overflow:auto}
+.vpanel .prow{margin:6px 0 4px}.vsec{margin-top:14px}.vsec>summary{list-style:none;cursor:pointer;font-weight:700;font-size:17px;padding:6px 0;display:flex;gap:8px;align-items:center}.vsec>summary::-webkit-details-marker{display:none}
+.vrow{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:11px 14px;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;color:inherit;cursor:pointer}.vrow:last-child{border-bottom:0}
+.vrow b{font-size:15px}.vd,.vf{font-size:12px;color:var(--mut)}.vx{font-size:14px;line-height:1.45;color:var(--ink,#111);opacity:.85}
 .edgeback{position:fixed;left:0;width:44px;height:44px;border-radius:22px;background:rgba(120,120,128,.25);color:#111;font-size:30px;line-height:40px;text-align:center;z-index:99;pointer-events:none;transition:background .15s}.edgeback.go{background:#ffd60a}
 .tsec>summary{list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent}.tsec>summary::-webkit-details-marker{display:none}
 .tsec>summary h2{margin:22px 0 8px}.tsec>summary h2::before{content:'';width:8px;height:8px;border-right:2px solid var(--y2,#c69500);border-bottom:2px solid var(--y2,#c69500);transform:rotate(45deg);margin:0 4px 3px 2px;transition:transform .2s;flex:none}
@@ -377,7 +380,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='21 · 22 Nov 2026';
+const VERSION='22 · 23 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -618,6 +621,61 @@ const snippet=n=>{const t=(n.text||plain(BODY[n.id])||'');const rest=t.startsWit
 function noteRow(n,mk,showFolder){return `<div class="nrow" data-a="note" data-id="${esc(n.id)}"><div class="ttl">${mk(n.title||'New Note')}</div><div class="note-snip"><b>${ndate(n.date)}</b> ${mk(snippet(n))}</div>${showFolder?`<div class="nfold">${ICON.folder}${esc(fname(fpath(n)))}</div>`:''}</div>`}
 const peopleNames=n=>(n.people||'').split(' ').filter(Boolean).map(id=>{const p=D.people.find(x=>x.id===id);return p?p.name:''}).join(' ');
 const tagsOf=t=>[...new Set((String(t).match(/(^|\s)#([\p{L}\p{N}_-]{2,})/gu)||[]).map(x=>x.trim().slice(1).toLowerCase()))];
+/* Bible references (Indonesian TB + English). parseRefs('Yoh 3:16-18; Fil 2:2') → ['JHN.3.16-18','PHP.2.2'] */
+const BIBLE = [
+ ['GEN','Kejadian|Kej|Genesis|Gen'],['EXO','Keluaran|Kel|Exodus|Exod|Ex'],['LEV','Imamat|Im|Leviticus|Lev'],['NUM','Bilangan|Bil|Numbers|Num'],['DEU','Ulangan|Ul|Deuteronomy|Deut|Dt'],
+ ['JOS','Yosua|Yos|Joshua|Josh'],['JDG','Hakim-hakim|Hakim|Hak|Judges|Judg'],['RUT','Rut|Ruth'],['1SA','1 Samuel|1 Sam|1Sam'],['2SA','2 Samuel|2 Sam|2Sam'],
+ ['1KI','1 Raja-raja|1 Raj|1Raj|1 Kings|1 Kgs'],['2KI','2 Raja-raja|2 Raj|2Raj|2 Kings|2 Kgs'],['1CH','1 Tawarikh|1 Taw|1Taw|1 Chronicles|1 Chr'],['2CH','2 Tawarikh|2 Taw|2Taw|2 Chronicles|2 Chr'],
+ ['EZR','Ezra|Ezr'],['NEH','Nehemia|Nehemiah|Neh'],['EST','Ester|Esther|Est|Esth'],['JOB','Ayub|Ayb|Job'],['PSA','Mazmur|Mzm|Psalms|Psalm|Psa|Ps'],['PRO','Amsal|Ams|Proverbs|Prov'],
+ ['ECC','Pengkhotbah|Pkh|Ecclesiastes|Eccl|Ecc'],['SNG','Kidung Agung|Kid|Song of Songs|Song of Solomon'],['ISA','Yesaya|Yes|Isaiah|Isa'],['JER','Yeremia|Yer|Jeremiah|Jer'],['LAM','Ratapan|Rat|Lamentations|Lam'],
+ ['EZK','Yehezkiel|Yeh|Ezekiel|Ezek'],['DAN','Daniel|Dan'],['HOS','Hosea|Hos'],['JOL','Yoel|Yl|Joel'],['AMO','Amos|Am'],['OBA','Obaja|Ob|Obadiah|Obad'],['JON','Yunus|Yun|Jonah'],
+ ['MIC','Mikha|Mi|Micah|Mic'],['NAM','Nahum|Nah'],['HAB','Habakuk|Habakkuk|Hab'],['ZEP','Zefanya|Zef|Zephaniah|Zeph'],['HAG','Hagai|Hag|Haggai'],['ZEC','Zakharia|Za|Zechariah|Zech'],['MAL','Maleakhi|Mal|Malachi'],
+ ['MAT','Matius|Mat|Matthew|Matt|Mt'],['MRK','Markus|Mrk|Mark|Mk'],['LUK','Lukas|Luk|Luke|Lk'],['JHN','Yohanes|Yoh|John|Jn'],['ACT','Kisah Para Rasul|Kisah Rasul|Kis|Acts'],['ROM','Roma|Rm|Rom|Romans'],
+ ['1CO','1 Korintus|1 Kor|1Kor|1 Corinthians|1 Cor|1Cor'],['2CO','2 Korintus|2 Kor|2Kor|2 Corinthians|2 Cor|2Cor'],['GAL','Galatia|Gal|Galatians'],['EPH','Efesus|Ef|Ephesians|Eph'],['PHP','Filipi|Flp|Fil|Philippians|Phil'],
+ ['COL','Kolose|Kol|Colossians|Col'],['1TH','1 Tesalonika|1 Tes|1Tes|1 Thessalonians|1 Thess'],['2TH','2 Tesalonika|2 Tes|2Tes|2 Thessalonians|2 Thess'],['1TI','1 Timotius|1 Tim|1Tim|1 Timothy'],['2TI','2 Timotius|2 Tim|2Tim|2 Timothy'],
+ ['TIT','Titus|Tit'],['PHM','Filemon|Flm|Philemon|Phlm'],['HEB','Ibrani|Ibr|Hebrews|Heb'],['JAS','Yakobus|Yak|James|Jas'],['1PE','1 Petrus|1 Ptr|1 Pet|1Pet|1 Peter'],['2PE','2 Petrus|2 Ptr|2 Pet|2Pet|2 Peter'],
+ ['1JN','1 Yohanes|1 Yoh|1Yoh|1 John|1 Jn'],['2JN','2 Yohanes|2 Yoh|2Yoh|2 John'],['3JN','3 Yohanes|3 Yoh|3Yoh|3 John'],['JUD','Yudas|Yud|Jude'],['REV','Wahyu|Why|Revelation|Rev']];
+const BOOKNAME = {}; const BOOKALT = [];
+BIBLE.forEach(([c, n]) => { const ns = n.split('|'); BOOKNAME[c] = ns[0]; ns.forEach(x => BOOKALT.push([x, c])); });
+BOOKALT.sort((a, b) => b[0].length - a[0].length);
+const SHORTRISK = /^(Am|Im|Ul|Mi|Ob|Za|Yl|Ex|Yes|Kid|Rat|Dan|Job|Mark|Ruth|Rut|Kis|Kel|Hak|Rm|Ef|Col|Jn|Mt|Mk|Lk|Dt|Ps)$/;   // need chapter:verse
+const REF_RE = new RegExp('(?<![A-Za-z])(' + BOOKALT.map(b => b[0].replace(/[-]/g, '\\-').replace(/ /g, '\\s?')).join('|') + ')\\.?\\s?(\\d{1,3})(?:\\s?[:.]\\s?(\\d{1,3})(?:\\s?[-–]\\s?(\\d{1,3}))?)?(?![\\d])', 'g');
+function bookCode(name) { const k = name.replace(/\s+/g, ' ').toLowerCase(); const hit = BOOKALT.find(b => b[0].toLowerCase() === k || b[0].replace(/ /g, '').toLowerCase() === k.replace(/ /g, '')); return hit ? hit[1] : ''; }
+function parseRefs(text) {
+  const out = []; let m; const s = String(text || ''); REF_RE.lastIndex = 0;
+  while ((m = REF_RE.exec(s))) {
+    const name = m[1].replace(/\s+/g, ' '), code = bookCode(name); if (!code) continue;
+    if (!m[3] && (SHORTRISK.test(name.replace(/\s/g, '')) || name.length <= 3)) continue;
+    const ch = +m[2]; if (!ch || ch > 150) continue;
+    out.push(code + '.' + ch + (m[3] ? '.' + (+m[3]) + (m[4] && +m[4] > +m[3] ? '-' + (+m[4]) : '') : ''));
+  }
+  return [...new Set(out)];
+}
+/* How closely ref a (from a note) matches query ref q: 3 same verse/overlap, 2 same chapter, 1 same book, 0 none. */
+function refMatch(a, q) {
+  const [ab, ac, av] = a.split('.'), [qb, qc, qv] = q.split('.'); if (ab !== qb) return 0; if (!qc) return 3; if (ac !== qc) return 1; if (!qv) return 3; if (!av) return 2;
+  const r = x => { const [f, t] = x.split('-').map(Number); return [f, t || f]; }; const [a1, a2] = r(av), [q1, q2] = r(qv);
+  return a1 <= q2 && q1 <= a2 ? 3 : 2;
+}
+function refLabel(r) { const [b, c, v] = r.split('.'); return BOOKNAME[b] + (c ? ' ' + c + (v ? ':' + v : '') : ''); }
+
+const REFC={};
+function refsOf(n){if(n.refs)return n.refs.split(' ').filter(Boolean);const k=n.id+'|'+(n.date||'')+'|'+(BODY[n.id]?BODY[n.id].length:0);if(REFC[k])return REFC[k];return REFC[k]=parseRefs(n.title+'\n'+(n.text||'')+'\n'+plain(BODY[n.id]||''))}
+/* A search like "yoh 3:16", "John 3" or "Filipi" becomes a Bible reference. */
+function queryRefs(q){q=String(q||'').trim();if(!q||q.length>40)return[];const tc=q.replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b.toUpperCase());const r=parseRefs(tc);if(r.length)return r;const b=bookCode(tc);return b?[b]:[]}
+function refExcerpt(n,qr){const t=plain(BODY[n.id]||'')||n.text||'';const code=qr.split('.')[0];const names=BOOKALT.filter(b=>b[1]===code).map(b=>b[0].replace(/[-]/g,'\\-').replace(/ /g,'\\s?'));const m=new RegExp('(?<![A-Za-z])('+names.join('|')+')\\.?\\s?\\d','').exec(t);if(!m)return t.slice(0,220);const a=Math.max(0,m.index-60),b=Math.min(t.length,m.index+260);return(a?'…':'')+t.slice(a,b).trim()+(b<t.length?'…':'')}
+function versePanel(qr,all){
+ const q=qr[0],hits=all.map(n=>{let best=0,which='';refsOf(n).forEach(r=>{const s=refMatch(r,q);if(s>best){best=s;which=r}});return{n,best,which}}).filter(x=>x.best).sort((a,b)=>(a.n.date||'').localeCompare(b.n.date||''));
+ const g=[3,2,1].map(k=>hits.filter(h=>h.best===k));const need=hits.filter(h=>BODY[h.n.id]==null).slice(0,30);
+ if(need.length&&live()&&!versePanel.busy){versePanel.busy=1;Promise.all(need.map(h=>api({action:'note',id:h.n.id}).then(j=>{BODY[h.n.id]=j.html||''}).catch(()=>{}))).then(()=>{versePanel.busy=0;persist();if(UI.view==='notes'&&(UI.q||'').trim())notes()})}
+ VP={q,hits};
+ const yrs=hits.map(h=>(h.n.date||'').slice(0,4)).filter(Boolean);const label=refLabel(q);
+ const row=h=>`<button class="vrow" data-a="note" data-id="${esc(h.n.id)}"><span class="vd">${h.n.date?esc(new Date(h.n.date+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})):''}</span><b>${esc(h.n.title)}</b><span class="vf">${esc(fpath(h.n))} · ${esc(refLabel(h.which))}</span><span class="vx">${esc(refExcerpt(h.n,q))}</span></button>`;
+ const sec=(k,t,list)=>list.length?`<details class="vsec"${k==='3'||!g[0].length?' open':''}><summary>${t} <span class="n">${list.length}</span></summary><div class="group">${list.slice().reverse().map(row).join('')}</div></details>`:'';
+ return `<section class="vpanel"><h1 class="ntitle">${esc(label)}</h1><p class="sub">${hits.length?`In ${hits.length} note${hits.length===1?'':'s'}${yrs.length?` · ${yrs[0]}–${yrs[yrs.length-1]}`:''}`:'Not in your notes yet.'}</p>
+ ${hits.length?`<div class="prow"><button class="btn y" data-a="vsum">Summarise with Claude</button><button class="btn" data-a="vnew">Start a new sermon</button></div>`:''}
+ ${sec('3',q.split('.').length>2?'This verse':'This passage',g[0])}${sec('2','Same chapter',g[1])}${sec('1','Elsewhere in '+BOOKNAME[q.split('.')[0]],g[2])}</section>`}
+let VP=null;
 function matchQ(n,q){const words=String(q||'').toLowerCase().split(/\s+/).filter(Boolean);if(!words.length)return false;const tags=(n.tags||'').split(' ');const hay=(n.title+' '+(n.text||'')+' '+plain(BODY[n.id])+' '+fpath(n)+' '+(n.type||'')+' '+peopleNames(n)).toLowerCase();
  return words.every(w=>{let m;if(w.startsWith('#'))return tags.includes(w.slice(1));if(w==='is:checklist')return yes(n.hasCheck);if(w==='is:attachment')return yes(n.hasAtt);if(w==='is:pinned')return yes(n.pinned);if(m=w.match(/^edited:(\d+)d$/))return days(n.date,TODAY)<=+m[1];if(w.startsWith('@'))return peopleNames(n).toLowerCase().includes(w.slice(1));return hay.includes(w)})}
 function dateGroups(list){const g=[];list.forEach(n=>{const dd=n.date?days(n.date,TODAY):9999;const k=dd<=0?'Today':dd===1?'Yesterday':dd<=7?'Previous 7 Days':dd<=30?'Previous 30 Days':n.date?new Date(n.date+'T00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Older';let x=g.find(y=>y.k===k);if(!x){x={k,items:[]};g.push(x)}x.items.push(n)});return g}
@@ -635,7 +693,8 @@ function notes(){
  if(words.length){
   const res=all.filter(n=>matchQ(n,q)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const hl=D.highlights.filter(h=>(!h.kind||h.kind==='highlight')&&!yes(h.void)&&words.every(w=>(h.passage+' '+(h.note||'')).toLowerCase().includes(w)));
-  body=`<h1 class="ntitle">Search</h1><p class="sub">${res.length} note${res.length===1?'':'s'}${hl.length?` and ${hl.length} highlight${hl.length===1?'':'s'}`:''}</p>
+  const qr=queryRefs(UI.q);const vp=qr.length?versePanel(qr,all):'';
+  body=vp+`<h1 class="ntitle"${vp?' style="font-size:22px;margin-top:22px"':''}>${vp?'Other matches':'Search'}</h1><p class="sub">${res.length} note${res.length===1?'':'s'}${hl.length?` and ${hl.length} highlight${hl.length===1?'':'s'}`:''}</p>
   ${res.length?groupHtml(res,mk,true):'<div class="group"><div class="empty">No notes match. Try fewer words.</div></div>'}
   <p class="samp">Tip: search #tag, @person, is:checklist, is:attachment, is:pinned or edited:7d.</p>
   ${hl.length?`<h2>Book highlights</h2><div class="group">${hl.map(h=>{const b=D.books.find(x=>x.id===h.bookId);return `<div class="nrow"><div class="ttl">“${mk(h.passage)}”</div><div class="note-snip">${esc(b?b.title:'')}</div></div>`}).join('')}</div>`:''}`}
@@ -720,7 +779,7 @@ async function notePane(n){
  else if(BODY[n.id]==null){BODY[n.id]=`<h1>${esc(n.title)}</h1><p><br></p>`;ed.innerHTML=BODY[n.id]}
  applyCollapse(ed);
  const fillSecs=()=>{const box=$('#nsecs');if(!box)return;const hs=sections(ed);box.innerHTML=hs.map(h=>`<button class="chip" data-h="${h.dataset.h}">${esc(plain(h.innerHTML).slice(0,40))}</button>`).join('')||'<span class="meta">Add a Title, Heading or Subheading to make sections.</span>'};
- const changed=()=>{BODY[n.id]=ed.innerHTML;const first=ed.querySelector('h1,h2,h3,p,li,div');n.title=(plain(first?first.innerHTML:ed.innerHTML)||plain(ed.innerHTML)).slice(0,80)||'New Note';n.text=plain(ed.innerHTML).slice(0,4000);n.date=TODAY;n.tags=tagsOf(plain(ed.innerHTML)).join(' ');n.people=[...new Set([...ed.querySelectorAll('a.ment')].map(a=>a.dataset.p))].join(' ');n.links=[...new Set([...ed.querySelectorAll('a.nlink')].map(a=>a.dataset.note))].join(' ');n.hasCheck=ed.querySelector('ul.check')?'1':'';n.hasAtt=ed.querySelector('img,.att,.aud')?'1':'';touchNote(n.id)};
+ const changed=()=>{BODY[n.id]=ed.innerHTML;const first=ed.querySelector('h1,h2,h3,p,li,div');n.title=(plain(first?first.innerHTML:ed.innerHTML)||plain(ed.innerHTML)).slice(0,80)||'New Note';n.text=plain(ed.innerHTML).slice(0,4000);n.refs=parseRefs(n.title+'\n'+plain(ed.innerHTML)).join(' ');n.date=TODAY;n.tags=tagsOf(plain(ed.innerHTML)).join(' ');n.people=[...new Set([...ed.querySelectorAll('a.ment')].map(a=>a.dataset.p))].join(' ');n.links=[...new Set([...ed.querySelectorAll('a.nlink')].map(a=>a.dataset.note))].join(' ');n.hasCheck=ed.querySelector('ul.check')?'1':'';n.hasAtt=ed.querySelector('img,.att,.aud')?'1':'';touchNote(n.id)};
  ed.oninput=()=>{changed();if(!$('#fmt').hidden){$('#fmt').hidden=true}keepCaret()};
  ed.addEventListener('keydown',()=>{const f=$('#fmt');if(f&&!f.hidden)f.hidden=true});
  const dockEl=pane.querySelector('.ndock');
@@ -1094,6 +1153,11 @@ document.addEventListener('click',async e=>{
  if(el.closest('summary'))e.preventDefault();
  const a=el.dataset.a,id=el.dataset.id,v=el.dataset.v,k=el.dataset.k;
  if(a==='emtask'){const m=((BRIEF&&(BRIEF.emails||BRIEF.important))||[])[+v];if(!m)return;D.tasks.push({id:uid(),title:'Reply: '+(m.subject||'email')+(m.from?' ('+m.from+')':''),world:'company',date:TODAY,part:new Date().getHours()<12?'morning':'noon',status:'',notes:m.link||'',void:'',created:TODAY,updated:TODAY});touch('tasks');render();say('Added to today.');return}
+ if(a==='vsum'&&VP){const L=VP.hits.slice().sort((x,y)=>(x.n.date||'').localeCompare(y.n.date||''));let ex=L.map(h=>`- ${h.n.date||'undated'} · ${h.n.title} (${fpath(h.n)}; ${refLabel(h.which)}): ${refExcerpt(h.n,VP.q)}`).join('\n');if(ex.length>6000)ex=ex.slice(0,6000)+'\n…(more in HQ)';
+  const pr=`These are excerpts from my own notes and sermons that touch ${refLabel(VP.q)}, oldest first.\n\n1. Summarise in short points what I have said about this passage, and how my emphasis changed over time.\n2. List the sermon titles and dates.\n3. Point out themes I keep returning to and gaps I have not covered.\n4. Suggest 3 fresh angles for a new sermon that don't repeat what I've already preached.\nKeep my own wording where it matters. Don't invent anything that isn't in the excerpts.\n\n${ex}`;
+  window.open('https://claude.ai/new?q='+encodeURIComponent(pr),'_blank','noopener');return}
+ if(a==='vnew'&&VP){const lab=refLabel(VP.q),L=VP.hits.slice().sort((x,y)=>(y.n.date||'').localeCompare(x.n.date||''));const f=folderList().find(x=>/sermon note/i.test(x))||'Notes';
+  const n=RCTX.newNote('New message – '+lab,`<h1>New message – ${esc(lab)}</h1><p><b>Passage:</b> ${esc(lab)}</p><h2>Big idea</h2><p><br></p><h2>Outline</h2><ol><li><br></li></ol><h2>From my past notes</h2><ul>${L.map(h=>`<li><b>${esc(h.n.title)}</b> · ${esc(h.n.date||'')} · ${esc(fpath(h.n))}<br><i>${esc(refExcerpt(h.n,VP.q))}</i></li>`).join('')}</ul>`,f);n.tags='sermon';n.type='Church';UI.q='';saveUI();notes();notePane(n);return}
  if(a==='tsall'){const open=el.textContent==='Open all';view.querySelectorAll('details.tsec').forEach(d=>{d.open=open;TSO[d.dataset.ts]=open});ls.set('hq-today-open',TSO);tsLabel();return}
  if(a==='tick'){e.stopPropagation();buzz();
   if(k==='task'){const t=find('tasks',id);t.status=t.status==='done'?'':'done';t.updated=TODAY;touch('tasks')}

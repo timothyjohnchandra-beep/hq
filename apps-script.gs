@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-22 23:30'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-23 00:00'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -506,4 +506,197 @@ function test() {
   Logger.log(JSON.stringify(calendar_(1)).slice(0, 2000));
   Logger.log(JSON.stringify(brief_()));
   Logger.log(JSON.stringify(verse_()));
+}
+
+/* ---------- One-time import: Apple Notes (iCloud export) and Google Keep notes → HQ Notes ----------
+   Run importNotes from the editor. It works in rounds of about 4½ minutes; run it again until the log says "All done".
+   Originals stay where they are. Notes holding card or account numbers, passwords or PINs are left out of HQ
+   (Keep ones are moved into "Private – not in HQ"). Already-imported notes are skipped, so running it again is safe. */
+const IMPORT_SOURCES = [
+  { name: 'iCloud', path: ['iCloud'], prefix: '' },            // Apple Notes export, keeps its folders
+  { name: 'Google Keep', path: ['Google', 'Notes'], prefix: 'Google Keep' }
+];
+const PRIVATE_FOLDER = 'Private – not in HQ';
+const SENSITIVE = /password|passwd|kata ?sandi|\bpin\b|access ?(id|code)|kartu kredit|credit card|\bcvv\b|\botp\b|no\.? ?rek|rekening|account (no|number)|\bswift\b|\biban\b|npwp|\bktp\b|\bnik\b|paspor|passport|mandiri mobile|e-?banking|\bm-?banking/i;
+const DIGITS = /(?:\d[ \-.]?){10,}/;   // long numbers: cards, accounts, IDs
+function sensitive_(title, text) {
+  const t = String(title || ''), b = String(text || '');
+  if (/^[\d\s\-.]+$/.test(t.replace(/\.md$/, ''))) return true;
+  return SENSITIVE.test(t) || SENSITIVE.test(b) || DIGITS.test(t) || DIGITS.test(b.replace(/\b(19|20)\d\d[-\/.]\d\d?[-\/.]\d\d?\b/g, ''));
+}
+function folderByPath_(path) {
+  let it = DriveApp.getFoldersByName(path[0]), f = null;
+  while (it.hasNext()) { const c = it.next(); if (c.getParents().hasNext() && c.getParents().next().getId() === DriveApp.getRootFolder().getId()) { f = c; break; } if (!f) f = c; }
+  for (let i = 1; f && i < path.length; i++) { const s = f.getFoldersByName(path[i]); f = s.hasNext() ? s.next() : null; }
+  return f;
+}
+/* Google Keep notes: sorted into subfolders (titles from Timothy's export; anything else goes by keywords). */
+const KEEP_SORT = {
+  'Church & Ministry': ['1 Tim 4-12', '1 percent faith', 'Fil-2-2', 'Wahtu 3-2', 'Haggai', 'Ps- 34-17-22', 'Jabesh gilead', 'Khotbah Isti', 'Lesson 1 - Siapa itu Roh Kudus', 'Let your glory fall in this place', 'Percaya SAJA!', 'Setiap kali menerima kebaikan Tuhan yang baru - Tuhan disenangkan', 'Tuhan di pihakmu', 'Fight till the end', 'Sederhana', 'Scope pelayanan kitA blm in- depth', 'Session 6 - 40 days of purpose', 'Games dari felicia hartono', 'Games ibadah games', 'Smk - aku jaga mereka punya saat teduh', 'Smk - kelas susulan + retreat', 'SmK latihan kelulusan', 'Komsel Entrepreneur', 'Karin - bahasa Roh--', 'caca - lokasi dan timing retreat', 'Adea terobosan - yang bisa untukdipercaya', '1-Apakah sudah ada komunitas abbalove', 'It doesny matter where you came from', '2 ekstrim-', '52 detik', 'Keuangan yang Merdeka', 'Pijat - 70', 'Nama sekolah', 'Dua sahabat', '1- 17 july'],
+  'Company – Paint & Coatings': ['4 - 1 - 1', '5 thn', 'Berat asahi', 'Chrome', 'CitrawarnaHR', 'Diskusi pabrik', 'Dvd 10', 'Foto Karakter Harga Distributor-', 'Harga dari garuda', 'Hariyadi-', 'Ko indra', 'Locker', 'Magos', 'Manual - 10-5', 'Meet sigit pas pengiriman - update sales', 'Meiden', 'NC kelas nippe', 'Ppg plan', 'Sticker - angkot', 'Toko udh lama belom', 'Uming', 'Uming-1', 'kenny', 'Wika', 'Trial-slama ini lab sja', 'Mcb 25 A 3 pass untuk chiller', 'Mcb marine garyn 2A', 'Filter cuno', 'Jumat - maintenance', 'Pembersih kaca super', 'Product', 'Categories', 'Oct 2012 - 6714', '3-415 register', 'Time management', 'Bikin form request hutang'],
+  'Leadership & People': ['Join apindo', 'How to put value on an employee-', 'Lack of development with current salary', 'Call bernardus', 'Elevate', 'Birkman Test', 'Indonesian glassdoor', 'Industrial system and engineering', 'CBC', 'Kepada Pak Paulus,', 'Daftar STADA-SHRI'],
+  'Business Ideas': ['Bitcoin', 'Budibagus-com', 'Salesjitu-com', 'Waralabaku-com'],
+  'Personal & Family': ['21 dec', '22nov', '3 green tea', 'Grandma- teh tarik', 'Frame for mom n dad, buku maximized manhood for edward', 'Asuransi avanza', 'Mobil', 'Softlens', 'Lunasi hutang', 'Given to uming - 1000', 'Hutang tim', 'Bandulu water sport', 'Hotel CIputra', 'Link dropbox foto', 'Official Transcript!', 'Install Office for MAC 2013', 'DM', 'Satellite M50', 'Encephalis herpes', '16 arumugam rd', 'Lembah Petualangan'],
+  'People & Lists': ['1- Jonathan Aristo Suwarna', 'Aris', 'Hani', '3Divas', 'Participants-', 'Juven', 'Ko Yoh']
+};
+const KEEP_WORDS = [
+  ['Church & Ministry', /tuhan|yesus|roh kudus|khotbah|ibadah|komsel|pelayanan|doa|retreat|gereja|alkitab|ayat|smk|\b(mat|mrk|luk|yoh|kis|rom|kor|gal|ef|fil|kol|tes|tim|ibr|yak|pet|why|kej|kel|im|bil|ul|yos|hak|rut|sam|raj|taw|ezr|neh|est|ayb|mzm|ams|pkh|kid|yes|yer|rat|yeh|dan|hos|yl|am|ob|yun|mi|nah|hab|zef|hag|za|mal|ps)\.? ?\d/i],
+  ['Company – Paint & Coatings', /epoxy|asahi|cat\b|paint|pabrik|harga|kaleng|customer|order|stok|supplier|ppn|invoice|sales|pallet|palet|compressor|kompressor|coating|dempul/i],
+  ['Leadership & People', /employee|karyawan|hr\b|recruit|interview|salary|gaji|leadership|personality/i],
+  ['Personal & Family', /parkir|makan|dinner|oma|grandma|mom|dad|mobil|asuransi|hotel|liburan|holiday/i]
+];
+function keepFolderFor_(title, text) {
+  const t = title.replace(/\.md$/, '');
+  for (const k in KEEP_SORT) if (KEEP_SORT[k].indexOf(t) >= 0) return k;
+  for (const [k, re] of KEEP_WORDS) if (re.test(t + ' ' + text)) return k;
+  return 'Other';
+}
+function mdToHtml_(md, imgs) {
+  const esc = s => s.replace(/&(?!(nbsp|amp|lt|gt|quot);)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = s => esc(s)
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, a, src) => { const id = imgs[decodeURIComponent(src).split('/').pop()]; return id ? `<img src="https://drive.google.com/thumbnail?id=${id}&amp;sz=w1200" alt="${a}">` : ''; })
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/__([^_]+)__/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>').replace(/~~([^~]+)~~/g, '<s>$1</s>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\\([#!*_\[\]().\-+>`~|&])/g, '$1');
+  const lines = String(md || '').replace(/\r/g, '').split('\n'); let out = '', list = null;
+  const close = () => { if (list) { out += `</${list}>`; list = null; } };
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    let m;
+    if (/^\s*$/.test(l)) { close(); continue; }
+    if ((m = l.match(/^(#{1,6})\s+(.*)$/))) { close(); const n = Math.min(3, m[1].length); out += `<h${n}>${inline(m[2])}</h${n}>`; continue; }
+    if (/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(l)) { close(); out += '<hr>'; continue; }
+    if ((m = l.match(/^\s*[-*+]\s+\[( |x|X)\]\s+(.*)$/))) { if (list !== 'ul class="check"') { close(); out += '<ul class="check">'; list = 'ul class="check"'; } out += `<li${m[1] !== ' ' ? ' class="on"' : ''}>${inline(m[2])}</li>`; continue; }
+    if ((m = l.match(/^\s*[-*+]\s+(.*)$/))) { if (list !== 'ul') { close(); out += '<ul>'; list = 'ul'; } out += `<li>${inline(m[1])}</li>`; continue; }
+    if ((m = l.match(/^\s*\d+[.)]\s+(.*)$/))) { if (list !== 'ol') { close(); out += '<ol>'; list = 'ol'; } out += `<li>${inline(m[1])}</li>`; continue; }
+    if ((m = l.match(/^>\s?(.*)$/))) { close(); out += `<blockquote>${inline(m[1])}</blockquote>`; continue; }
+    if (/^\|.*\|\s*$/.test(l)) { close(); const rows = []; while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) { if (!/^\|[\s:\-|]+\|\s*$/.test(lines[i])) rows.push(lines[i].trim().slice(1, -1).split('|').map(c => `<td>${inline(c.trim())}</td>`).join('')); i++; } i--; out += `<table>${rows.map(r => `<tr>${r}</tr>`).join('')}</table>`; continue; }
+    close(); out += `<p>${inline(l.replace(/\s{2,}$/, ''))}</p>`;
+  }
+  close();
+  return out.replace(/<\/ul class="check">/g, '</ul>');
+}
+function typeFor_(path) {
+  if (/sermon|teaching|bcc|sinode|dyc|mission|tema|church|ministry|devotion|prayer/i.test(path)) return 'Church';
+  if (/cwm|pik|company|paint|leadership|business/i.test(path)) return 'Work';
+  return 'Personal';
+}
+function importNotes() {
+  const t0 = Date.now(), log = [], props = PropertiesService.getScriptProperties();
+  const rows = readTab_('notes_index'), have = {}, folders = {};
+  rows.forEach(r => { have[r.id] = 1; if (r.kind === 'folder') folders[r.folder] = 1; });
+  const add = [], addFolder = p => { const parts = p.split('/'); for (let i = 1; i <= parts.length; i++) { const q = parts.slice(0, i).join('/'); if (!folders[q]) { folders[q] = 1; add.push({ id: 'f-imp-' + Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, q).map(b => ((b + 256) % 256).toString(16).padStart(2, '0')).join('').slice(0, 16), kind: 'folder', folder: q, title: parts[i - 1], date: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), void: '' }); } } };
+  let skipped = 0, privateN = 0, done = true;
+  for (const src of IMPORT_SOURCES) {
+    const root = folderByPath_(src.path);
+    if (!root) { log.push('Could not find the folder ' + src.path.join('/') + ' in Drive.'); continue; }
+    let priv = null;
+    const walk = (folder, rel) => {
+      const name = folder.getName();
+      if (/^(images|attachments|recently deleted)$/i.test(name) && rel) return true;
+      if (name === PRIVATE_FOLDER) return true;
+      const imgs = {};
+      ['images', 'attachments'].forEach(n => { const it = folder.getFoldersByName(n); while (it.hasNext()) { const fi = it.next().getFiles(); while (fi.hasNext()) { const f = fi.next(); imgs[f.getName()] = f.getId(); } } });
+      const files = folder.getFiles();
+      while (files.hasNext()) {
+        if (Date.now() - t0 > 4.5 * 60 * 1000) return false;
+        const f = files.next(); if (!/\.md$/i.test(f.getName())) continue;
+        const id = 'md-' + f.getId(); if (have[id]) continue;
+        const md = f.getBlob().getDataAsString(), title = f.getName().replace(/\.md$/i, '').trim();
+        if (sensitive_(title, md)) {
+          if (src.name === 'Google Keep') { priv = priv || sub_(root, PRIVATE_FOLDER); f.moveTo(priv); }
+          privateN++; log.push('Kept out (private): ' + title); continue;
+        }
+        let path = (src.prefix ? src.prefix + (rel ? '/' : '') : '') + rel;
+        if (src.name === 'Google Keep' && !rel) { const k = keepFolderFor_(f.getName(), md.slice(0, 2000)); const dest = sub_(root, k); f.moveTo(dest); path = 'Google Keep/' + k; }
+        if (!path) path = 'Notes';
+        addFolder(path);
+        const html = mdToHtml_(md, imgs), text = md.replace(/[#*_>`\\\[\]()!|-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1500);
+        const day = Utilities.formatDate(f.getLastUpdated(), TZ, 'yyyy-MM-dd');
+        const link = writeNote_(id, title, html);
+        add.push({ id: id, kind: 'note', title: title, folder: path, para: '', type: typeFor_(path), people: '', date: day, driveLink: link, tags: 'imported', void: '', pinned: '', text: text, refs: parseRefs(title + '\n' + md).join(' '), updated: day });
+        have[id] = 1;
+        if (add.length % 40 === 0) { appendRows_('notes_index', add.splice(0)); }
+      }
+      const subs = folder.getFolders();
+      while (subs.hasNext()) { const s = subs.next(); if (!walk(s, (rel ? rel + '/' : '') + s.getName())) return false; }
+      return true;
+    };
+    if (!walk(root, '')) { done = false; break; }
+  }
+  if (add.length) appendRows_('notes_index', add);
+  const n = readTab_('notes_index').filter(r => r.tags === 'imported').length;
+  log.unshift(done ? `All done. ${n} notes are in HQ Notes; ${privateN} private notes left out this round.` : `Paused to stay within Google's time limit (${n} notes in so far). Run importNotes again to continue.`);
+  Logger.log(log.join('\n'));
+  return log;
+}
+/* Adds rows at the bottom of a tab without rewriting it. */
+function appendRows_(name, rows) {
+  if (!rows.length) return;
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const s = sheet_(name);
+    const head = s.getRange(1, 1, 1, Math.max(1, s.getLastColumn())).getDisplayValues()[0].filter(String);
+    rows.forEach(r => Object.keys(r).forEach(k => { if (head.indexOf(k) < 0) { head.push(k); s.getRange(1, head.length).setValue(k); } }));
+    const body = rows.map(r => head.map(k => r[k] == null ? '' : String(r[k])));
+    const rng = s.getRange(s.getLastRow() + 1, 1, body.length, head.length);
+    rng.setNumberFormat('@'); rng.setValues(body);
+  } finally { lock.releaseLock(); }
+}
+
+/* Bible references (Indonesian TB + English). parseRefs('Yoh 3:16-18; Fil 2:2') → ['JHN.3.16-18','PHP.2.2'] */
+const BIBLE = [
+ ['GEN','Kejadian|Kej|Genesis|Gen'],['EXO','Keluaran|Kel|Exodus|Exod|Ex'],['LEV','Imamat|Im|Leviticus|Lev'],['NUM','Bilangan|Bil|Numbers|Num'],['DEU','Ulangan|Ul|Deuteronomy|Deut|Dt'],
+ ['JOS','Yosua|Yos|Joshua|Josh'],['JDG','Hakim-hakim|Hakim|Hak|Judges|Judg'],['RUT','Rut|Ruth'],['1SA','1 Samuel|1 Sam|1Sam'],['2SA','2 Samuel|2 Sam|2Sam'],
+ ['1KI','1 Raja-raja|1 Raj|1Raj|1 Kings|1 Kgs'],['2KI','2 Raja-raja|2 Raj|2Raj|2 Kings|2 Kgs'],['1CH','1 Tawarikh|1 Taw|1Taw|1 Chronicles|1 Chr'],['2CH','2 Tawarikh|2 Taw|2Taw|2 Chronicles|2 Chr'],
+ ['EZR','Ezra|Ezr'],['NEH','Nehemia|Nehemiah|Neh'],['EST','Ester|Esther|Est|Esth'],['JOB','Ayub|Ayb|Job'],['PSA','Mazmur|Mzm|Psalms|Psalm|Psa|Ps'],['PRO','Amsal|Ams|Proverbs|Prov'],
+ ['ECC','Pengkhotbah|Pkh|Ecclesiastes|Eccl|Ecc'],['SNG','Kidung Agung|Kid|Song of Songs|Song of Solomon'],['ISA','Yesaya|Yes|Isaiah|Isa'],['JER','Yeremia|Yer|Jeremiah|Jer'],['LAM','Ratapan|Rat|Lamentations|Lam'],
+ ['EZK','Yehezkiel|Yeh|Ezekiel|Ezek'],['DAN','Daniel|Dan'],['HOS','Hosea|Hos'],['JOL','Yoel|Yl|Joel'],['AMO','Amos|Am'],['OBA','Obaja|Ob|Obadiah|Obad'],['JON','Yunus|Yun|Jonah'],
+ ['MIC','Mikha|Mi|Micah|Mic'],['NAM','Nahum|Nah'],['HAB','Habakuk|Habakkuk|Hab'],['ZEP','Zefanya|Zef|Zephaniah|Zeph'],['HAG','Hagai|Hag|Haggai'],['ZEC','Zakharia|Za|Zechariah|Zech'],['MAL','Maleakhi|Mal|Malachi'],
+ ['MAT','Matius|Mat|Matthew|Matt|Mt'],['MRK','Markus|Mrk|Mark|Mk'],['LUK','Lukas|Luk|Luke|Lk'],['JHN','Yohanes|Yoh|John|Jn'],['ACT','Kisah Para Rasul|Kisah Rasul|Kis|Acts'],['ROM','Roma|Rm|Rom|Romans'],
+ ['1CO','1 Korintus|1 Kor|1Kor|1 Corinthians|1 Cor|1Cor'],['2CO','2 Korintus|2 Kor|2Kor|2 Corinthians|2 Cor|2Cor'],['GAL','Galatia|Gal|Galatians'],['EPH','Efesus|Ef|Ephesians|Eph'],['PHP','Filipi|Flp|Fil|Philippians|Phil'],
+ ['COL','Kolose|Kol|Colossians|Col'],['1TH','1 Tesalonika|1 Tes|1Tes|1 Thessalonians|1 Thess'],['2TH','2 Tesalonika|2 Tes|2Tes|2 Thessalonians|2 Thess'],['1TI','1 Timotius|1 Tim|1Tim|1 Timothy'],['2TI','2 Timotius|2 Tim|2Tim|2 Timothy'],
+ ['TIT','Titus|Tit'],['PHM','Filemon|Flm|Philemon|Phlm'],['HEB','Ibrani|Ibr|Hebrews|Heb'],['JAS','Yakobus|Yak|James|Jas'],['1PE','1 Petrus|1 Ptr|1 Pet|1Pet|1 Peter'],['2PE','2 Petrus|2 Ptr|2 Pet|2Pet|2 Peter'],
+ ['1JN','1 Yohanes|1 Yoh|1Yoh|1 John|1 Jn'],['2JN','2 Yohanes|2 Yoh|2Yoh|2 John'],['3JN','3 Yohanes|3 Yoh|3Yoh|3 John'],['JUD','Yudas|Yud|Jude'],['REV','Wahyu|Why|Revelation|Rev']];
+const BOOKNAME = {}; const BOOKALT = [];
+BIBLE.forEach(([c, n]) => { const ns = n.split('|'); BOOKNAME[c] = ns[0]; ns.forEach(x => BOOKALT.push([x, c])); });
+BOOKALT.sort((a, b) => b[0].length - a[0].length);
+const SHORTRISK = /^(Am|Im|Ul|Mi|Ob|Za|Yl|Ex|Yes|Kid|Rat|Dan|Job|Mark|Ruth|Rut|Kis|Kel|Hak|Rm|Ef|Col|Jn|Mt|Mk|Lk|Dt|Ps)$/;   // need chapter:verse
+const REF_RE = new RegExp('(?<![A-Za-z])(' + BOOKALT.map(b => b[0].replace(/[-]/g, '\\-').replace(/ /g, '\\s?')).join('|') + ')\\.?\\s?(\\d{1,3})(?:\\s?[:.]\\s?(\\d{1,3})(?:\\s?[-–]\\s?(\\d{1,3}))?)?(?![\\d])', 'g');
+function bookCode(name) { const k = name.replace(/\s+/g, ' ').toLowerCase(); const hit = BOOKALT.find(b => b[0].toLowerCase() === k || b[0].replace(/ /g, '').toLowerCase() === k.replace(/ /g, '')); return hit ? hit[1] : ''; }
+function parseRefs(text) {
+  const out = []; let m; const s = String(text || ''); REF_RE.lastIndex = 0;
+  while ((m = REF_RE.exec(s))) {
+    const name = m[1].replace(/\s+/g, ' '), code = bookCode(name); if (!code) continue;
+    if (!m[3] && (SHORTRISK.test(name.replace(/\s/g, '')) || name.length <= 3)) continue;
+    const ch = +m[2]; if (!ch || ch > 150) continue;
+    out.push(code + '.' + ch + (m[3] ? '.' + (+m[3]) + (m[4] && +m[4] > +m[3] ? '-' + (+m[4]) : '') : ''));
+  }
+  return [...new Set(out)];
+}
+/* How closely ref a (from a note) matches query ref q: 3 same verse/overlap, 2 same chapter, 1 same book, 0 none. */
+function refMatch(a, q) {
+  const [ab, ac, av] = a.split('.'), [qb, qc, qv] = q.split('.'); if (ab !== qb) return 0; if (!qc) return 3; if (ac !== qc) return 1; if (!qv) return 3; if (!av) return 2;
+  const r = x => { const [f, t] = x.split('-').map(Number); return [f, t || f]; }; const [a1, a2] = r(av), [q1, q2] = r(qv);
+  return a1 <= q2 && q1 <= a2 ? 3 : 2;
+}
+function refLabel(r) { const [b, c, v] = r.split('.'); return BOOKNAME[b] + (c ? ' ' + c + (v ? ':' + v : '') : ''); }
+
+/* Records the Bible references in every HQ note (column "refs"), so searching a verse finds all your notes on it.
+   importNotes does this for imported notes; run indexVerses once for the notes that were already in HQ. Safe to run again. */
+function indexVerses() {
+  const t0 = Date.now(), s = sheet_('notes_index');
+  const v = s.getDataRange().getDisplayValues(); const h = v[0];
+  let rc = h.indexOf('refs'); if (rc < 0) { rc = h.length; s.getRange(1, rc + 1).setValue('refs'); }
+  const ic = h.indexOf('id'), kc = h.indexOf('kind'), tc = h.indexOf('title'); let n = 0, left = 0;
+  for (let i = 1; i < v.length; i++) {
+    if (v[i][kc] !== 'note' || (v[i][rc] || '') !== '') continue;
+    if (Date.now() - t0 > 4.5 * 60 * 1000) { left++; continue; }
+    const html = readNote_(v[i][ic]); const text = String(html).replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
+    const r = parseRefs(v[i][tc] + '\n' + text).join(' ');
+    s.getRange(i + 1, rc + 1).setNumberFormat('@').setValue(r || '-'); n++;
+  }
+  Logger.log(left ? `Indexed ${n} notes; ${left} to go. Run indexVerses again.` : `All done. Indexed ${n} notes.`);
 }

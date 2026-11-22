@@ -32,6 +32,9 @@ A monthly scheduled task checks Apple's latest Notes features and adds small mis
 ## Meetings (Fireflies → Drive)
 `exportFireflies` in the bridge script (every 3 days at 4 a.m. via `setupMeetingsTrigger`, or GET action=meetings) reads Fireflies' GraphQL API with the key in Script properties `FIREFLIES_KEY`, saves each transcribed meeting as a Google Doc (summary, action items, notes, transcript with times) in Claude/Meetings/<year>/, and adds a row to the `meetings` tab. With `FIREFLIES_DELETE=yes` it then deletes the meeting from Fireflies to free minutes (only after the Doc exists). Fireflies' free plan never transcribes recordings past the minute limit ("skipped"); those have no text to export. An HQ Meetings view is still to be built (mockup first).
 
+## Notes import and verse search
+`importNotes` (bridge, one-time, re-runnable in 4½-min rounds) brings the Apple Notes export (Drive "iCloud", folders kept) and Google Keep export (Drive "Google/Notes", sorted into subfolders by `KEEP_SORT`/`KEEP_WORDS`) into HQ Notes as `md-<fileId>` rows with tag `imported`. Notes matching `SENSITIVE`/long digit runs are left out (Keep ones moved to "Private – not in HQ"). `parseRefs` (Indonesian TB + English book names) fills the `refs` column (e.g. `JHN.3.16-18`); `indexVerses` backfills older notes. In Notes, searching a reference ("yoh 3:16", "Filipi") shows the verse panel: this verse / same chapter / same book, Summarise with Claude, Start a new sermon.
+
 ## Never put in this repo
 Tokens, the Sheet ID, ID numbers, bank/card numbers, member names, phone numbers, financial figures, pastoral notes. Those live only in the Sheet. The repo is public.
 
