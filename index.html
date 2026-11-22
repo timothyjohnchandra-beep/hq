@@ -366,7 +366,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='12 · 22 Nov 2026';
+const VERSION='13 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -1049,12 +1049,13 @@ function settings(){
   <div class="field"><label for="s-plan">YouVersion reading plan link</label><input type="text" id="s-plan" value="${esc(cfg.plan||'')}" placeholder="https://www.bible.com/reading-plans/…"></div>
   <div class="field"><label for="s-pl">Worship playlist link</label><input type="text" id="s-pl" value="${esc(cfg.playlist||'')}" placeholder="Leave empty for a random worship mix each time"></div>
   <button class="btn y" data-a="links">Save links</button></div>
- <h2>App version</h2><div class="group" style="padding:16px"><p style="margin:0 0 10px">You have version <b>${VERSION}</b>.</p><button class="btn y" data-a="forceupdate">Get the latest version</button><p class="meta" style="margin-top:10px">Use this if something I fixed still looks broken. Your data and settings stay.</p></div>
+ <h2>App version</h2><div class="group" style="padding:16px"><p style="margin:0 0 10px">You have version <b>${VERSION}</b>.<br><span class="meta">Bridge script deployed: <b id="bridge-v">${live()?'checking…':'not connected'}</b></span></p><button class="btn y" data-a="forceupdate">Get the latest version</button><p class="meta" style="margin-top:10px">Use this if something I fixed still looks broken. Your data and settings stay.</p></div>
  <h2>Data</h2><div class="group" style="padding:16px"><div class="prow"><button class="btn" data-a="reload">Reload from Google</button></div><p class="meta" style="margin-top:10px">${dirty.size+dirtyNotes.size?`${dirty.size+dirtyNotes.size} change(s) waiting to sync.`:'Everything is synced.'}</p></div>`}
 
 /* ---------- routing & events ---------- */
 const V={today,notes,money,people,library,settings};
-function render(){ensure();TODAY=iso(0);TMRW=iso(1);document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===UI.view));(V[UI.view]||today)();showSync()}
+function bridgeVersion(){const el=$('#bridge-v');if(!el||!live())return;api({action:'ping'}).then(j=>{el.textContent=j.version||'older than 22 Nov 18:00 (please update)'}).catch(e=>{el.textContent="couldn't check ("+e.message+')'})}
+function render(){ensure();TODAY=iso(0);TMRW=iso(1);document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===UI.view));(V[UI.view]||today)();showSync();if(UI.view==='settings')bridgeVersion()}
 const find=(k,id)=>D[k].find(x=>x.id===id);
 document.addEventListener('click',async e=>{
  const tab=e.target.closest('.tab');if(tab){UI.view=tab.dataset.v;saveUI();closePane();render();$('#main').scrollTop=0;return}

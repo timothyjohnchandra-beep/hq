@@ -6,6 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
+const SCRIPT_VERSION = '2026-11-22 18:00'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -16,7 +17,7 @@ function doGet(e) {
     const p = e.parameter;
     auth_(p.token);
     const a = p.action || 'read';
-    if (a === 'ping') return { ok: true, tabs: TABS };
+    if (a === 'ping') return { ok: true, tabs: TABS, version: SCRIPT_VERSION };
     if (a === 'read') return { ok: true, rows: readTab_(p.name) };
     if (a === 'all') { const out = {}; TABS.forEach(t => out[t] = readTab_(t)); return { ok: true, data: out }; }
     if (a === 'calendar') return { ok: true, events: calendar_(Number(p.days || 2)) };
