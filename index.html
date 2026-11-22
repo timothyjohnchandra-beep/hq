@@ -247,6 +247,10 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .colors{display:flex;gap:8px;flex-wrap:wrap;padding:0 4px}
 .colors button{border:0;background:var(--fill);border-radius:12px;min-width:44px;height:44px;display:grid;place-items:center;padding:0 10px}
 @media(min-width:1101px){.pane.noting .ned{padding-top:16px}}
+.verse{display:flex;gap:14px;align-items:center;margin-top:12px;background:var(--card);border-radius:16px;padding:12px;text-decoration:none;color:var(--ink)}
+.verse img{width:84px;height:84px;object-fit:cover;border-radius:12px;flex:none}
+.verse q{display:block;font-family:"Source Serif 4",Georgia,serif;font-size:17px;line-height:1.45}
+.verse b{display:block;margin-top:6px;font-size:14px;color:var(--acc)}
 .pos{color:var(--green)}.neg{color:var(--red)}
 .msum{background:var(--card);border-radius:16px;padding:16px 18px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:end}
 .msum b{display:block;font-size:13px;color:var(--mut);font-weight:600;margin-bottom:3px}
@@ -336,11 +340,11 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='7 · 22 Nov 2026';
+const VERSION='8 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
-let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null);
+let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null),VERSE=ls.get('hq-verse',null);
 let BODY=ls.get('hq-notes',{});
 let UI=ls.get('hq-ui',{view:'today',nf:'All',pw:'all',fs:19});
 let dirty=new Set(ls.get('hq-dirty',[])),dirtyNotes=new Set(ls.get('hq-dirtynotes',[]));
@@ -411,6 +415,7 @@ async function load(){
   syncState={s:'ok',at:hm(new Date())};render();
   api({action:'calendar',days:2}).then(c=>{EV=c.events;ls.set('hq-ev',EV);if(UI.view==='today')render()}).catch(e=>{syncState={s:'error',msg:'Calendar: '+e.message};showSync()});
   api({action:'brief'}).then(b=>{BRIEF=b.brief;ls.set('hq-brief',BRIEF);if(UI.view==='today')render()}).catch(()=>{});
+  if(!VERSE||VERSE.day!==TODAY)api({action:'verse'}).then(v=>{VERSE={...v.verse,day:TODAY};ls.set('hq-verse',VERSE);if(UI.view==='today')render()}).catch(e=>{VERSE={day:TODAY,err:/Unknown action/.test(e.message)?'old':e.message};if(UI.view==='today')render()});
  }catch(e){ensure();syncState={s:'error',msg:e.message};render()}
  showSync()}
 addEventListener('online',()=>flush());
@@ -453,6 +458,7 @@ function today(){
   <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
  </section>
+ ${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}
  <div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>
  ${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}
  ${['morning','noon','evening'].map(p=>`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>${grp(items.filter(i=>i.part===p).map(row),'Nothing planned.')}`).join('')}
@@ -782,7 +788,7 @@ function people(){
   <button class="bcard" data-a="bf" data-v="quiet" aria-pressed="${bf==='quiet'}"><div class="big">${quiet.length}</div><span>Quiet 30+ days</span></button>
   <button class="bcard" data-a="bf" data-v="bday" aria-pressed="${bf==='bday'}"><div class="big">${bd.length}</div><span>Birthdays this week</span></button></div>
  <h2>Waiting for a reply <span class="n">${all.filter(p=>yes(p.waiting)).length}</span></h2>${grp(all.filter(p=>yes(p.waiting)).map(pr),'No one to wait on.')}
- <h2>${bf?{nonext:'No next date',quiet:'Quiet 30+ days',bday:'Birthdays this week'}[bf]:'Everyone'} <span class="n">${list.length}</span>${bf?'<button class="btn link act" data-a="bf" data-v="">Show all</button>':'<button class="btn link act" data-a="newperson">Add person</button>'}</h2>${grp(list.map(pr),'Nobody here yet.')}`}
+ <h2>${bf?{nonext:'No next date',quiet:'Quiet 30+ days',bday:'Birthdays this week'}[bf]:'Everyone'} <span class="n">${list.length}</span>${bf?'<button class="btn link act" data-a="bf" data-v="">Show all</button>':'<button class="btn link act" data-a="contactsfill">Fill from Google Contacts</button><button class="btn link" data-a="newperson">Add person</button>'}</h2>${grp(list.map(pr),'Nobody here yet.')}`}
 function personPane(p){
  openPane(`<div class="detail"><div class="dhead">${back}<button class="btn link" data-a="pvoid" data-id="${esc(p.id)}" style="margin-left:auto">Remove</button></div>
  <div class="field"><label for="pf-n">Name</label><input type="text" id="pf-n" value="${esc(p.name)}"></div>
@@ -991,6 +997,11 @@ document.addEventListener('click',async e=>{
  if(a==='disconnect'){cfg={plan:cfg.plan,playlist:cfg.playlist};ls.set('hq-cfg',cfg);D=sample();dirty.clear();dirtyNotes.clear();persist();syncState={s:'sample'};render();say('Disconnected. Showing sample data.')}
  if(a==='links'){cfg.plan=$('#s-plan').value.trim();cfg.playlist=$('#s-pl').value.trim();ls.set('hq-cfg',cfg);say('Links saved.')}
  if(a==='reload')load();
+ if(a==='contactsfill'){if(!live()){say('Connect your Google Sheet first.');return}say('Reading your Google Contacts…');
+  try{const j=await api({action:'contacts'});const cs=j.contacts;const norm=x=>String(x||'').toLowerCase().replace(/^(pastor|ps\.?|pak|bu|ibu|bapak|kak)\s+/,'').trim();let n=0;const unsure=[];
+   D.people.filter(p=>!yes(p.void)).forEach(p=>{const k=norm(p.name);const hits=cs.filter(c=>{const cn=norm(c.name);return cn===k||cn.split(/\s+/)[0]===k});if(hits.length===1){const c=hits[0];let ch=false;if(!p.phone&&c.phone){p.phone=c.phone.replace(/\D/g,'').replace(/^0/,'62');ch=true}if(!p.birthday&&c.birthday){p.birthday=c.birthday;ch=true}if(ch)n++}else if(hits.length>1)unsure.push(p.name+' ('+hits.length+' matches)')});
+   if(n)touch('people');people();say(`Filled details for ${n} ${n===1?'person':'people'}.`+(unsure.length?` Check by hand: ${unsure.slice(0,4).join(', ')}${unsure.length>4?'…':''}.`:''))}
+  catch(err){say(/Unknown action/.test(err.message)?'This needs the updated bridge script.':"Couldn't read contacts: "+err.message)}}
  if(a==='openbook'){UI.book=id;UI.cf={};saveUI();closePane();money();$('#main').scrollTop=0}
  if(a==='newbook')bookPaneEdit(null);
  if(a==='bookmenu')bookPaneEdit(find('cashbooks',id));

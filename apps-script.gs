@@ -22,6 +22,8 @@ function doGet(e) {
     if (a === 'calendar') return { ok: true, events: calendar_(Number(p.days || 2)) };
     if (a === 'brief') return { ok: true, brief: brief_() };
     if (a === 'note') return { ok: true, html: readNote_(p.id) };
+    if (a === 'verse') return { ok: true, verse: verse_() };
+    if (a === 'contacts') return { ok: true, contacts: contacts_() };
     throw new Error('Unknown action: ' + a);
   });
 }
@@ -220,9 +222,55 @@ function writeNote_(id, title, html) {
   return f.getUrl();
 }
 
+/* ---------- Verse of the Day ---------- */
+function verse_() {
+  const cache = CacheService.getScriptCache();
+  const key = 'votd_' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+  let v = null;
+  try {   // YouVersion's own Verse of the Day page
+    const html = UrlFetchApp.fetch('https://www.bible.com/verse-of-the-day', { muteHttpExceptions: true, followRedirects: true }).getContentText();
+    const m = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i) || html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i);
+    const img = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i);
+    const ref = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i);
+    if (m) v = { text: decode_(m[1]), ref: ref ? decode_(ref[1]).replace(/\s*[|-].*$/, '') : '', image: img ? img[1] : '', source: 'YouVersion', link: 'https://www.bible.com/verse-of-the-day' };
+  } catch (e) {}
+  if (!v) {
+    try {   // backup source
+      const j = JSON.parse(UrlFetchApp.fetch('https://beta.ourmanna.com/api/v1/get?format=json&order=daily', { muteHttpExceptions: true }).getContentText());
+      const d = j.verse.details;
+      v = { text: d.text, ref: d.reference + ' (' + d.version + ')', image: '', source: 'OurManna', link: 'https://www.bible.com/verse-of-the-day' };
+    } catch (e) {}
+  }
+  if (!v) throw new Error('Could not fetch the verse of the day right now.');
+  cache.put(key, JSON.stringify(v), 6 * 3600);
+  return v;
+}
+function decode_(s) { return s.replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'); }
+
+/* ---------- Google Contacts (needs the People API service: Services + People API) ---------- */
+function contacts_() {
+  if (typeof People === 'undefined') throw new Error('Turn on the People API service in the script editor (Services, then People API).');
+  const out = []; let token;
+  do {
+    const r = People.People.Connections.list('people/me', { pageSize: 1000, pageToken: token, personFields: 'names,phoneNumbers,birthdays' });
+    (r.connections || []).forEach(c => {
+      const name = c.names && c.names[0] && c.names[0].displayName;
+      if (!name) return;
+      const phone = c.phoneNumbers && c.phoneNumbers[0] && (c.phoneNumbers[0].canonicalForm || c.phoneNumbers[0].value) || '';
+      const b = c.birthdays && c.birthdays[0] && c.birthdays[0].date;
+      out.push({ name: name, phone: phone, birthday: b && b.month ? (b.year || 1900) + '-' + ('0' + b.month).slice(-2) + '-' + ('0' + b.day).slice(-2) : '' });
+    });
+    token = r.nextPageToken;
+  } while (token);
+  return out;
+}
+
 /** Run once from the editor to check everything is wired up. */
 function test() {
   Logger.log(JSON.stringify(readTab_('places')));
   Logger.log(JSON.stringify(calendar_(1)).slice(0, 2000));
   Logger.log(JSON.stringify(brief_()));
+  Logger.log(JSON.stringify(verse_()));
 }
