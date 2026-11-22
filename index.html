@@ -160,6 +160,7 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .meta a,.brief a{color:var(--acc);font-weight:600;text-decoration:none}
 
 /* Notes, Apple Notes style */
+[hidden]{display:none!important}
 .nwrap{padding-bottom:90px}
 .nhead{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
 .ntitle{font-size:34px;margin:4px 0 12px}
@@ -559,7 +560,11 @@ async function notePane(n){
  applyCollapse(ed);
  const fillSecs=()=>{const box=$('#nsecs');if(!box)return;const hs=sections(ed);box.innerHTML=hs.map(h=>`<button class="chip" data-h="${h.dataset.h}">${esc(plain(h.innerHTML).slice(0,40))}</button>`).join('')||'<span class="meta">Add a Title, Heading or Subheading to make sections.</span>'};
  const changed=()=>{BODY[n.id]=ed.innerHTML;const first=ed.querySelector('h1,h2,h3,p,li,div');n.title=(plain(first?first.innerHTML:ed.innerHTML)||plain(ed.innerHTML)).slice(0,80)||'New Note';n.text=plain(ed.innerHTML).slice(0,4000);n.date=TODAY;touchNote(n.id)};
- ed.oninput=changed;
+ ed.oninput=()=>{changed();if(!$('#fmt').hidden){$('#fmt').hidden=true}keepCaret()};
+ ed.addEventListener('keydown',()=>{const f=$('#fmt');if(f&&!f.hidden)f.hidden=true});
+ const dockEl=pane.querySelector('.ndock');
+ const keepCaret=()=>{const s=getSelection();if(!s.rangeCount)return;const r=s.getRangeAt(0).getClientRects()[0]||(s.anchorNode&&s.anchorNode.nodeType===1?s.anchorNode.getBoundingClientRect():null);if(!r)return;const top=dockEl.getBoundingClientRect().top;if(r.bottom>top-12)pane.scrollBy({top:r.bottom-top+40,behavior:'smooth'})};
+ try{new ResizeObserver(()=>{ed.style.paddingBottom=(dockEl.offsetHeight+30)+'px'}).observe(dockEl)}catch(x){ed.style.paddingBottom='120px'}
  ed.onclick=e=>{const li=e.target.closest('ul.check>li');if(li&&e.offsetX<30){li.classList.toggle('on');changed();return}
   const hd=e.target.closest('h1,h2,h3');if(hd&&hd.parentNode===ed&&e.offsetX<0){hd.dataset.collapsed=hd.dataset.collapsed==='1'?'':'1';applyCollapse(ed);changed();return}
   const a=e.target.closest('a');if(a&&a.classList.contains('sec')){e.preventDefault();const t=ed.querySelector(`[data-h="${a.dataset.sec}"]`);if(t){t.dataset.collapsed='';applyCollapse(ed);t.scrollIntoView({behavior:'smooth',block:'start'})}else say('That section no longer exists.');return}
@@ -569,7 +574,7 @@ async function notePane(n){
   if(e.target.closest('[data-a=nmd]'))copyOut(toMd(ed),'Markdown');if(e.target.closest('[data-a=ntxt]'))copyOut(ed.innerText,'Text')});
  pane.querySelector('[data-a=nmore]').addEventListener('click',()=>{const m=$('#nmore');m.hidden=!m.hidden;if(!m.hidden)fillSecs()});
  pane.querySelector('[data-a=nshare]').addEventListener('click',async()=>{const text=ed.innerText;if(navigator.share){try{await navigator.share({title:n.title,text});return}catch(x){if(x.name==='AbortError')return}}copyOut(text,'Note')});
- pane.querySelector('[data-a=ndone]').addEventListener('click',()=>{ed.blur();$('#fmt').hidden=true;getSelection().removeAllRanges()});
+ pane.querySelector('[data-a=ndone]').addEventListener('click',()=>{ed.blur();$('#fmt').hidden=true;$('#colors').hidden=true;$('#seclist').hidden=true;getSelection().removeAllRanges()});
  $('#nm-f').onchange=e=>{n.folder=e.target.value;touch('notes_index');if(UI.view==='notes')notes();say('Moved to '+fname(n.folder)+'.')};
  $('#nm-t').onchange=e=>{n.type=e.target.value;touch('notes_index')};
  const dock=pane.querySelector('.ndock');
@@ -582,7 +587,7 @@ async function notePane(n){
   const nl=closestIn('ul,ol');if(nl){nl.className=kind==='ul'||kind==='ol'?'':kind}};
  dock.addEventListener('click',async e=>{const b=e.target.closest('[data-f]');if(!b)return;const f=b.dataset.f;
   if(f==='fmt'){fmt.hidden=!fmt.hidden;$('#colors').hidden=true;markFormat();return}
-  if(f==='closefmt'){fmt.hidden=true;return}
+  if(f==='closefmt'){fmt.hidden=true;$('#colors').hidden=true;$('#seclist').hidden=true;return}
   if(f==='colors'){$('#colors').hidden=!$('#colors').hidden;return}
   if(f==='seclink'){const sl=$('#seclist');const s=getSelection();if(!savedRange||savedRange.collapsed){say('Select the words to turn into a link first.');return}const hs=sections(ed);if(!hs.length){say('This note has no headings to link to yet.');return}sl.innerHTML=hs.map(h=>`<button class="chip" data-f="dolink" data-h="${h.dataset.h}">${esc(plain(h.innerHTML).slice(0,40))}</button>`).join('');sl.hidden=!sl.hidden;return}
   if(f==='dolink'){restoreRange();const s=getSelection();if(!s.rangeCount||s.isCollapsed){say('Select the words first.');return}const r=s.getRangeAt(0);const a=document.createElement('a');a.className='sec';a.dataset.sec=b.dataset.h;a.href='#';a.appendChild(r.extractContents());r.insertNode(a);s.removeAllRanges();$('#seclist').hidden=true;changed();say('Section link added.');return}
