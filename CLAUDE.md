@@ -13,11 +13,11 @@ Personal daily app for Timothy (Executive Pastor, GPKdI BCC; director of PT Citr
 8. Save his decisions to memory.
 
 ## Architecture
-- `index.html`: the whole app (plain HTML/CSS/JS, no build). Tabs: Today, Notes, Money, People, Library, Settings. Money is a Cashbook-style ledger (books, cash in/out, category, payment mode, running balance, filters, report with CSV/print); Today shows a Cashbook card.
+- `index.html`: the whole app (plain HTML/CSS/JS, no build). Tabs: Today, Notes, Money, People, Library, Settings. Money is a Cashbook-style ledger (books, cash in/out, category, payment mode, running balance, filters, report with CSV/print); Today shows a Cashbook card, the News brief card (latest date in the `briefs` tab: section headline|attention|id|world, n, tag, title, summary, link) and a "For Claude" list. The Claude button (floating on phones, in the sidebar on wide screens) saves tasks/notes with `for=claude`, `type=task|note` in the tasks tab and can open claude.ai/new prefilled.
 - `sw.js`: network first, cached copy offline; never caches Google calls. Bump `CACHE` when shell files change.
 - `manifest.webmanifest` + `icons/`: installable on iPhone, iPad, Android, Mac.
 - `apps-script.gs`: the only API. Deployed as a Web app by Timothy (Execute as me, Anyone). GET `?action=all|read|calendar|brief|note|verse|contacts|ping&token=`; POST `{token, action: save|note|addEvent|attach}`. Travel times come from Maps in the script, from home or the previous event; leave-by = start − drive − 10 min.
-- Data: Google Sheet "HQ Data" (tabs: tasks, people, notes_index, places, habits, books, highlights, cashbooks, cash_entries). Note bodies are HTML files in Drive "Claude/HQ Notes" (attachments in "Claude/HQ Notes/Attachments"). Everything Claude creates in Drive goes inside the "Claude" folder. All values stored as text; dates yyyy-mm-dd.
+- Data: Google Sheet "HQ Data" (tabs: tasks, people, notes_index, places, habits, books, highlights, cashbooks, cash_entries, briefs). Note bodies are HTML files in Drive "Claude/HQ Notes" (attachments in "Claude/HQ Notes/Attachments"). Everything Claude creates in Drive goes inside the "Claude" folder. All values stored as text; dates yyyy-mm-dd.
 - The script URL and token live only in the app's Settings (localStorage on each device). Without them the app shows sample data.
 - Claude in chat reads and updates the Sheet through the Google Sheets connector.
 

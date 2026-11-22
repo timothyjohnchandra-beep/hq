@@ -247,6 +247,19 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .colors{display:flex;gap:8px;flex-wrap:wrap;padding:0 4px}
 .colors button{border:0;background:var(--fill);border-radius:12px;min-width:44px;height:44px;display:grid;place-items:center;padding:0 10px}
 @media(min-width:1101px){.pane.noting .ned{padding-top:16px}}
+.nb{margin-top:12px;background:var(--card);border-radius:16px;padding:14px 16px}
+.nb-h{display:flex;gap:10px;align-items:baseline;justify-content:space-between}.nb-h b{font-size:13px;color:var(--mut);font-weight:600}.nb-h a{color:var(--acc);font-weight:600;text-decoration:none;font-size:14px;white-space:nowrap}
+.nb-t{font-size:17px;font-weight:600;margin:4px 0 2px;line-height:1.3}
+.nb h3{font-size:13px;color:var(--mut);font-weight:600;margin:14px 0 2px;text-transform:uppercase;letter-spacing:.03em}
+.nb ol{list-style:none;margin:0;padding:0}.nb li{padding:8px 0;border-top:.5px solid var(--line)}.nb li:first-child{border-top:0}
+.nb li a{color:var(--ink);font-weight:600;text-decoration:none;font-size:15px}.nb li p{margin:2px 0 0;color:var(--mut);font-size:14px;line-height:1.4}
+.nb .tag{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 6px;margin-right:6px;background:var(--accsoft);color:var(--ink);vertical-align:1px}
+.nb details summary{cursor:pointer;color:var(--acc);font-weight:600;font-size:14px;padding:6px 0;list-style:none}.nb details summary::-webkit-details-marker{display:none}.nb details[open] summary{display:none}
+.cfab{position:fixed;right:18px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:15;display:flex;align-items:center;gap:6px;border:0;border-radius:24px;padding:11px 16px;background:#c6613f;color:#fff;font:600 15px Inter,system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.18);cursor:pointer}
+.cfab svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
+.sclaude{display:flex;align-items:center;gap:10px;width:100%;border:0;background:#c6613f;color:#fff;border-radius:10px;padding:9px 12px;margin-top:10px;font:600 15px Inter,system-ui,sans-serif;cursor:pointer}.sclaude svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
+.cfab{display:none}@media(max-width:700px){.cfab{display:flex;bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:11px 13px}.sclaude{display:none}}
+.ctype{display:flex;gap:8px;margin:4px 0 12px}.ctype label{display:flex;gap:6px;align-items:center;font-size:15px;background:var(--accsoft);border-radius:10px;padding:7px 12px;cursor:pointer}
 .verse{display:flex;gap:14px;align-items:center;margin-top:12px;background:var(--card);border-radius:16px;padding:12px;text-decoration:none;color:var(--ink)}
 .verse img{width:84px;height:84px;object-fit:cover;border-radius:12px;flex:none}
 .verse q{display:block;font-family:"Source Serif 4",Georgia,serif;font-size:17px;line-height:1.45}
@@ -313,11 +326,13 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
     <button class="tab" data-v="people" id="t-people"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 5.4"/></svg>People</button>
     <button class="tab" data-v="library" id="t-library"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2z"/><path d="M20 19V5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z"/></svg>Library</button>
     <button class="tab" data-v="settings" id="t-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    <button class="sclaude" data-a="askclaude"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Give Claude a task</button>
     <div class="sidefoot" id="sidefoot"></div>
   </nav>
   <main id="main"><div id="sync" class="sync" role="status"></div><div id="view" aria-live="polite"></div></main>
   <aside class="pane" id="pane"><div class="pane-empty">Tap anything to see the details here.</div></aside>
 </div>
+<button class="cfab" data-a="askclaude" aria-label="Give Claude a note or task"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg><span>Claude</span></button>
 <div id="toast" role="status"></div>
 <script>
 {
@@ -340,8 +355,8 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='8 · 22 Nov 2026';
-const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries'];
+const VERSION='9 · 22 Nov 2026';
+const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
 let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null),VERSE=ls.get('hq-verse',null);
@@ -444,10 +459,34 @@ function row(i){
  if(i.place)meta.push(`<a href="${maps(i.place)}" target="_blank" rel="noopener">${esc(i.place.split(',')[0])}</a>`);
  if(i.link==='youversion')meta.push(`<a href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener">Open in YouVersion</a>`);
  return `<div class="row${i.done?' done':''}" data-a="item" data-k="${i.kind}" data-id="${esc(i.id)}"><button class="chk${i.kind==='habit'?' sq':''}" data-a="tick" data-k="${i.kind}" data-id="${esc(i.id)}" aria-label="Mark done">${CHECK}</button>${t}<div><div class="ttl">${i.world?`<span class="dot w-${i.world}"></span>`:''}${esc(i.title)}</div>${meta.length?`<div class="meta">${meta.join(' · ')}</div>`:''}</div><span></span></div>`}
+function claudePane(){
+ openPane(`<div class="detail"><div class="dhead">${back}<span class="pill">for Claude</span></div><h1 style="font-size:26px">Hand it to Claude</h1>
+ <p class="meta">Type it or use the microphone on your keyboard. It goes into your Claude inbox in the Sheet, and Claude picks it up in chat or in the morning brief.</p>
+ <div class="ctype"><label><input type="radio" name="ct" value="task" checked> Task</label><label><input type="radio" name="ct" value="note"> Note</label></div>
+ <div class="field"><label for="c-t">What should Claude do or remember?</label><textarea id="c-t" rows="5" placeholder="e.g. Draft the KOMID leaders' outline for Friday"></textarea></div>
+ <div class="field"><label for="c-w">Area</label><select id="c-w"><option value="church">Church</option><option value="company">Company</option><option value="personal">Personal</option></select></div>
+ <div class="prow"><button class="btn y" id="c-save">Save to Claude inbox</button><button class="btn" id="c-open">Save and open Claude</button></div>
+ <p class="samp"><a href="https://claude.ai/new" target="_blank" rel="noopener">Just open Claude</a> for a voice chat or a longer conversation.</p></div>`);
+ const ta=$('#c-t');setTimeout(()=>ta.focus(),250);
+ const save=()=>{const t=ta.value.trim();if(!t){say('Type something first.');return null}const type=(document.querySelector('input[name=ct]:checked')||{}).value||'task';
+  D.tasks.push({id:uid(),title:t,world:$('#c-w').value,date:'',part:'morning',status:'',for:'claude',type,void:'',created:TODAY,updated:TODAY});touch('tasks');if(UI.view==='today')render();return {t,type}};
+ $('#c-save').onclick=()=>{if(save()){closePane();say('In your Claude inbox.')}};
+ $('#c-open').onclick=()=>{const r=save();if(!r)return;closePane();say('Saved. Opening Claude…');
+  window.open('https://claude.ai/new?q='+encodeURIComponent((r.type==='note'?'Note for you from HQ: ':'Task for you from HQ: ')+r.t+'\n\n(It is also saved in my HQ Sheet, tasks tab, for=claude. Mark it done there when finished.)'),'_blank','noopener')}}
+function newsBrief(){
+ const rows=(D.briefs||[]).filter(r=>!yes(r.void)&&r.date);if(!rows.length)return live()?'<section class="nb"><div class="nb-h"><b>News brief</b></div><p class="meta">Your morning news brief shows here after the bridge script update. Until then, open it from the Claude app.</p></section>':'<section class="nb"><div class="nb-h"><b>News brief</b></div><p class="meta">Your morning news brief shows here once your Google Sheet is connected.</p></section>';
+ const day=rows.map(r=>r.date).sort().pop(),b=rows.filter(r=>r.date===day).sort((x,y)=>(+x.n||0)-(+y.n||0));
+ const head=b.find(r=>r.section==='headline'),when=day===TODAY?'This morning':nice(day);
+ const li=r=>`<li>${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noopener">`:'<span>'}${r.tag?`<span class="tag">${esc(r.tag)}</span>`:''}${esc(r.title)}${r.link?'</a>':'</span>'}${r.summary?`<p>${esc(r.summary)}</p>`:''}</li>`;
+ const list=(sec,label,more)=>{const it=b.filter(r=>r.section===sec);if(!it.length)return'';return `<h3>${label}</h3><ol>${it.slice(0,5).map(li).join('')}</ol>${it.length>5?`<details><summary>${more} (${it.length-5})</summary><ol>${it.slice(5).map(li).join('')}</ol></details>`:''}`};
+ return `<section class="nb" aria-label="News brief"><div class="nb-h"><b>News brief · ${esc(when)}</b>${head&&head.link?`<a href="${esc(head.link)}" target="_blank" rel="noopener">Full brief ›</a>`:''}</div>
+ ${head&&head.title?`<div class="nb-t">${esc(head.title)}</div>`:''}
+ ${list('attention','Needs attention','More')}${list('id','Berita Indonesia','Lihat semua')}${list('world','World news','Show all')}</section>`}
 function today(){
  const items=todayItems(TODAY),tm=todayItems(TMRW).filter(i=>i.kind!=='habit');
- const over=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,date:t.date}));
- const nod=D.tasks.filter(t=>!yes(t.void)&&!t.date&&t.status!=='done').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world}));
+ const over=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done'&&t.for!=='claude').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,date:t.date}));
+ const nod=D.tasks.filter(t=>!yes(t.void)&&!t.date&&t.status!=='done'&&t.for!=='claude').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world}));
+ const fc=D.tasks.filter(t=>!yes(t.void)&&t.for==='claude'&&t.status!=='done').map(t=>({kind:'task',id:t.id,title:(t.type==='note'?'Note: ':'')+t.title,world:t.world}));
  const now=hm(new Date());const next=items.filter(i=>i.kind==='event'&&!i.done).find(i=>(i.leave||i.time)>=now);
  const bd=[...EV.filter(e=>e.birthday&&ymd(new Date(e.start))<=iso(7)).map(e=>esc(e.title)),...D.people.filter(p=>!yes(p.void)&&bdayIn(p.birthday)<=7).map(p=>esc(p.name)+(bdayIn(p.birthday)?' in '+bdayIn(p.birthday)+'d':' today'))];
  const allday=EV.filter(e=>e.allDay&&!e.birthday&&ymd(new Date(e.start))===TODAY);
@@ -459,10 +498,12 @@ function today(){
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
  </section>
  ${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}
+ ${newsBrief()}
  <div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>
  ${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}
  ${['morning','noon','evening'].map(p=>`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>${grp(items.filter(i=>i.part===p).map(row),'Nothing planned.')}`).join('')}
  <h2 style="color:${over.length?'var(--red)':'inherit'}">Overdue <span class="n">${over.length}</span>${over.length?'<button class="btn link act" data-a="fresh">Fresh start</button>':''}</h2>${grp(over.map(row),'All caught up.')}
+ <h2>For Claude <span class="n">${fc.length}</span><button class="btn link act" data-a="askclaude">Add</button></h2>${grp(fc.map(row),'Nothing waiting. Tap the Claude button to hand something over.')}
  <h2>No date <span class="n">${nod.length}</span></h2>${grp(nod.map(row),'Nothing waiting for a date.')}
  <h2>Anything missed?</h2>
  <form class="quick" id="qa"><input type="text" id="qa-t" placeholder="Task, or a meeting with a time" aria-label="New item">
@@ -961,6 +1002,7 @@ document.addEventListener('click',async e=>{
  if(a==='item')itemPane(k,id);
  if(a==='close')closePane();
  if(a==='go'){UI.view=v;saveUI();render()}
+ if(a==='askclaude')claudePane();
  if(a==='retry'){syncState={s:'loading'};showSync();dirty.size||dirtyNotes.size?flush():load()}
  if(a==='tsave'){const t=find('tasks',id);t.title=$('#f-t').value.trim()||t.title;t.date=$('#f-d').value;t.part=$('#f-p').value;t.world=$('#f-w').value;t.notes=$('#f-n').value;t.updated=TODAY;touch('tasks');render();closePane();say('Saved.')}
  if(a==='tvoid'){find('tasks',id).void='1';touch('tasks');render();closePane();say('Marked void. It stays in history.')}

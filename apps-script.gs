@@ -9,7 +9,7 @@ const TZ = 'Asia/Jakarta';
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
-const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries'];
+const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs'];
 
 function doGet(e) {
   return handle_(() => {
