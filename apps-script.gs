@@ -9,7 +9,7 @@ const TZ = 'Asia/Jakarta';
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
-const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs'];
+const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs', 'reading_log'];
 
 function doGet(e) {
   return handle_(() => {
@@ -24,6 +24,7 @@ function doGet(e) {
     if (a === 'note') return { ok: true, html: readNote_(p.id) };
     if (a === 'verse') return { ok: true, verse: verse_() };
     if (a === 'contacts') return { ok: true, contacts: contacts_() };
+    if (a === 'book') return bookFile_(p.id);
     throw new Error('Unknown action: ' + a);
   });
 }
@@ -36,6 +37,7 @@ function doPost(e) {
     if (b.action === 'note') return { ok: true, driveLink: writeNote_(b.id, b.title, b.html) };
     if (b.action === 'addEvent') return { ok: true, id: addEvent_(b) };
     if (b.action === 'attach') return { ok: true, url: attach_(b) };
+    if (b.action === 'patch') return { ok: true, row: patchRow_(b.name, b.id, b.fields) };
     throw new Error('Unknown action: ' + b.action);
   });
 }
@@ -347,6 +349,36 @@ function sortNewBooks() {
 function setupBookTrigger() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sortNewBooks').forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('sortNewBooks').timeBased().everyDays(1).atHour(3).inTimezone(TZ).create();
+}
+
+
+
+/** Change a few cells of one row (found by id) without rewriting the tab. Used for reading position. */
+function patchRow_(name, id, fields) {
+  if (!id || !fields) throw new Error('Nothing to change.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const s = sheet_(name);
+    const head = s.getRange(1, 1, 1, Math.max(1, s.getLastColumn())).getDisplayValues()[0];
+    Object.keys(fields).forEach(k => { if (head.indexOf(k) < 0) { head.push(k); s.getRange(1, head.length).setValue(k); } });
+    const ids = s.getLastRow() > 1 ? s.getRange(2, 1, s.getLastRow() - 1, 1).getDisplayValues().map(r => r[0]) : [];
+    let row = ids.indexOf(String(id)) + 2;
+    if (row < 2) { row = s.getLastRow() + 1; s.getRange(row, 1).setNumberFormat('@').setValue(String(id)); }
+    Object.keys(fields).forEach(k => s.getRange(row, head.indexOf(k) + 1).setNumberFormat('@').setValue(fields[k] == null ? '' : String(fields[k])));
+    return row;
+  } finally { lock.releaseLock(); }
+}
+
+/* ---------- EPUB reader: hand one book file to the app ---------- */
+function bookFile_(id) {
+  if (!id) throw new Error('No book chosen.');
+  const f = DriveApp.getFileById(id);
+  const name = f.getName();
+  if (f.getMimeType() !== 'application/epub+zip' && !/\.epub$/i.test(name)) throw new Error('This file is not an EPUB, so HQ cannot open it. Open it in Drive instead.');
+  const size = f.getSize();
+  if (size > 40 * 1024 * 1024) throw new Error('This book is ' + Math.round(size / 1048576) + ' MB, too big to open in HQ. Open it in Drive instead.');
+  return { ok: true, name: name, size: size, data: Utilities.base64Encode(f.getBlob().getBytes()) };
 }
 
 /** Run once from the editor to check everything is wired up. */

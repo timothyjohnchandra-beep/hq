@@ -124,6 +124,7 @@ input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid v
 .field{display:grid;gap:4px;margin-bottom:12px}
 .field label{font-size:13px;font-weight:600;color:var(--mut)}
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.rgoal{display:flex;gap:14px;align-items:center;background:var(--card);border-radius:16px;padding:12px 16px;margin:4px 0 10px}.rgoal svg{width:54px;height:54px;flex:none}.rgoal b{font-size:15px}
 .search{width:100%;margin:2px 0 6px;padding:10px 14px;border-radius:12px;border:0;background:var(--card);font:inherit;font-size:16px;color:var(--ink)}
 .lcat button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}.lcat .chev{margin-left:auto;color:var(--mut);font-weight:400}
 .brow{border-bottom:.5px solid var(--line)}.brow:last-child{border-bottom:0}
@@ -365,8 +366,8 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='10 · 22 Nov 2026';
-const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs'];
+const VERSION='11 · 22 Nov 2026';
+const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
 let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null),VERSE=ls.get('hq-verse',null);
@@ -604,7 +605,7 @@ function notes(){
  let body='';
  if(words.length){
   const res=all.filter(n=>matchQ(n,q)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const hl=D.highlights.filter(h=>words.every(w=>(h.passage+' '+(h.note||'')).toLowerCase().includes(w)));
+  const hl=D.highlights.filter(h=>(!h.kind||h.kind==='highlight')&&!yes(h.void)&&words.every(w=>(h.passage+' '+(h.note||'')).toLowerCase().includes(w)));
   body=`<h1 class="ntitle">Search</h1><p class="sub">${res.length} note${res.length===1?'':'s'}${hl.length?` and ${hl.length} highlight${hl.length===1?'':'s'}`:''}</p>
   ${res.length?groupHtml(res,mk,true):'<div class="group"><div class="empty">No notes match. Try fewer words.</div></div>'}
   <p class="samp">Tip: search #tag, @person, is:checklist, is:attachment, is:pinned or edited:7d.</p>
@@ -867,23 +868,37 @@ function pumpCovers(){if(!navigator.onLine)return;while(coverBusy<3&&coverQ.leng
  const t=b.title.replace(/\(.*?\)/g,'').split(':')[0].trim(),au=(b.author||'').split(/&|,/)[0].trim();
  fetch('https://openlibrary.org/search.json?limit=1&fields=cover_i&title='+encodeURIComponent(t)+(au&&!/\(eds?\)/.test(b.author)?'&author='+encodeURIComponent(au):'')).then(r=>r.json()).then(j=>{const d=j.docs&&j.docs[0];COVERS[b.id]=d&&d.cover_i?'https://covers.openlibrary.org/b/id/'+d.cover_i+'-M.jpg':''})
  .catch(()=>{}).finally(()=>{coverBusy--;ls.set('hq-covers',COVERS);document.querySelectorAll(`[data-cover="${CSS.escape(b.id)}"]`).forEach(el=>{el.outerHTML=coverEl(b,el.className.replace(' img',''))});pumpCovers()})}}
+const RCTX={get D(){return D},ls,say,uid,yes,ymd,live,api,post,touch,link:b=>bookLink(b),today:()=>TODAY,
+ newNote(title,html,folder){const n={id:uid(),kind:'note',title,folder:folder||'Notes',para:'',type:'Personal',people:'',date:TODAY,driveLink:'',tags:'book',void:'',pinned:'',text:''};BODY[n.id]=html;D.notes_index.push(n);touch('notes_index');touchNote(n.id);return n},
+ done(){if(UI.view==='library')library();else if(UI.view==='today')render()}};
+let readerLoading=null;
+async function openReader(b){if(!b)return;
+ if(!live()&&!/^b\d$/.test(b.id)){say('Connect your Google Sheet in Settings first, so HQ can fetch books from Drive.');return}
+ try{if(!window.HQReader){say('Opening the reader…');readerLoading=readerLoading||new Promise((res,rej)=>{const s=document.createElement('script');s.src='./reader.js?v='+encodeURIComponent(VERSION);s.onload=res;s.onerror=()=>{readerLoading=null;rej(new Error('The reader could not load. Check your connection.'))};document.head.appendChild(s)});await readerLoading}
+  closePane();window.HQReader.open(b,RCTX)}catch(e){say(e.message)}}
+function goalInfo(){const S=Object.assign({goal:10,yearGoal:24},ls.get('hq-rd',{}));const by={};(D.reading_log||[]).filter(r=>!yes(r.void)).forEach(r=>{by[r.date]=(by[r.date]||0)+Number(r.minutes||0)});
+ const today=by[TODAY]||0;let streak=0;const d=new Date();if(today<S.goal)d.setDate(d.getDate()-1);for(;;){const k=ymd(d);if((by[k]||0)>=S.goal){streak++;d.setDate(d.getDate()-1)}else break}
+ const yr=String(new Date().getFullYear());const done=D.books.filter(b=>!yes(b.void)&&String(b.finished||'').startsWith(yr)).length;return{today,streak,done,goal:S.goal,yearGoal:S.yearGoal}}
+function goalCard(){const g=goalInfo();const C=2*Math.PI*22,pc=Math.min(1,g.today/g.goal);
+ return `<div class="rgoal"><svg viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="22" stroke="var(--line)" stroke-width="6" fill="none"/><circle cx="27" cy="27" r="22" stroke="#c6613f" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pc)}" transform="rotate(-90 27 27)"/></svg><div><b>Reading goal: ${Math.round(g.today)} of ${g.goal} min today</b><div class="meta">${g.streak?g.streak+'-day streak · ':''}${g.done} of ${g.yearGoal} books finished this year</div></div></div>`}
 function bookDetail(b){const pts=String(b.keyPoints||'').split(/\n|\s\|\s/).map(x=>x.trim()).filter(Boolean);const rt=readTime(b.minutes);const pos=Math.round((Number(b.position)||0)*100);const lk=bookLink(b);
  return `<div class="bexp"><p class="bcat"><span class="pill" style="background:${CATCOL[b.category]||'var(--accsoft)'};color:#fff">${esc(LIBCATS[b.category]||b.category||'Book')}</span>${rt?` <span class="meta">About ${rt} to read</span>`:''}</p>
  ${b.summary?`<p>${esc(b.summary)}</p>`:'<p class="meta">Summary, uses and key points are being written. They appear here as each batch is done.</p>'}
  ${b.usefulFor?`<h4>Useful for</h4><p>${esc(b.usefulFor)}</p>`:''}
  ${pts.length?`<h4>Key points</h4><ul>${pts.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
- <div class="prow">${lk?`<a class="btn y" style="text-decoration:none" href="${esc(lk)}" target="_blank" rel="noopener">Open in Drive</a>`:''}<button class="btn" data-a="book" data-id="${esc(b.id)}">Progress${pos?' '+pos+'%':''} &amp; highlights</button></div></div>`}
+ <div class="prow"><button class="btn y" data-a="read" data-id="${esc(b.id)}">${pos?'Continue reading':'Read'}</button>${lk?`<a class="btn" style="text-decoration:none" href="${esc(lk)}" target="_blank" rel="noopener">Open in Drive</a>`:''}<button class="btn" data-a="book" data-id="${esc(b.id)}">Progress${pos?' '+pos+'%':''} &amp; highlights</button></div></div>`}
 function library(){
  const all=D.books.filter(b=>!yes(b.void));const q=(UI.libq||'').toLowerCase();
  const bks=q?all.filter(b=>(b.title+' '+b.author+' '+(b.summary||'')).toLowerCase().includes(q)):all;
  const open=UI.libOpen||{};const groups={};bks.forEach(b=>{const c=LIBCATS[b.category]?b.category:'00';(groups[c]=groups[c]||[]).push(b)});
- const reading=all.filter(b=>{const p=Number(b.position)||0;return p>0&&p<1});
+ const reading=all.filter(b=>{const p=Number(b.position)||0;return p>0&&!b.finished}).sort((x,y)=>String(y.lastRead||'').localeCompare(String(x.lastRead||'')));
  const rowB=b=>{const ex=UI.bookOpen===b.id;const rt=readTime(b.minutes);const pos=Math.round((Number(b.position)||0)*100);
   return `<div class="brow${ex?' open':''}"><button class="bhead" data-a="bexp" data-id="${esc(b.id)}" aria-expanded="${ex}"><span data-cover="${esc(b.id)}" class="bthumb${COVERS[b.id]?' img':''}">${COVERS[b.id]?`<img src="${esc(COVERS[b.id])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}${COVERS[b.id]?'':`<b style="background:${CATCOL[b.category]||'#3d5a4c'}">${esc(b.title.slice(0,40))}</b>`}</span><span class="bt"><span class="ttl">${esc(b.title)}</span><span class="meta">${esc(b.author||'')}${rt?' · '+rt:''}${pos?' · '+pos+'%':''}</span></span><span class="chev">›</span></button>${ex?bookDetail(b):''}</div>`};
  const cats=Object.keys(groups).sort();
  view.innerHTML=`<h1>Library</h1><p class="sub">${all.length} books in ${CATKEYS.filter(c=>all.some(b=>b.category===c)).length} categor${CATKEYS.filter(c=>all.some(b=>b.category===c)).length===1?'y':'ies'}, the same as your Drive Library folder.</p>
+ ${goalCard()}
  <input type="search" id="lib-q" class="search" placeholder="Search titles, authors, summaries" value="${esc(UI.libq||'')}" aria-label="Search the library">
- ${reading.length&&!q?`<h2>Reading now</h2><div class="group">${reading.map(rowB).join('')}</div>`:''}
+ ${reading.length&&!q?`<h2>Continue reading</h2><div class="group">${reading.map(rowB).join('')}</div>`:''}
  ${cats.map(c=>{const isOpen=q||open[c];return `<h2 class="lcat"><button data-a="lcat" data-v="${c}" aria-expanded="${!!isOpen}"><span class="dot" style="background:${CATCOL[c]||'#999'}"></span>${esc(LIBCATS[c]||'Other')} <span class="n">${groups[c].length}</span><span class="chev">${isOpen?'⌄':'›'}</span></button></h2>${isOpen?`<div class="group">${groups[c].sort((x,y)=>x.title.localeCompare(y.title)).map(rowB).join('')}</div>`:''}`}).join('')||'<div class="empty">No books match.</div>'}
  <h2>Add a book</h2><form class="quick" id="ab"><input type="text" id="ab-t" placeholder="Title" aria-label="Title"><input type="text" id="ab-a" placeholder="Author" aria-label="Author"><select id="ab-c" aria-label="Category">${CATKEYS.map(k=>`<option value="${k}">${esc(LIBCATS[k])}</option>`).join('')}</select><input type="text" id="ab-l" placeholder="Google Drive link (optional)" aria-label="Drive link"><button class="btn y">Add</button></form>
  <p class="samp">New EPUBs you drop anywhere in Drive are sorted into these folders each night.</p>`;
@@ -891,9 +906,9 @@ function library(){
  wantCovers(cats.filter(c=>q||open[c]).flatMap(c=>groups[c]).concat(reading).slice(0,80));
  $('#ab').onsubmit=e=>{e.preventDefault();const t=$('#ab-t').value.trim();if(!t){say('Type a title first.');return}D.books.push({id:uid(),title:t,author:$('#ab-a').value.trim(),category:$('#ab-c').value,driveLink:$('#ab-l').value.trim(),position:'0',updated:TODAY});touch('books');library();say('Book added.')}}
 function bookPane(b){
- const hl=D.highlights.filter(h=>h.bookId===b.id&&!yes(h.void));
+ const hl=D.highlights.filter(h=>h.bookId===b.id&&!yes(h.void)&&(!h.kind||h.kind==='highlight'));
  openPane(`<div class="detail"><div class="dhead">${back}</div><h1 style="font-size:26px">${esc(b.title)}</h1><p class="sub">${esc(b.author)}</p>
- ${bookLink(b)?`<a class="btn y" style="text-decoration:none;display:inline-block;margin-bottom:16px" href="${esc(bookLink(b))}" target="_blank" rel="noopener">Open in Google Drive</a>`:''}
+ <button class="btn y" data-a="read" data-id="${esc(b.id)}" style="margin:0 8px 16px 0">Read in HQ</button>${bookLink(b)?`<a class="btn" style="text-decoration:none;display:inline-block;margin-bottom:16px" href="${esc(bookLink(b))}" target="_blank" rel="noopener">Open in Google Drive</a>`:''}
  <div class="field"><label for="bk-p">Progress: <span id="bk-v">${Math.round((Number(b.position)||0)*100)}%</span></label><input type="range" id="bk-p" min="0" max="100" value="${Math.round((Number(b.position)||0)*100)}"></div>
  <h2>Highlights <span class="n">${hl.length}</span></h2>${grp(hl.map(h=>`<div class="row nt"><span class="dot m-${esc(h.colour||'y')}" style="width:10px;height:10px"></span><div><div class="ttl" style="font-family:'Source Serif 4',Georgia,serif">“${esc(h.passage)}”</div>${h.note?`<div class="meta">${esc(h.note)}</div>`:''}</div><span></span></div>`),'None yet.')}
  <h2>Add a highlight</h2><div class="field"><textarea id="hl-t" rows="3" placeholder="Paste or type the passage" aria-label="Passage"></textarea></div><div class="field"><input type="text" id="hl-n" placeholder="Your note (optional)" aria-label="Note"></div>
@@ -1043,6 +1058,7 @@ document.addEventListener('click',async e=>{
  if(a==='close')closePane();
  if(a==='go'){UI.view=v;saveUI();render()}
  if(a==='askclaude')claudePane();
+ if(a==='read'){openReader(find('books',id));return}
  if(a==='bexp'){UI.bookOpen=UI.bookOpen===id?'':id;saveUI();library();return}
  if(a==='lcat'){UI.libOpen=UI.libOpen||{};UI.libOpen[v]=!UI.libOpen[v];saveUI();library();return}
  if(a==='retry'){syncState={s:'loading'};showSync();dirty.size||dirtyNotes.size?flush():load()}
