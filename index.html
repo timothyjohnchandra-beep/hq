@@ -336,7 +336,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='6 · 22 Nov 2026';
+const VERSION='7 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -426,6 +426,8 @@ const grp=(rows,empty)=>`<div class="group">${rows.length?rows.join(''):`<div cl
 const maps=loc=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(loc)}`;
 
 /* ---------- TODAY ---------- */
+const WORSHIP=['Hillsong Worship','Elevation Worship','Bethel Music','Maverick City Music','Upperroom worship','Housefires','Planetshakers','JPCC Worship','GMS Live','True Worshippers','NDC Worship','Lagu rohani penyembahan','Jesus Culture','Phil Wickham','Brandon Lake','CityAlight','Gateway Worship','Kari Jobe'];
+const worshipMix=()=>'https://music.youtube.com/search?q='+encodeURIComponent(WORSHIP[Math.floor(Math.random()*WORSHIP.length)]);
 function todayItems(date){
  const ev=EV.filter(e=>!e.allDay&&!e.birthday&&ymd(new Date(e.start))===date).map(e=>{const s=new Date(e.start),en=new Date(e.end);return{kind:'event',id:e.id,title:e.title,time:hm(s),end:hm(en),part:partOf(s.getHours()),place:e.location,leave:e.leave?hm(new Date(e.leave)):'',travel:e.travelMin,from:e.from,done:evDone[e.id+date]}});
  const tk=D.tasks.filter(t=>!yes(t.void)&&t.date===date).map(t=>({kind:'task',id:t.id,title:t.title,part:t.part||'noon',world:t.world,done:t.status==='done'}));
@@ -451,7 +453,7 @@ function today(){
   <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
  </section>
- <div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||'https://music.youtube.com')}" target="_blank" rel="noopener"><i style="background:#ff0033"></i>Worship playlist</a></div>
+ <div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>
  ${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}
  ${['morning','noon','evening'].map(p=>`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>${grp(items.filter(i=>i.part===p).map(row),'Nothing planned.')}`).join('')}
  <h2 style="color:${over.length?'var(--red)':'inherit'}">Overdue <span class="n">${over.length}</span>${over.length?'<button class="btn link act" data-a="fresh">Fresh start</button>':''}</h2>${grp(over.map(row),'All caught up.')}
@@ -463,12 +465,12 @@ function today(){
   <select id="qa-c" aria-label="World"><option value="church">Church</option><option value="company">Company</option><option value="personal">Personal</option></select>
   <select id="qa-p" aria-label="Place"><option value="">No place</option>${D.places.filter(p=>p.address&&p.id!=='home').map(p=>`<option value="${esc(p.address)}">${esc(p.name)}</option>`).join('')}</select>
   <button class="btn y">Add</button></form>
- <p class="samp">With a time, it goes on your Google Calendar for 2 hours. Without one, it becomes a task.</p>
+ <p class="samp">With a time, it goes on your Google Calendar for 90 minutes. Without one, it becomes a task.</p>
  <h2>Tomorrow</h2>${grp(tm.map(row),'Nothing yet.')}`;
  $('#qa').onsubmit=async e=>{e.preventDefault();const title=$('#qa-t').value.trim();if(!title){say('Type something first.');return}
   const w=$('#qa-w').value,time=$('#qa-time').value,date=w==='tmrw'?TMRW:w==='today'?TODAY:'';
   if(time){if(!date){say('Pick today or tomorrow for a meeting.');return}if(!live()){say('Connect your Google Sheet first to add calendar events.');return}
-   try{say('Adding to your calendar…');await post({action:'addEvent',title,date,start:time,minutes:120,location:$('#qa-p').value});say('Added to Google Calendar.');const c=await api({action:'calendar',days:2});EV=c.events;ls.set('hq-ev',EV);render()}catch(err){say("Couldn't add it: "+err.message)}return}
+   try{say('Adding to your calendar…');await post({action:'addEvent',title,date,start:time,minutes:90,location:$('#qa-p').value});say('Added to Google Calendar.');const c=await api({action:'calendar',days:2});EV=c.events;ls.set('hq-ev',EV);render()}catch(err){say("Couldn't add it: "+err.message)}return}
   D.tasks.push({id:uid(),title,world:$('#qa-c').value,date,part:new Date().getHours()<12?'morning':'noon',status:'',void:'',created:TODAY,updated:TODAY});touch('tasks');render();say('Added.')}}
 function itemPane(k,id){
  if(k==='event'){const e=EV.find(x=>x.id===id);if(!e)return;const s=new Date(e.start);
@@ -930,7 +932,7 @@ function settings(){
   <p class="meta" id="s-msg" style="margin-top:10px">${live()?'Connected.':'Not connected. The app shows sample data until you connect.'}</p></div>
  <h2>Links</h2><div class="group" style="padding:16px">
   <div class="field"><label for="s-plan">YouVersion reading plan link</label><input type="text" id="s-plan" value="${esc(cfg.plan||'')}" placeholder="https://www.bible.com/reading-plans/…"></div>
-  <div class="field"><label for="s-pl">Worship playlist link</label><input type="text" id="s-pl" value="${esc(cfg.playlist||'')}" placeholder="https://music.youtube.com/playlist?list=…"></div>
+  <div class="field"><label for="s-pl">Worship playlist link</label><input type="text" id="s-pl" value="${esc(cfg.playlist||'')}" placeholder="Leave empty for a random worship mix each time"></div>
   <button class="btn y" data-a="links">Save links</button></div>
  <h2>App version</h2><div class="group" style="padding:16px"><p style="margin:0 0 10px">You have version <b>${VERSION}</b>.</p><button class="btn y" data-a="forceupdate">Get the latest version</button><p class="meta" style="margin-top:10px">Use this if something I fixed still looks broken. Your data and settings stay.</p></div>
  <h2>Data</h2><div class="group" style="padding:16px"><div class="prow"><button class="btn" data-a="reload">Reload from Google</button></div><p class="meta" style="margin-top:10px">${dirty.size+dirtyNotes.size?`${dirty.size+dirtyNotes.size} change(s) waiting to sync.`:'Everything is synced.'}</p></div>`}
@@ -941,6 +943,7 @@ function render(){ensure();TODAY=iso(0);TMRW=iso(1);document.querySelectorAll('.
 const find=(k,id)=>D[k].find(x=>x.id===id);
 document.addEventListener('click',async e=>{
  const tab=e.target.closest('.tab');if(tab){UI.view=tab.dataset.v;saveUI();closePane();render();$('#main').scrollTop=0;return}
+ const wl=e.target.closest('a[data-worship]');if(wl&&!cfg.playlist)wl.href=worshipMix();
  if(e.target.closest('a'))return;
  const el=e.target.closest('[data-a]');if(!el)return;
  const a=el.dataset.a,id=el.dataset.id,v=el.dataset.v,k=el.dataset.k;
