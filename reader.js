@@ -66,6 +66,7 @@ function shell() {
 #rdr .rsheet{position:absolute;left:0;right:0;bottom:0;max-height:58%;overflow:auto;background:var(--rui);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.2);z-index:5}
 @media(min-width:760px){#rdr .rsheet{left:auto;right:16px;bottom:72px;width:380px;border-radius:16px;max-height:70%}}
 #rdr .rsheet h3{margin:4px 0 10px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+#rdr .rsec{border-top:.5px solid rgba(128,128,128,.25)}#rdr .rsec:first-of-type{border-top:0}#rdr .rsec summary{list-style:none;display:flex;align-items:center;justify-content:space-between;padding:12px 2px;font-size:15px;font-weight:600;cursor:pointer}#rdr .rsec summary::-webkit-details-marker{display:none}#rdr .rchev{font-size:20px;opacity:.5;transition:transform .2s}#rdr .rsec[open] .rchev{transform:rotate(90deg)}#rdr .rsecb{padding:0 0 10px}#rdr .rsecb .rrow:last-child{border-bottom:0}
 #rdr .rsheet h4{margin:14px 0 6px;font-size:12px;opacity:.65;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 #rdr .rrow{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:10px 4px;border-bottom:.5px solid rgba(128,128,128,.25);font-size:15px}
 #rdr .rrow small{opacity:.6;margin-left:auto;font-size:12px;flex:none}
@@ -79,8 +80,8 @@ function shell() {
 #rdr .rline{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}#rdr .rline span{min-width:96px}#rdr .rline input[type=range]{flex:1;accent-color:#c6613f}
 #rdr .rbtn{padding:9px 14px;border-radius:10px;background:rgba(128,128,128,.18);font-size:14px}#rdr .rbtn.y{background:#ffd60a;color:#000;font-weight:600}
 #rdr .rsel{position:absolute;left:50%;transform:translateX(-50%);top:62px;z-index:6;background:var(--rui);border-radius:12px;box-shadow:0 6px 22px rgba(0,0,0,.22);padding:4px;max-width:94vw}
-#rdr .rsel .rrow{display:flex;flex-wrap:nowrap;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;white-space:nowrap}#rdr .rsel .rrow::-webkit-scrollbar{display:none}
-#rdr .rsel .rrow+.rrow{border-top:1px solid rgba(128,128,128,.2);margin-top:4px;padding-top:4px}
+#rdr .rsel .rsrow{display:flex;flex-wrap:nowrap;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;white-space:nowrap}#rdr .rsel .rsrow::-webkit-scrollbar{display:none}
+#rdr .rsel .rsrow+.rrow{border-top:1px solid rgba(128,128,128,.2);margin-top:4px;padding-top:4px}
 #rdr .rsel button{flex:0 0 auto;padding:7px 10px;border-radius:8px;font-size:13px;display:inline-flex;align-items:center;gap:5px}#rdr .rsel button:hover,#rdr .rsel button.on{background:rgba(128,128,128,.2)}
 #rdr .rsel .caret{font-size:9px;opacity:.6}
 #rdr .sw{width:22px;height:22px;border-radius:11px;display:inline-block;vertical-align:middle;border:1px solid rgba(0,0,0,.1)}
@@ -121,7 +122,8 @@ function paint() {
   const body = { 'background': t.bg + ' !important', 'color': t.fg + ' !important', 'line-height': S.lh + ' !important', 'letter-spacing': (S.sp / 100) + 'em', 'text-align': S.justify ? 'justify' : 'start', 'hyphens': S.justify ? 'auto' : 'manual', 'padding': '0 ' + (S.margin * 0.6) + 'em !important' };
   if (f) body['font-family'] = f + ' !important';
   if (t.weight) body['font-weight'] = t.weight + ' !important';
-  rend.themes.default({ body, 'p,li,div,span': Object.assign({ 'line-height': S.lh + ' !important' }, f ? { 'font-family': f + ' !important' } : {}), 'a': { color: t.dark ? '#9cc3ff !important' : '#1f5fbf !important' }, 'img': { 'max-width': '100% !important' }, '::selection': { background: 'rgba(255,214,10,.45)' } });
+  body['font-size'] = S.size + '% !important';
+  rend.themes.default({ 'html': { 'font-size': '100% !important' }, body, 'p,li,div,span,blockquote,dd,dt,td,th,pre,section,article': Object.assign({ 'line-height': S.lh + ' !important', 'font-size': '1em !important' }, f ? { 'font-family': f + ' !important' } : {}), 'small,sub,sup': { 'font-size': '0.8em !important' }, 'h1': { 'font-size': '1.6em !important', 'line-height': '1.25 !important' }, 'h2': { 'font-size': '1.35em !important', 'line-height': '1.3 !important' }, 'h3': { 'font-size': '1.15em !important' }, 'h4,h5,h6': { 'font-size': '1em !important' }, 'a': { color: t.dark ? '#9cc3ff !important' : '#1f5fbf !important' }, 'img': { 'max-width': '100% !important' }, '::selection': { background: 'rgba(255,214,10,.45)' } });
   rend.themes.fontSize(S.size + '%');
   try { if (f) rend.themes.override('font-family', f, true); else rend.themes.override('font-family', '', false); } catch (e) {}
 }
@@ -294,41 +296,32 @@ function onKey(e) {
 function sheet(html) { closeSheet(); el.insertAdjacentHTML('beforeend', `<div class="rsheet" role="dialog">${html}</div>`); chromeOn = true; el.classList.remove('bare'); return el.querySelector('.rsheet'); }
 function closeSheet() { el.querySelectorAll('.rsheet,.rsel').forEach(x => x.remove()); }
 const hd = (t) => `<h3>${t}<button class="rbtn" data-r="x">Done</button></h3>`;
+/* A section that can be opened or closed; remembers its state. */
+function sec(id, title, html, open) {
+  const o = S.secs && id in S.secs ? S.secs[id] : open;
+  return `<details class="rsec" data-sec="${id}"${o ? ' open' : ''}><summary>${title}<span class="rchev" aria-hidden="true">›</span></summary><div class="rsecb">${html}</div></details>`;
+}
+function watchSecs(box) { box.querySelectorAll('details[data-sec]').forEach(d => d.addEventListener('toggle', () => { S.secs = Object.assign({}, S.secs, { [d.dataset.sec]: d.open }); saveS(); })); }
 function aaSheet() {
   if (pdf) { sheet(`${hd('Themes &amp; Settings')}<div class="rline" style="justify-content:space-between"><button class="rbtn" data-r="zoom" data-v="-0.15" aria-label="Zoom out">−</button><span style="text-align:center;flex:1">Zoom ${Math.round(pdfZoom * 100)}%</span><button class="rbtn" data-r="zoom" data-v="0.15" aria-label="Zoom in">+</button></div><div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}"><b>Aa</b>${t.name}</button>`).join('')}</div><div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div><div class="rline"><span>Reading ruler</span><button class="rbtn" data-r="tog" data-v="ruler">${S.ruler ? 'On' : 'Off'}</button></div><p style="font-size:13px;opacity:.7">This is a PDF, so its pages keep their printed layout. Fonts and spacing apply to EPUB books.</p>`); return; }
   const s = sheet(`${hd('Themes &amp; Settings')}
-  <div class="rsize"><button data-r="fs" data-v="-10" aria-label="Smaller text" style="font-size:14px">A</button><span id="r-fsv">${S.size}%</span><button data-r="fs" data-v="10" aria-label="Larger text" style="font-size:22px">A</button></div>
-  <div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}${t.weight ? ';font-weight:700' : ''}"><b>Aa</b>${t.name}</button>`).join('')}</div>
-  <div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div>
-  <h4>Font</h4><div class="rfonts">${Object.entries(FONTS).map(([k, f]) => `<button class="${S.font === k ? 'on' : ''}" data-r="font" data-v="${k}" style="${f[1] ? 'font-family:' + f[1].replace(/"/g, "'") : ''}">Aa<small>${f[0]}</small></button>`).join('')}</div>
-  <h4>Customise</h4>
-  <div class="rline"><span>Line spacing</span><input type="range" min="1.1" max="2.2" step="0.1" value="${S.lh}" data-set="lh"></div>
-  <div class="rline"><span>Letter spacing</span><input type="range" min="0" max="12" step="1" value="${S.sp}" data-set="sp"></div>
-  <div class="rline"><span>Margins</span><input type="range" min="0" max="5" step="1" value="${S.margin}" data-set="margin"></div>
-  <div class="rline"><span>Justify text</span><button class="rbtn" data-r="tog" data-v="justify">${S.justify ? 'On' : 'Off'}</button></div>
-  <div class="rline"><span>Page turn</span><div class="rseg" style="flex:1"><button class="${S.flow === 'paginated' ? 'on' : ''}" data-r="flow" data-v="paginated">Pages</button><button class="${S.flow === 'scrolled' ? 'on' : ''}" data-r="flow" data-v="scrolled">Scroll</button></div></div>
-  <div class="rline"><span>Animation</span><div class="rseg" style="flex:1">${[['slide', 'Slide'], ['fade', 'Fade'], ['none', 'None']].map(([k, n]) => `<button class="${S.anim === k ? 'on' : ''}" data-r="anim" data-v="${k}">${n}</button>`).join('')}</div></div>
-  <div class="rline"><span>Reading ruler</span><button class="rbtn" data-r="tog" data-v="ruler">${S.ruler ? 'On' : 'Off'}</button></div>
-  <button class="rbtn" data-r="reset" style="margin-top:6px">Reset to defaults</button>`);
+  ${sec('text', 'Text size &amp; font', `<div class="rsize"><button data-r="fs" data-v="-10" aria-label="Smaller text" style="font-size:14px">A</button><span id="r-fsv">${S.size}%</span><button data-r="fs" data-v="10" aria-label="Larger text" style="font-size:22px">A</button></div><div class="rfonts">${Object.entries(FONTS).map(([k, f]) => `<button class="${S.font === k ? 'on' : ''}" data-r="font" data-v="${k}" style="${f[1] ? 'font-family:' + f[1].replace(/"/g, "'") : ''}">Aa<small>${f[0]}</small></button>`).join('')}</div>`, true)}
+  ${sec('theme', 'Theme', `<div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}${t.weight ? ';font-weight:700' : ''}"><b>Aa</b>${t.name}</button>`).join('')}</div><div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div>`, false)}
+  ${sec('layout', 'Spacing &amp; margins', `<div class="rline"><span>Line spacing</span><input type="range" min="1.1" max="2.2" step="0.1" value="${S.lh}" data-set="lh"></div><div class="rline"><span>Letter spacing</span><input type="range" min="0" max="12" step="1" value="${S.sp}" data-set="sp"></div><div class="rline"><span>Margins</span><input type="range" min="0" max="5" step="1" value="${S.margin}" data-set="margin"></div><div class="rline"><span>Justify text</span><button class="rbtn" data-r="tog" data-v="justify">${S.justify ? 'On' : 'Off'}</button></div>`, false)}
+  ${sec('turn', 'Page turning', `<div class="rline"><span>Page turn</span><div class="rseg" style="flex:1"><button class="${S.flow === 'paginated' ? 'on' : ''}" data-r="flow" data-v="paginated">Pages</button><button class="${S.flow === 'scrolled' ? 'on' : ''}" data-r="flow" data-v="scrolled">Scroll</button></div></div><div class="rline"><span>Animation</span><div class="rseg" style="flex:1">${[['slide', 'Slide'], ['fade', 'Fade'], ['none', 'None']].map(([k, n]) => `<button class="${S.anim === k ? 'on' : ''}" data-r="anim" data-v="${k}">${n}</button>`).join('')}</div></div>`, false)}
+  ${sec('tools', 'Reading tools', `<div class="rline"><span>Reading ruler</span><button class="rbtn" data-r="tog" data-v="ruler">${S.ruler ? 'On' : 'Off'}</button></div><button class="rbtn" data-r="reset" style="margin-top:6px">Reset to defaults</button>`, false)}`);
+  watchSecs(s);
   s.querySelectorAll('[data-set]').forEach(i => i.oninput = () => { S[i.dataset.set] = Number(i.value); saveS(); paint(); });
 }
 function moreSheet() {
   const g = goalStats(); const pc = Math.min(1, g.today / S.goal), C = 2 * Math.PI * 26;
   sheet(`${hd(esc(B.title))}
   <div class="ring"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" stroke="rgba(128,128,128,.25)" stroke-width="6" fill="none"/><circle cx="32" cy="32" r="26" stroke="#c6613f" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pc)}" transform="rotate(-90 32 32)"/></svg><div><b>${Math.round(g.today)} of ${S.goal} min today</b><br><small style="opacity:.7">${g.streak ? g.streak + '-day streak · ' : ''}${g.done} of ${S.yearGoal} books finished this year</small></div></div>
-  <button class="rrow" data-r="toc">Contents<small>${B._toc ? B._toc.length + ' parts' : ''}</small></button>
-  <button class="rrow" data-r="notes">Highlights &amp; Notes<small>${marks().filter(m => !m.kind || m.kind === 'highlight').length}</small></button>
-  <button class="rrow" data-r="bms">Bookmarks<small>${marks().filter(m => m.kind === 'bookmark').length}</small></button>
-  <button class="rrow" data-r="cards">Study cards<small>from your highlights</small></button>
-  <button class="rrow" data-r="words">Vocabulary<small>${marks().filter(m => m.kind === 'word').length} words</small></button>
-  <button class="rrow" data-r="search">Search book</button>
-  <button class="rrow" data-r="goto">Go to page or %</button>
-  <button class="rrow" data-r="speak">${speaking ? 'Stop reading aloud' : 'Read aloud'}</button>
-  <button class="rrow" data-r="recap">Story so far<small>recap with Claude</small></button>
-  <button class="rrow" data-r="export">Send all notes to HQ Notes</button>
-  <button class="rrow" data-r="goal">Reading goals</button>
-  <button class="rrow" data-r="finish">${B.finished ? 'Mark as still reading' : 'Mark as finished'}</button>
-  ${X.link(B) ? `<a class="rrow" style="color:inherit;text-decoration:none" href="${esc(X.link(B))}" target="_blank" rel="noopener">Open file in Google Drive</a>` : ''}`);
+  ${sec('nav', 'Find your way', `<button class="rrow" data-r="toc">Contents<small>${B._toc ? B._toc.length + ' parts' : ''}</small></button><button class="rrow" data-r="search">Search book</button><button class="rrow" data-r="goto">Go to page or %</button><button class="rrow" data-r="bms">Bookmarks<small>${marks().filter(m => m.kind === 'bookmark').length}</small></button>`, true)}
+  ${sec('mine', 'Highlights &amp; study', `<button class="rrow" data-r="notes">Highlights &amp; Notes<small>${marks().filter(m => !m.kind || m.kind === 'highlight').length}</small></button><button class="rrow" data-r="cards">Study cards<small>from your highlights</small></button><button class="rrow" data-r="words">Vocabulary<small>${marks().filter(m => m.kind === 'word').length} words</small></button><button class="rrow" data-r="export">Send all notes to HQ Notes</button>`, false)}
+  ${sec('listen', 'Listen &amp; Claude', `<button class="rrow" data-r="speak">${speaking ? 'Stop reading aloud' : 'Read aloud'}</button><button class="rrow" data-r="recap">Story so far<small>recap with Claude</small></button>`, false)}
+  ${sec('progress', 'Goals &amp; book', `<button class="rrow" data-r="goal">Reading goals</button><button class="rrow" data-r="finish">${B.finished ? 'Mark as still reading' : 'Mark as finished'}</button>${X.link(B) ? `<a class="rrow" style="color:inherit;text-decoration:none" href="${esc(X.link(B))}" target="_blank" rel="noopener">Open file in Google Drive</a>` : ''}`, false)}`);
+  watchSecs(el.querySelector('.rsheet'));
 }
 function tocSheet() {
   if (pdf) { pdfToc(); return; }
@@ -403,17 +396,17 @@ function selBar() {
   closeSheet();
   const last = COLS[S.hlc] ? S.hlc : 'y';
   el.insertAdjacentHTML('beforeend', `<div class="rsel" role="menu">
-  <div class="rrow"><button data-r="hlpick" aria-expanded="false"><span class="sw" style="width:14px;height:14px;background:${COLS[last][1]}"></span>Highlight <span class="caret">▼</span></button><button data-r="addnote">Note</button><button data-r="copy">Copy</button><button data-r="ask">Ask Claude</button><button data-r="selmore" aria-label="More options" aria-expanded="false">•••</button></div></div>`);
+  <div class="rsrow"><button data-r="hlpick" aria-expanded="false"><span class="sw" style="width:14px;height:14px;background:${COLS[last][1]}"></span>Highlight <span class="caret">▼</span></button><button data-r="addnote">Note</button><button data-r="copy">Copy</button><button data-r="ask">Ask Claude</button><button data-r="selmore" aria-label="More options" aria-expanded="false">•••</button></div></div>`);
 }
 function selRow(kind) {
   const box = el.querySelector('.rsel'); if (!box) return;
-  const open = box.querySelector('.rrow[data-k="' + kind + '"]'); box.querySelectorAll('.rrow[data-k]').forEach(x => x.remove());
+  const open = box.querySelector('.rsrow[data-k="' + kind + '"]'); box.querySelectorAll('.rsrow[data-k]').forEach(x => x.remove());
   box.querySelectorAll('[aria-expanded]').forEach(b => { b.setAttribute('aria-expanded', 'false'); b.classList.remove('on'); });
   if (open) return;
   const html = kind === 'hl'
     ? Object.entries(COLS).map(([k, c]) => `<button data-r="hl" data-v="${k}" aria-label="Highlight ${c[0]}"><span class="sw" style="background:${c[1]}"></span></button>`).join('') + '<button data-r="ul">Underline</button>'
     : '<button data-r="cite">Copy with source</button><button data-r="lookup">Look up</button><button data-r="translate">Translate</button><button data-r="tonotes">Send to Notes</button><button data-r="findsel">Search</button>';
-  box.insertAdjacentHTML('beforeend', `<div class="rrow" data-k="${kind}">${html}</div>`);
+  box.insertAdjacentHTML('beforeend', `<div class="rsrow" data-k="${kind}">${html}</div>`);
   const b = box.querySelector(kind === 'hl' ? '[data-r="hlpick"]' : '[data-r="selmore"]'); b.setAttribute('aria-expanded', 'true'); b.classList.add('on');
 }
 function closeSel() { el.querySelectorAll('.rsel').forEach(x => x.remove()); try { sel && sel.contents.window.getSelection().removeAllRanges(); } catch (e) {} sel = null; }
