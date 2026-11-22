@@ -55,6 +55,12 @@ main{overflow-y:auto;padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,
 h1{font-size:34px;line-height:1.05;letter-spacing:-.02em;margin:0 0 2px;font-weight:700}
 .sub{color:var(--mut);font-size:15px;margin:0 0 18px}
 h2{font-size:20px;letter-spacing:-.01em;margin:26px 0 8px;font-weight:700;display:flex;align-items:center;gap:8px}
+.emails .em{border-bottom:1px solid var(--line)}.emails .em:last-child{border-bottom:0}
+.em>summary{list-style:none;display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 14px;cursor:pointer}.em>summary::-webkit-details-marker{display:none}
+.em-dot{width:8px;height:8px;border-radius:4px;background:#0a84ff}.em-dot.imp{background:#ffd60a;box-shadow:0 0 0 1px #c69500}
+.em-t{min-width:0;display:flex;flex-direction:column}.em-t b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.em-t span{font-size:14px;color:var(--mut,#6e6e73);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.em[open] .em-t span{white-space:normal}.em-w{font-size:12px;color:var(--mut,#6e6e73);align-self:start;padding-top:3px;white-space:nowrap}
+.em-b{padding:0 14px 12px 34px}.em-g{white-space:pre-line;font-size:14px;line-height:1.5;margin:0 0 8px;max-height:16em;overflow:auto}
 .tsec>summary{list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent}.tsec>summary::-webkit-details-marker{display:none}
 .tsec>summary h2{margin:22px 0 8px}.tsec>summary h2::before{content:'';width:8px;height:8px;border-right:2px solid var(--y2,#c69500);border-bottom:2px solid var(--y2,#c69500);transform:rotate(45deg);margin:0 4px 3px 2px;transition:transform .2s;flex:none}
 .tsec:not([open])>summary h2::before{transform:rotate(-45deg);margin-bottom:0}.tsec:not([open])>summary h2{margin:14px 0 4px;opacity:.85}
@@ -370,7 +376,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='19 · 22 Nov 2026';
+const VERSION='20 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -387,7 +393,7 @@ function sample(){
  const t=new Date();const at=(h,m,dur,o=0)=>{const s=new Date(t.getFullYear(),t.getMonth(),t.getDate()+o,h,m);return[s.toISOString(),new Date(s.getTime()+dur*6e4).toISOString()]};
  const ev=(id,title,h,m,dur,loc,travel,o,from)=>{const[s,e]=at(h,m,dur,o);const x={id,title,start:s,end:e,location:loc||'',calendar:'Sample',allDay:false};if(travel){x.travelMin=travel;x.from=from||'home';x.leave=new Date(new Date(s).getTime()-(travel+10)*6e4).toISOString()}return x};
  EV=[ev('e1','Church staff meeting',13,0,90,'Jl. Jelambar Madya Utara No.145A',25),ev('e2','HQ session with Claude',17,0,60,''),ev('e3','Encounter Night',19,0,120,'Jl. Jelambar Madya Utara No.145A',30),ev('e4','Build: Komsel leaders',10,0,120,'Jl. Jelambar Madya Utara No.145A',25,1)];
- BRIEF={unread:31,important:[{from:'Client (sample)',subject:'Revised quotation request',link:''},{from:'Finance (sample)',subject:'November cash report',link:''}]};
+ BRIEF={unread:31,important:[{from:'Client (sample)',subject:'Revised quotation request',link:''},{from:'Finance (sample)',subject:'November cash report',link:''}],emails:[{from:'Client (sample)',subject:'Revised quotation request',date:new Date().toISOString(),important:true,count:3,gist:'Hi Pak Timothy,\n\nCould you send the revised quotation for 2,000 kg by Friday? We also need the delivery schedule.\n\nThank you.',files:['spec.pdf'],link:''},{from:'Finance (sample)',subject:'November cash report',date:new Date(Date.now()-864e5).toISOString(),count:1,gist:'Attached is the November cash report for your review.',files:[],link:''}]};
  BODY={n1:'<h1>The Prodigal Son</h1><p>Luke 15:11–32. Series: <mark class="m-y">Parables of Jesus</mark>.</p><h2>Big idea</h2><p>The father runs first.</p><hr><ul><li>The younger son: lost far away</li><li>The older son: lost at home</li></ul>',n2:'<h1>Ops review</h1><p>With operations, maintenance and planning.</p>',n3:'<h1>HQ plan and email sort</h1><p>Decisions, to-dos and links from the session.</p>'};
  return{tasks:[
   {id:'t1',title:'Send Build agenda to Komsel leaders',world:'church',date:TODAY,part:'noon',status:''},
@@ -502,6 +508,17 @@ const TSO=ls.get('hq-today-open',{});
 function tsec(key,head,body){return `<details class="tsec" data-ts="${key}"${TSO[key]===false?'':' open'}><summary>${head}</summary><div class="tsb">${body}</div></details>`}
 function watchToday(){view.querySelectorAll('details.tsec').forEach(d=>d.addEventListener('toggle',()=>{TSO[d.dataset.ts]=d.open;ls.set('hq-today-open',TSO);tsLabel()}));tsLabel()}
 function tsLabel(){const b=view.querySelector('.tsall');if(b)b.textContent=[...view.querySelectorAll('details.tsec')].some(d=>d.open)?'Close all':'Open all'}
+/* Email list: tap a row to open the gist of that email. */
+function emailList(){
+ if(!BRIEF)return grp([],live()?'Loading your inbox…':'Connect your Google Sheet in Settings to see your email here.');
+ const L=BRIEF.emails||BRIEF.important||[];const when=d=>{if(!d)return'';const x=new Date(d);return ymd(x)===TODAY?hm(x):x.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+ const rows=L.map((m,i)=>{const ask='Give me the gist of this email in 3 short points and tell me what I need to do, if anything.\n\nFrom: '+(m.from||'')+'\nSubject: '+(m.subject||'')+'\n\n'+(m.gist||'');
+  return `<details class="em"><summary><span class="em-dot${m.important?' imp':''}" aria-hidden="true"></span><span class="em-t"><b>${esc(m.from||'Unknown sender')}</b><span>${esc(m.subject||'(no subject)')}</span></span><span class="em-w">${esc(when(m.date))}${m.count>1?` · ${m.count}`:''}${m.files&&m.files.length?' 📎':''}</span></summary>
+  <div class="em-b">${m.gist?`<p class="em-g">${esc(m.gist)}</p>`:'<p class="meta">Update the bridge script to see what each email says here.</p>'}
+  ${m.files&&m.files.length?`<p class="meta">Attached: ${m.files.map(esc).join(', ')}</p>`:''}
+  <div class="prow">${m.link?`<a class="btn y" style="text-decoration:none" href="${esc(m.link)}" target="_blank" rel="noopener">Open in Gmail</a>`:''}<a class="btn" style="text-decoration:none;color:inherit" href="https://claude.ai/new?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">Ask Claude</a><button class="btn" data-a="emtask" data-v="${i}">Make a task</button></div></div></details>`});
+ return `<div class="group emails">${rows.length?rows.join(''):'<div class="empty">No unread email. Inbox clear.</div>'}</div>${BRIEF.unread>L.length?`<p class="samp">${BRIEF.unread} unread in total. <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">Open Gmail</a></p>`:''}`;
+}
 function today(){
  const items=todayItems(TODAY),tm=todayItems(TMRW).filter(i=>i.kind!=='habit');
  const over=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done'&&t.for!=='claude').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,date:t.date}));
@@ -517,6 +534,7 @@ function today(){
   <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
  </section>`)}
+ ${tsec('email',`<h2>Email <span class="n">${BRIEF?BRIEF.unread:''}</span></h2>`,emailList())}
  ${tsec('verse','<h2>Verse of the day</h2>',`${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}`)}
  ${tsec('news','<h2>News brief</h2>',newsBrief())}
  ${tsec('links','<h2>Quick links</h2>',`<div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>`)}
@@ -1074,6 +1092,7 @@ document.addEventListener('click',async e=>{
  const el=e.target.closest('[data-a]');if(!el)return;
  if(el.closest('summary'))e.preventDefault();
  const a=el.dataset.a,id=el.dataset.id,v=el.dataset.v,k=el.dataset.k;
+ if(a==='emtask'){const m=((BRIEF&&(BRIEF.emails||BRIEF.important))||[])[+v];if(!m)return;D.tasks.push({id:uid(),title:'Reply: '+(m.subject||'email')+(m.from?' ('+m.from+')':''),world:'company',date:TODAY,part:new Date().getHours()<12?'morning':'noon',status:'',notes:m.link||'',void:'',created:TODAY,updated:TODAY});touch('tasks');render();say('Added to today.');return}
  if(a==='tsall'){const open=el.textContent==='Open all';view.querySelectorAll('details.tsec').forEach(d=>{d.open=open;TSO[d.dataset.ts]=open});ls.set('hq-today-open',TSO);tsLabel();return}
  if(a==='tick'){e.stopPropagation();buzz();
   if(k==='task'){const t=find('tasks',id);t.status=t.status==='done'?'':'done';t.updated=TODAY;touch('tasks')}
@@ -1139,6 +1158,18 @@ document.addEventListener('click',async e=>{
  if(a==='forceupdate'){say('Updating…');forceUpdate()}
 });
 addEventListener('keydown',e=>{if(e.key==='Escape')closePane()});
+/* Back button (Android, iPhone swipe-back in the browser): step back inside HQ instead of leaving it.
+   Order: reader panel or menu → reader → open item → previous tab → Today. On Today, a second back leaves. */
+let backArmed=false;const guard=()=>{try{history.pushState({hq:1},'')}catch(e){}};
+try{history.replaceState({hq:0},'');guard()}catch(e){}
+addEventListener('popstate',()=>{
+ const rd=document.getElementById('rdr');
+ if(rd){const sh=rd.querySelector('.rsheet,.rsel');if(sh){rd.querySelectorAll('.rsheet,.rsel').forEach(x=>x.remove())}else{try{window.HQReader.close()}catch(e){rd.remove()}}guard();return}
+ if(pane.classList.contains('open')){closePane();guard();return}
+ if(UI.view!=='today'){UI.view='today';saveUI();render();$('#main').scrollTop=0;guard();return}
+ if(!backArmed){backArmed=true;say('Press back again to leave HQ.');guard();setTimeout(()=>backArmed=false,2500);return}
+ history.back();
+});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&live()&&iso(0)!==TODAY)load()});
 if('serviceWorker' in navigator&&location.protocol==='https:'){
  navigator.serviceWorker.register('sw.js').then(reg=>{reg.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update()})}).catch(()=>{});

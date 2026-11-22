@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-22 18:00'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-22 23:30'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -180,13 +180,20 @@ function addEvent_(b) {
 function brief_() {
   const unread = GmailApp.search('in:inbox is:unread', 0, 100).length;
   const imp = GmailApp.search('in:inbox is:unread is:important -category:promotions -category:social', 0, 6);
-  return {
-    unread: unread,
-    important: imp.map(t => {
-      const m = t.getMessages().pop();
-      return { from: m.getFrom().replace(/<.*>/, '').replace(/"/g, '').trim(), subject: t.getFirstMessageSubject(), date: m.getDate().toISOString(), link: 'https://mail.google.com/mail/u/0/#inbox/' + t.getId() };
-    })
-  };
+  const card = t => { const m = t.getMessages().pop(); return { from: m.getFrom().replace(/<.*>/, '').replace(/"/g, '').trim(), subject: t.getFirstMessageSubject(), date: m.getDate().toISOString(), link: 'https://mail.google.com/mail/u/0/#inbox/' + t.getId() }; };
+  // Email list for Today: newest unread first, each with the gist (the start of the latest message, without quoted replies).
+  const list = GmailApp.search('in:inbox is:unread -category:promotions -category:social', 0, 15).map(t => {
+    const m = t.getMessages().pop(), c = card(t);
+    let body = '';
+    try { body = m.getPlainBody() || ''; } catch (e) {}
+    body = body.split(/\n\s*(On .{0,200}wrote:|From: .+\n(Sent|Date): |-{2,}\s*Original Message|Pada .{0,200}menulis:|>)/)[0];
+    body = body.replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    c.gist = body.length > 700 ? body.slice(0, 700).replace(/\s+\S*$/, '') + '…' : body;
+    c.count = t.getMessageCount(); c.important = t.hasStarredMessages() || t.isImportant();
+    try { c.files = m.getAttachments().map(a => a.getName()).slice(0, 5); } catch (e) { c.files = []; }
+    return c;
+  });
+  return { unread: unread, important: imp.map(card), emails: list };
 }
 
 /* ---------- Notes bodies in Drive ---------- */
