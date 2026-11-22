@@ -285,6 +285,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
+const VERSION='4 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -711,6 +712,7 @@ function settings(){
   <div class="field"><label for="s-plan">YouVersion reading plan link</label><input type="text" id="s-plan" value="${esc(cfg.plan||'')}" placeholder="https://www.bible.com/reading-plans/…"></div>
   <div class="field"><label for="s-pl">Worship playlist link</label><input type="text" id="s-pl" value="${esc(cfg.playlist||'')}" placeholder="https://music.youtube.com/playlist?list=…"></div>
   <button class="btn y" data-a="links">Save links</button></div>
+ <h2>App version</h2><div class="group" style="padding:16px"><p style="margin:0 0 10px">You have version <b>${VERSION}</b>.</p><button class="btn y" data-a="forceupdate">Get the latest version</button><p class="meta" style="margin-top:10px">Use this if something I fixed still looks broken. Your data and settings stay.</p></div>
  <h2>Data</h2><div class="group" style="padding:16px"><div class="prow"><button class="btn" data-a="reload">Reload from Google</button></div><p class="meta" style="margin-top:10px">${dirty.size+dirtyNotes.size?`${dirty.size+dirtyNotes.size} change(s) waiting to sync.`:'Everything is synced.'}</p></div>`}
 
 /* ---------- routing & events ---------- */
@@ -764,10 +766,14 @@ document.addEventListener('click',async e=>{
  if(a==='disconnect'){cfg={plan:cfg.plan,playlist:cfg.playlist};ls.set('hq-cfg',cfg);D=sample();dirty.clear();dirtyNotes.clear();persist();syncState={s:'sample'};render();say('Disconnected. Showing sample data.')}
  if(a==='links'){cfg.plan=$('#s-plan').value.trim();cfg.playlist=$('#s-pl').value.trim();ls.set('hq-cfg',cfg);say('Links saved.')}
  if(a==='reload')load();
+ if(a==='forceupdate'){say('Updating…');forceUpdate()}
 });
 addEventListener('keydown',e=>{if(e.key==='Escape')closePane()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&live()&&iso(0)!==TODAY)load()});
-if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+ navigator.serviceWorker.register('sw.js').then(reg=>{reg.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update()})}).catch(()=>{});
+ let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded)return;reloaded=true;const ed=$('#ed');if(ed&&document.activeElement===ed)return;location.reload()})}
+async function forceUpdate(){try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()))}if(window.caches){const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)))}}catch(e){}location.reload()}
 ensure();load();
 }
 </script>
