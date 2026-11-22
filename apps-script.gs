@@ -9,7 +9,7 @@ const TZ = 'Asia/Jakarta';
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
-const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs', 'reading_log'];
+const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs', 'reading_log', 'meetings'];
 
 function doGet(e) {
   return handle_(() => {
@@ -26,6 +26,7 @@ function doGet(e) {
     if (a === 'contacts') return { ok: true, contacts: contacts_() };
     if (a === 'book') return bookFile_(p.id);
     if (a === 'sortbooks') return { ok: true, log: sortNewBooks() };
+    if (a === 'meetings') return { ok: true, log: exportFireflies() };
     throw new Error('Unknown action: ' + a);
   });
 }
@@ -418,6 +419,77 @@ function bookFile_(id) {
   const size = f.getSize();
   if (size > 40 * 1024 * 1024) throw new Error('This book is ' + Math.round(size / 1048576) + ' MB, too big to open in HQ. Open it in Drive instead.');
   return { ok: true, name: name, size: size, format: pdf ? 'pdf' : 'epub', data: Utilities.base64Encode(f.getBlob().getBytes()) };
+}
+
+
+/* ---------- Fireflies → Drive (Claude/Meetings) + meetings tab ---------- */
+// Put your Fireflies API key in Project Settings › Script properties as FIREFLIES_KEY (never in the code).
+// Set FIREFLIES_DELETE to yes only after you've checked the first exports: then each exported meeting is removed
+// from Fireflies to free your minutes. Everything stays in Drive and in HQ.
+function ffQuery_(query, variables) {
+  const key = PropertiesService.getScriptProperties().getProperty('FIREFLIES_KEY');
+  if (!key) throw new Error('Add your Fireflies API key in Project Settings › Script properties as FIREFLIES_KEY.');
+  const r = UrlFetchApp.fetch('https://api.fireflies.ai/graphql', { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + key }, payload: JSON.stringify({ query: query, variables: variables || {} }) });
+  const j = JSON.parse(r.getContentText() || '{}');
+  if (r.getResponseCode() >= 300 || j.errors) throw new Error('Fireflies: ' + ((j.errors && j.errors[0] && j.errors[0].message) || ('error ' + r.getResponseCode())));
+  return j.data;
+}
+const FF_FIELDS = 'id title date duration transcript_url organizer_email participants summary { overview short_summary shorthand_bullet action_items keywords } sentences { speaker_name text start_time }';
+function ffTime_(s) { s = Math.floor(Number(s) || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' : '') + (h && m < 10 ? '0' : '') + m + ':' + (x < 10 ? '0' : '') + x; }
+function ffDoc_(t, folder) {
+  const d = new Date(Number(t.date)), day = Utilities.formatDate(d, TZ, 'yyyy-MM-dd'), time = Utilities.formatDate(d, TZ, 'HH:mm');
+  const doc = DocumentApp.create(day + ' – ' + (t.title || 'Meeting'));
+  const b = doc.getBody(), S = t.summary || {};
+  b.appendParagraph(t.title || 'Meeting').setHeading(DocumentApp.ParagraphHeading.TITLE);
+  b.appendParagraph(day + ' ' + time + ' · ' + Math.round(Number(t.duration) || 0) + ' min' + (t.participants && t.participants.length ? ' · ' + t.participants.join(', ') : ''));
+  b.appendParagraph('Original in Fireflies: ' + (t.transcript_url || ''));
+  const sec = (h, txt) => { if (!txt) return; b.appendParagraph(h).setHeading(DocumentApp.ParagraphHeading.HEADING1); String(txt).split('\n').forEach(l => { if (l.trim()) b.appendParagraph(l.replace(/\*\*/g, '')); }); };
+  sec('Summary', S.short_summary || S.overview);
+  sec('Overview', S.short_summary ? S.overview : '');
+  sec('Action items', S.action_items);
+  sec('Notes', S.shorthand_bullet);
+  if (S.keywords && S.keywords.length) b.appendParagraph('Keywords: ' + [].concat(S.keywords).join(', '));
+  b.appendParagraph('Transcript').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  let last = null, para = '';
+  (t.sentences || []).forEach(s => { if (s.speaker_name !== last) { if (para) b.appendParagraph(para); para = '[' + ffTime_(s.start_time) + '] ' + (s.speaker_name || 'Speaker') + ': ' + s.text; last = s.speaker_name; } else para += ' ' + s.text; });
+  if (para) b.appendParagraph(para);
+  if (!(t.sentences || []).length) b.appendParagraph('Fireflies had no transcript for this recording.');
+  doc.saveAndClose();
+  const f = DriveApp.getFileById(doc.getId()); f.moveTo(folder);
+  return { id: doc.getId(), url: doc.getUrl(), day: day };
+}
+/** Every 3 days: copy new Fireflies meetings (summary + transcript) to Drive and the meetings tab, then (if allowed) free the minutes. */
+function exportFireflies() {
+  const props = PropertiesService.getScriptProperties(), done = JSON.parse(props.getProperty('ffDone') || '{}');
+  const del = String(props.getProperty('FIREFLIES_DELETE') || '').toLowerCase() === 'yes';
+  const root = sub_(rootFolder_(), 'Meetings'), log = [];
+  const list = []; for (let skip = 0; skip < 500; skip += 50) { const d = ffQuery_('query($s:Int){ transcripts(limit:50, skip:$s){ id title date duration } }', { s: skip }); const ts = (d && d.transcripts) || []; list.push.apply(list, ts); if (ts.length < 50) break; }
+  const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), t0 = Date.now();
+  for (const m of list) {
+    if (Date.now() - t0 > 4.5 * 60 * 1000) { log.push('Paused to stay within Google\'s time limit. The rest go next run.'); break; }
+    let rec = done[m.id];
+    if (!rec) {
+      const t = (ffQuery_('query($id:String!){ transcript(id:$id){ ' + FF_FIELDS + ' } }', { id: m.id }) || {}).transcript;
+      if (!t) continue;
+      if (!(t.sentences || []).length && !(t.summary && (t.summary.short_summary || t.summary.overview))) { log.push('Skipped (not transcribed by Fireflies): ' + (t.title || m.id)); continue; }
+      const year = sub_(root, Utilities.formatDate(new Date(Number(t.date)), TZ, 'yyyy'));
+      const doc = ffDoc_(t, year), S = t.summary || {};
+      patchRow_('meetings', m.id, { date: doc.day, title: t.title || '', minutes: String(Math.round(Number(t.duration) || 0)), people: (t.participants || []).join(', '), summary: String(S.short_summary || S.overview || '').slice(0, 2000), actions: String(S.action_items || '').replace(/\*\*/g, '').slice(0, 3000), keywords: [].concat(S.keywords || []).join(', '), docId: doc.id, docLink: doc.url, source: 'fireflies', exported: today, removedFromFireflies: '', void: '' });
+      rec = done[m.id] = { doc: doc.id, at: today }; props.setProperty('ffDone', JSON.stringify(done));
+      log.push('Saved: ' + doc.day + ' ' + (t.title || ''));
+    }
+    if (del && rec && !rec.deleted) {
+      try { DriveApp.getFileById(rec.doc).getName(); ffQuery_('mutation($id:String!){ deleteTranscript(id:$id){ id } }', { id: m.id }); rec.deleted = today; props.setProperty('ffDone', JSON.stringify(done)); patchRow_('meetings', m.id, { removedFromFireflies: today }); log.push('Freed in Fireflies: ' + (m.title || m.id)); }
+      catch (e) { log.push('Could not remove from Fireflies: ' + (m.title || m.id) + ' (' + e.message + ')'); }
+    }
+  }
+  Logger.log(log.join('\n') || 'Nothing new in Fireflies.');
+  return log;
+}
+function setupMeetingsTrigger() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'exportFireflies').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('exportFireflies').timeBased().everyDays(3).atHour(4).inTimezone(TZ).create();
 }
 
 /** Run once from the editor to check everything is wired up. */
