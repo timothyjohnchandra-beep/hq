@@ -55,6 +55,10 @@ main{overflow-y:auto;padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,
 h1{font-size:34px;line-height:1.05;letter-spacing:-.02em;margin:0 0 2px;font-weight:700}
 .sub{color:var(--mut);font-size:15px;margin:0 0 18px}
 h2{font-size:20px;letter-spacing:-.01em;margin:26px 0 8px;font-weight:700;display:flex;align-items:center;gap:8px}
+.tsec>summary{list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent}.tsec>summary::-webkit-details-marker{display:none}
+.tsec>summary h2{margin:22px 0 8px}.tsec>summary h2::before{content:'';width:8px;height:8px;border-right:2px solid var(--y2,#c69500);border-bottom:2px solid var(--y2,#c69500);transform:rotate(45deg);margin:0 4px 3px 2px;transition:transform .2s;flex:none}
+.tsec:not([open])>summary h2::before{transform:rotate(-45deg);margin-bottom:0}.tsec:not([open])>summary h2{margin:14px 0 4px;opacity:.85}
+.tsub{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-direction:row-reverse}.tsall{font-size:14px}
 h2 .n{font-size:13px;font-weight:600;color:var(--mut)}
 h2 .act{margin-left:auto}
 .group{background:var(--card);border-radius:12px;overflow:hidden}
@@ -366,7 +370,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='18 · 22 Nov 2026';
+const VERSION='19 · 22 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -493,6 +497,11 @@ function newsBrief(){
  return `<section class="nb" aria-label="News brief"><div class="nb-h"><b>News brief · ${esc(when)}</b>${head&&head.link?`<a href="${esc(head.link)}" target="_blank" rel="noopener">Full brief ›</a>`:''}</div>
  ${head&&head.title?`<div class="nb-t">${esc(head.title)}</div>`:''}
  ${list('attention','Needs attention','More')}${list('id','Berita Indonesia','Lihat semua')}${list('world','World news','Show all')}</section>`}
+/* Today sections open and close like Apple's grouped lists; the choice is remembered on this device. */
+const TSO=ls.get('hq-today-open',{});
+function tsec(key,head,body){return `<details class="tsec" data-ts="${key}"${TSO[key]===false?'':' open'}><summary>${head}</summary><div class="tsb">${body}</div></details>`}
+function watchToday(){view.querySelectorAll('details.tsec').forEach(d=>d.addEventListener('toggle',()=>{TSO[d.dataset.ts]=d.open;ls.set('hq-today-open',TSO);tsLabel()}));tsLabel()}
+function tsLabel(){const b=view.querySelector('.tsall');if(b)b.textContent=[...view.querySelectorAll('details.tsec')].some(d=>d.open)?'Close all':'Open all'}
 function today(){
  const items=todayItems(TODAY),tm=todayItems(TMRW).filter(i=>i.kind!=='habit');
  const over=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done'&&t.for!=='claude').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,date:t.date}));
@@ -502,29 +511,30 @@ function today(){
  const bd=[...EV.filter(e=>e.birthday&&ymd(new Date(e.start))<=iso(7)).map(e=>esc(e.title)),...D.people.filter(p=>!yes(p.void)&&bdayIn(p.birthday)<=7).map(p=>esc(p.name)+(bdayIn(p.birthday)?' in '+bdayIn(p.birthday)+'d':' today'))];
  const allday=EV.filter(e=>e.allDay&&!e.birthday&&ymd(new Date(e.start))===TODAY);
  const d=new Date();
- view.innerHTML=`<h1>${d.toLocaleDateString('en-GB',{weekday:'long'})}</h1><p class="sub">${d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}${allday.length?' · '+allday.map(e=>esc(e.title)).join(', '):''}</p>
- <section class="brief" aria-label="Morning brief">
+ view.innerHTML=`<h1>${d.toLocaleDateString('en-GB',{weekday:'long'})}</h1><p class="sub tsub"><button class="btn link tsall" data-a="tsall">Close all</button>${d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}${allday.length?' · '+allday.map(e=>esc(e.title)).join(', '):''}</p>
+ ${tsec('glance','<h2>At a glance</h2>',`<section class="brief" aria-label="Morning brief">
   <div><b>Next</b><div class="big">${next?(next.leave?'Leave '+next.leave:next.time):'Free'}</div><p>${next?esc(next.title)+(next.travel?` · ${next.travel} min from ${esc(next.from==='home'?'home':next.from)}`:''):'Nothing else on the calendar'}</p></div>
   <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
- </section>
- ${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}
- ${newsBrief()}
- <div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>
- ${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}
- ${['morning','noon','evening'].map(p=>`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>${grp(items.filter(i=>i.part===p).map(row),'Nothing planned.')}`).join('')}
- <h2 style="color:${over.length?'var(--red)':'inherit'}">Overdue <span class="n">${over.length}</span>${over.length?'<button class="btn link act" data-a="fresh">Fresh start</button>':''}</h2>${grp(over.map(row),'All caught up.')}
- <h2>For Claude <span class="n">${fc.length}</span><button class="btn link act" data-a="askclaude">Add</button></h2>${grp(fc.map(row),'Nothing waiting. Tap the Claude button to hand something over.')}
- <h2>No date <span class="n">${nod.length}</span></h2>${grp(nod.map(row),'Nothing waiting for a date.')}
- <h2>Anything missed?</h2>
+ </section>`)}
+ ${tsec('verse','<h2>Verse of the day</h2>',`${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}`)}
+ ${tsec('news','<h2>News brief</h2>',newsBrief())}
+ ${tsec('links','<h2>Quick links</h2>',`<div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>`)}
+ ${tsec('cash','<h2>Cashbook</h2>',`${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}`)}
+ ${['morning','noon','evening'].map(p=>tsec(p,`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>`,grp(items.filter(i=>i.part===p).map(row),'Nothing planned.'))).join('')}
+ ${tsec('overdue',`<h2 style="color:${over.length?'var(--red)':'inherit'}">Overdue <span class="n">${over.length}</span>${over.length?'<button class="btn link act" data-a="fresh">Fresh start</button>':''}</h2>`,`${grp(over.map(row),'All caught up.')}`)}
+ ${tsec('claude',`<h2>For Claude <span class="n">${fc.length}</span><button class="btn link act" data-a="askclaude">Add</button></h2>`,`${grp(fc.map(row),'Nothing waiting. Tap the Claude button to hand something over.')}`)}
+ ${tsec('nodate',`<h2>No date <span class="n">${nod.length}</span></h2>`,`${grp(nod.map(row),'Nothing waiting for a date.')}`)}
+ ${tsec('add','<h2>Anything missed?</h2>',`
  <form class="quick" id="qa"><input type="text" id="qa-t" placeholder="Task, or a meeting with a time" aria-label="New item">
   <select id="qa-w" aria-label="When"><option value="today">Today</option><option value="tmrw">Tomorrow</option><option value="">No date</option></select>
   <input type="time" id="qa-time" aria-label="Time (makes it a meeting)" style="width:auto">
   <select id="qa-c" aria-label="World"><option value="church">Church</option><option value="company">Company</option><option value="personal">Personal</option></select>
   <select id="qa-p" aria-label="Place"><option value="">No place</option>${D.places.filter(p=>p.address&&p.id!=='home').map(p=>`<option value="${esc(p.address)}">${esc(p.name)}</option>`).join('')}</select>
   <button class="btn y">Add</button></form>
- <p class="samp">With a time, it goes on your Google Calendar for 90 minutes. Without one, it becomes a task.</p>
- <h2>Tomorrow</h2>${grp(tm.map(row),'Nothing yet.')}`;
+ <p class="samp">With a time, it goes on your Google Calendar for 90 minutes. Without one, it becomes a task.</p>`)}
+ ${tsec('tmrw',`<h2>Tomorrow</h2>`,`${grp(tm.map(row),'Nothing yet.')}`)}`;
+ watchToday();
  $('#qa').onsubmit=async e=>{e.preventDefault();const title=$('#qa-t').value.trim();if(!title){say('Type something first.');return}
   const w=$('#qa-w').value,time=$('#qa-time').value,date=w==='tmrw'?TMRW:w==='today'?TODAY:'';
   if(time){if(!date){say('Pick today or tomorrow for a meeting.');return}if(!live()){say('Connect your Google Sheet first to add calendar events.');return}
@@ -1062,7 +1072,9 @@ document.addEventListener('click',async e=>{
  const wl=e.target.closest('a[data-worship]');if(wl&&!cfg.playlist)wl.href=worshipMix();
  if(e.target.closest('a'))return;
  const el=e.target.closest('[data-a]');if(!el)return;
+ if(el.closest('summary'))e.preventDefault();
  const a=el.dataset.a,id=el.dataset.id,v=el.dataset.v,k=el.dataset.k;
+ if(a==='tsall'){const open=el.textContent==='Open all';view.querySelectorAll('details.tsec').forEach(d=>{d.open=open;TSO[d.dataset.ts]=open});ls.set('hq-today-open',TSO);tsLabel();return}
  if(a==='tick'){e.stopPropagation();buzz();
   if(k==='task'){const t=find('tasks',id);t.status=t.status==='done'?'':'done';t.updated=TODAY;touch('tasks')}
   else if(k==='habit'){const h=find('habits',id);const l=(h.log||'').split(' ').filter(Boolean);h.log=(l.includes(TODAY)?l.filter(x=>x!==TODAY):[...l,TODAY].slice(-400)).join(' ');touch('habits')}
