@@ -21,6 +21,11 @@ Personal daily app for Timothy (Executive Pastor, GPKdI BCC; director of PT Citr
 - The script URL and token live only in the app's Settings (localStorage on each device). Without them the app shows sample data.
 - Claude in chat reads and updates the Sheet through the Google Sheets connector.
 
+## Notes = Apple Notes, newest release wins
+Built so far (iOS 15–27): nested folders, Pinned, Recently Deleted, date groups, #tags, Smart Folders (#tag, @person, is:checklist, is:attachment, is:pinned, edited:Nd), links between notes + backlinks, @mentions linked to People, Title/Heading/Subheading/Body/Monostyled, B/I/U/S, highlights + text colours, bullet/dash/numbered/checklist, indent, quote, tables, divider lines, section links, collapsible headings, Markdown copy/paste, photos/scan/files, audio recording + transcript, dictation.
+Not built: locked notes, Math Notes, sketching, shared notes, Quick Note.
+A monthly scheduled task checks Apple's latest Notes features and adds small missing ones; anything big goes to Timothy as a proposal first.
+
 ## Never put in this repo
 Tokens, the Sheet ID, ID numbers, bank/card numbers, member names, phone numbers, financial figures, pastoral notes. Those live only in the Sheet. The repo is public.
 
