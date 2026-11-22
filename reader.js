@@ -59,7 +59,7 @@ function shell() {
 #rdr .rib{width:40px;height:40px;border-radius:20px;display:grid;place-items:center;background:var(--rui)}#rdr .rib svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #rdr .rib.on svg{fill:currentColor}
 #rdr .rttl{flex:1;min-width:0;text-align:center;font-size:13px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#rdr .rview{flex:1;min-height:0;position:relative}
+#rdr .rview{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:pan-y pinch-zoom}
 #rdr .rprog{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;font-size:12px;opacity:.85;text-align:center}
 #rdr .rprog input{width:100%;accent-color:#c6613f}
 #rdr .rstat{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;font-size:15px;line-height:1.5}
@@ -76,8 +76,11 @@ function shell() {
 #rdr .rseg{display:flex;background:rgba(128,128,128,.18);border-radius:10px;padding:2px;gap:2px}#rdr .rseg button{flex:1;padding:7px 4px;border-radius:8px;font-size:13px}#rdr .rseg button.on{background:var(--rbg);font-weight:600}
 #rdr .rline{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}#rdr .rline span{min-width:96px}#rdr .rline input[type=range]{flex:1;accent-color:#c6613f}
 #rdr .rbtn{padding:9px 14px;border-radius:10px;background:rgba(128,128,128,.18);font-size:14px}#rdr .rbtn.y{background:#ffd60a;color:#000;font-weight:600}
-#rdr .rsel{position:absolute;left:50%;transform:translateX(-50%);top:62px;z-index:6;background:var(--rui);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.25);padding:8px;display:flex;flex-wrap:wrap;gap:4px;max-width:min(94vw,520px);justify-content:center}
-#rdr .rsel button{padding:7px 9px;border-radius:9px;font-size:13px}#rdr .rsel button:hover{background:rgba(128,128,128,.2)}
+#rdr .rsel{position:absolute;left:50%;transform:translateX(-50%);top:62px;z-index:6;background:var(--rui);border-radius:12px;box-shadow:0 6px 22px rgba(0,0,0,.22);padding:4px;max-width:94vw}
+#rdr .rsel .rrow{display:flex;flex-wrap:nowrap;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;white-space:nowrap}#rdr .rsel .rrow::-webkit-scrollbar{display:none}
+#rdr .rsel .rrow+.rrow{border-top:1px solid rgba(128,128,128,.2);margin-top:4px;padding-top:4px}
+#rdr .rsel button{flex:0 0 auto;padding:7px 10px;border-radius:8px;font-size:13px;display:inline-flex;align-items:center;gap:5px}#rdr .rsel button:hover,#rdr .rsel button.on{background:rgba(128,128,128,.2)}
+#rdr .rsel .caret{font-size:9px;opacity:.6}
 #rdr .sw{width:22px;height:22px;border-radius:11px;display:inline-block;vertical-align:middle;border:1px solid rgba(0,0,0,.1)}
 #rdr .rq{font-family:"Source Serif 4",Georgia,serif;font-size:15px;line-height:1.45;border-left:3px solid var(--c,#ffe066);padding-left:10px;margin:2px 0}
 #rdr .rcard{background:var(--rbg);border-radius:14px;padding:22px 18px;min-height:150px;display:grid;place-items:center;text-align:center;font:17px/1.5 "Source Serif 4",Georgia,serif}
@@ -149,15 +152,25 @@ async function open(b, ctx) {
     const s = $('#r-stat'); if (s) s.insertAdjacentHTML('beforeend', `<div style="margin-top:14px">${X.link(B) ? `<a class="rbtn y" style="text-decoration:none;display:inline-block" href="${esc(X.link(B))}" target="_blank" rel="noopener">Open in Drive</a>` : ''}</div>`);
   }
 }
+let swiped = 0;
 function makeRendition() {
   const v = $('#r-view'); v.innerHTML = '';
   rend = book.renderTo(v, { width: '100%', height: '100%', flow: S.flow, manager: S.flow === 'scrolled' ? 'continuous' : 'default', spread: innerWidth > 1000 ? 'auto' : 'none', allowScriptedContent: false });
   paint();
   rend.on('relocated', loc => { curLoc = loc; place(); queueSave(); if (speaking) speakPage(); const now = Date.now(), dt = (now - turnAt) / 1000; turnAt = now; if (dt > 4 && dt < 240 && S.flow === 'paginated') { S.spp = Math.round(S.spp * 0.85 + dt * 0.15); saveS(); } lastAct = now; });
   rend.on('selected', (cfi, contents) => { const t = contents.window.getSelection().toString().trim(); if (!t) return; sel = { cfi, text: t, contents }; selBar(); lastAct = Date.now(); });
-  rend.on('click', e => { lastAct = Date.now(); if (sel && !e.view.getSelection().toString()) { closeSel(); } else if (!e.view.getSelection().toString()) tapZone(e); });
+  rend.on('click', e => { lastAct = Date.now(); if (Date.now() - swiped < 500) return; if (sel && !e.view.getSelection().toString()) { closeSel(); } else if (!e.view.getSelection().toString()) tapZone(e); });
   rend.on('keyup', onKey);
-  rend.hooks.content.register(c => { c.document.addEventListener('touchstart', () => { lastAct = Date.now(); }, { passive: true }); });
+  rend.hooks.content.register(c => {
+    const d = c.document; let t0 = null;
+    if (S.flow === 'paginated') d.documentElement.style.touchAction = 'pan-y pinch-zoom';
+    d.addEventListener('touchstart', e => { lastAct = Date.now(); const t = e.touches[0]; t0 = e.touches.length === 1 ? { x: t.clientX, y: t.clientY, at: Date.now() } : null; }, { passive: true });
+    d.addEventListener('touchend', e => {
+      if (!t0 || S.flow !== 'paginated') return; const t = e.changedTouches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y, dt = Date.now() - t0.at; t0 = null;
+      if (String(c.window.getSelection() || '').trim()) return;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3 && dt < 800) { swiped = Date.now(); if (sel) closeSel(); dx < 0 ? rend.next() : rend.prev(); }
+    }, { passive: true });
+  });
   rend.on('markClicked', (cfi, data) => { const h = marks().find(m => m.cfi === cfi); if (h) noteSheet(h); });
 }
 function attach() { marks().forEach(drawMark); bmState(); }
@@ -225,7 +238,8 @@ function goalStats() {
 
 /* ---------- taps, keys, chrome ---------- */
 function tapZone(e) {
-  const w = e.view.innerWidth || innerWidth; let x = e.clientX; if (S.flow === 'paginated' && x > w) x = x % w;
+  const vb = $('#r-view').getBoundingClientRect(), w = vb.width || innerWidth; let x = e.clientX;
+  try { const fr = e.view.frameElement.getBoundingClientRect(); x = fr.left + e.clientX - vb.left; } catch (er) { if (x > w) x = x % w; }
   if (S.ruler) { const r = $('.rruler'); if (r) r.style.top = (e.clientY - 32 + 56) + 'px'; }
   if (S.flow === 'paginated' && x < w * 0.28) return rend.prev();
   if (S.flow === 'paginated' && x > w * 0.72) return rend.next();
@@ -348,9 +362,20 @@ function noteSheet(h) {
 /* ---------- selection menu (Apple Books + Kindle) ---------- */
 function selBar() {
   closeSheet();
-  el.insertAdjacentHTML('beforeend', `<div class="rsel" role="menu">${Object.entries(COLS).map(([k, c]) => `<button data-r="hl" data-v="${k}" aria-label="Highlight ${c[0]}"><span class="sw" style="background:${c[1]}"></span></button>`).join('')}
-  <button data-r="ul">Underline</button><button data-r="addnote">Note</button><button data-r="copy">Copy</button><button data-r="cite">Copy with source</button>
-  <button data-r="lookup">Look up</button><button data-r="translate">Translate</button><button data-r="ask">Ask Claude</button><button data-r="tonotes">Send to Notes</button><button data-r="findsel">Search</button></div>`);
+  const last = COLS[S.hlc] ? S.hlc : 'y';
+  el.insertAdjacentHTML('beforeend', `<div class="rsel" role="menu">
+  <div class="rrow"><button data-r="hlpick" aria-expanded="false"><span class="sw" style="width:14px;height:14px;background:${COLS[last][1]}"></span>Highlight <span class="caret">▼</span></button><button data-r="addnote">Note</button><button data-r="copy">Copy</button><button data-r="ask">Ask Claude</button><button data-r="selmore" aria-label="More options" aria-expanded="false">•••</button></div></div>`);
+}
+function selRow(kind) {
+  const box = el.querySelector('.rsel'); if (!box) return;
+  const open = box.querySelector('.rrow[data-k="' + kind + '"]'); box.querySelectorAll('.rrow[data-k]').forEach(x => x.remove());
+  box.querySelectorAll('[aria-expanded]').forEach(b => { b.setAttribute('aria-expanded', 'false'); b.classList.remove('on'); });
+  if (open) return;
+  const html = kind === 'hl'
+    ? Object.entries(COLS).map(([k, c]) => `<button data-r="hl" data-v="${k}" aria-label="Highlight ${c[0]}"><span class="sw" style="background:${c[1]}"></span></button>`).join('') + '<button data-r="ul">Underline</button>'
+    : '<button data-r="cite">Copy with source</button><button data-r="lookup">Look up</button><button data-r="translate">Translate</button><button data-r="tonotes">Send to Notes</button><button data-r="findsel">Search</button>';
+  box.insertAdjacentHTML('beforeend', `<div class="rrow" data-k="${kind}">${html}</div>`);
+  const b = box.querySelector(kind === 'hl' ? '[data-r="hlpick"]' : '[data-r="selmore"]'); b.setAttribute('aria-expanded', 'true'); b.classList.add('on');
 }
 function closeSel() { el.querySelectorAll('.rsel').forEach(x => x.remove()); try { sel && sel.contents.window.getSelection().removeAllRanges(); } catch (e) {} sel = null; }
 function addMark(kind, colour, style, extra) {
@@ -406,6 +431,9 @@ async function openPdf(buf) {
   const box = $('#r-pdf');
   pdfLayout();
   box.addEventListener('scroll', () => { lastAct = Date.now(); const pgs = box.querySelectorAll('.rpg'); const mid = box.scrollTop + box.clientHeight * 0.35; let n = 1; pgs.forEach((p, i) => { if (p.offsetTop <= mid) n = i + 1; }); if (n !== pdfPage) { const dt = (Date.now() - turnAt) / 1000; turnAt = Date.now(); if (dt > 4 && dt < 240) { S.spp = Math.round(S.spp * 0.85 + dt * 0.15); saveS(); } pdfPage = n; curLoc = { start: { cfi: 'pdf:' + n } }; place(); queueSave(); } }, { passive: true });
+  let p0 = null;
+  box.addEventListener('touchstart', e => { const t = e.touches[0]; p0 = e.touches.length === 1 && pdfZoom <= 1 ? { x: t.clientX, y: t.clientY, at: Date.now() } : null; }, { passive: true });
+  box.addEventListener('touchend', e => { if (!p0) return; const t = e.changedTouches[0], dx = t.clientX - p0.x, dy = t.clientY - p0.y, dt = Date.now() - p0.at; p0 = null; if (getSelection().toString().trim()) return; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 800) pdfGo(pdfPage + (dx < 0 ? 1 : -1)); }, { passive: true });
   box.addEventListener('mouseup', pdfSel); box.addEventListener('touchend', () => setTimeout(pdfSel, 350));
   box.addEventListener('click', e => { if (!getSelection().toString() && !e.target.closest('.rsel')) { if (sel) closeSel(); else { chromeOn = !chromeOn; el.classList.toggle('bare', !chromeOn); } } });
   const start = /^pdf:\d+$/.test(B.cfi || '') ? Number(B.cfi.slice(4)) : 1;
@@ -496,7 +524,9 @@ async function onClick(e) {
     case 'flow': if (S.flow !== v) { const at = curLoc && curLoc.start.cfi; S.flow = v; saveS(); rend.destroy(); makeRendition(); await rend.display(at); attach(); } return aaSheet();
     case 'reset': { const g = [S.goal, S.yearGoal]; S = Object.assign({}, DEF, { goal: g[0], yearGoal: g[1] }); saveS(); paint(); return aaSheet(); }
     /* selection actions */
-    case 'hl': if (sel) { addMark('highlight', v); closeSel(); } return;
+    case 'hlpick': return selRow('hl');
+    case 'selmore': return selRow('more');
+    case 'hl': if (sel) { S.hlc = v; saveS(); addMark('highlight', v); closeSel(); } return;
     case 'ul': if (sel) { addMark('highlight', 'o', 'u'); closeSel(); } return;
     case 'addnote': if (sel) { const nh = addMark('highlight', 'y'); closeSel(); noteSheet(nh); } return;
     case 'copy': if (sel) { copy(sel.text); closeSel(); } return;
