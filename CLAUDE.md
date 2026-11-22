@@ -35,6 +35,9 @@ A monthly scheduled task checks Apple's latest Notes features and adds small mis
 ## Notes import and verse search
 `importNotes` (bridge, one-time, re-runnable in 4½-min rounds) brings the Apple Notes export (Drive "iCloud", folders kept) and Google Keep export (Drive "Google/Notes", sorted into subfolders by `KEEP_SORT`/`KEEP_WORDS`) into HQ Notes as `md-<fileId>` rows with tag `imported`. Notes matching `SENSITIVE`/long digit runs are left out (Keep ones moved to "Private – not in HQ"). `parseRefs` (Indonesian TB + English book names) fills the `refs` column (e.g. `JHN.3.16-18`); `indexVerses` backfills older notes. In Notes, searching a reference ("yoh 3:16", "Filipi") shows the verse panel: this verse / same chapter / same book, Summarise with Claude, Start a new sermon.
 
+## Sermon map
+View `sermons` (from Notes › Sermon map and Today › Quick links). Rows: `sermons` tab (id, noteId, title, date, place, context, series, refs, themes, theology, points " | ", bigIdea, preacher = "me" or name, docLink, void, updated, checked), filled by Claude from sermon notes/Docs; notes in folders matching /sermon|khotbah|preach|teaching|pengajaran/ without a row still show (title, date, verses). Filters: Mine/Others/Both, Place, Context, Theme, Theology, Year, Book (Bible map), search or verse. "Summarise with Claude" sends the filtered list.
+
 ## Never put in this repo
 Tokens, the Sheet ID, ID numbers, bank/card numbers, member names, phone numbers, financial figures, pastoral notes. Those live only in the Sheet. The repo is public.
 

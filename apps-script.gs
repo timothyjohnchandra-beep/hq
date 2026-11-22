@@ -6,11 +6,11 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-23 00:00'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-23 00:15'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
-const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs', 'reading_log', 'meetings'];
+const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs', 'reading_log', 'meetings', 'sermons'];
 
 function doGet(e) {
   return handle_(() => {
@@ -19,7 +19,7 @@ function doGet(e) {
     const a = p.action || 'read';
     if (a === 'ping') return { ok: true, tabs: TABS, version: SCRIPT_VERSION };
     if (a === 'read') return { ok: true, rows: readTab_(p.name) };
-    if (a === 'all') { const out = {}; TABS.forEach(t => out[t] = readTab_(t)); return { ok: true, data: out }; }
+    if (a === 'all') { const out = {}; TABS.forEach(t => { try { out[t] = readTab_(t); } catch (e) { out[t] = []; } }); return { ok: true, data: out }; }   // a missing tab never blocks the app
     if (a === 'calendar') return { ok: true, events: calendar_(Number(p.days || 2)) };
     if (a === 'brief') return { ok: true, brief: brief_() };
     if (a === 'note') return { ok: true, html: readNote_(p.id) };

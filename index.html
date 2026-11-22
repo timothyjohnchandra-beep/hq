@@ -61,6 +61,15 @@ h2{font-size:20px;letter-spacing:-.01em;margin:26px 0 8px;font-weight:700;displa
 .em-t{min-width:0;display:flex;flex-direction:column}.em-t b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.em-t span{font-size:14px;color:var(--mut,#6e6e73);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .em[open] .em-t span{white-space:normal}.em-w{font-size:12px;color:var(--mut,#6e6e73);align-self:start;padding-top:3px;white-space:nowrap}
 .em-b{padding:0 14px 12px 34px}.em-g{white-space:pre-line;font-size:14px;line-height:1.5;margin:0 0 8px;max-height:16em;overflow:auto}
+.smentry{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:var(--card);border:0;border-radius:12px;padding:12px 14px;margin:6px 0 14px;font:inherit;color:inherit;cursor:pointer}.smentry b{display:block;font-size:16px}.smentry span span{font-size:13px;color:var(--mut)}
+.smh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.smh h1{margin:4px 0 10px}
+.seg3{display:flex;gap:4px;background:rgba(120,120,128,.16);border-radius:9px;padding:2px;margin-bottom:10px}.seg3 button{flex:1;min-height:0!important;line-height:1.2;border:0;background:none;border-radius:7px;padding:7px 4px;font:inherit;font-size:13px;color:inherit;cursor:pointer}.seg3 button.on{background:var(--card);font-weight:600}
+.smsearch{display:flex;align-items:center;gap:8px;background:rgba(120,120,128,.14);border-radius:10px;padding:0 12px;margin-bottom:10px}.smsearch svg{width:17px;height:17px;stroke:var(--mut);fill:none;stroke-width:2}.smsearch input{border:0!important;background:none!important;box-shadow:none!important;padding:0!important;min-height:40px;font-size:15px;flex:1}.smsearch input:focus{outline:none}
+.smfs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;align-items:center}.smf{flex:none;position:relative}.smf select{width:auto!important;min-height:0!important;margin:0!important;line-height:32px;appearance:none;-webkit-appearance:none;height:34px;border-radius:17px;border:1px solid var(--line);background:var(--card);padding:0 14px;font:inherit;font-size:13px;color:inherit;max-width:180px}.smf.on select{background:#111;color:#fff;border-color:#111}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.bmap{padding:10px 12px}.bl{display:block;font-size:11px;font-weight:600;color:var(--mut);letter-spacing:.04em;text-transform:uppercase;margin:8px 0 4px}.bg{display:grid;grid-template-columns:repeat(9,1fr);gap:3px}
+.bt{border:0;border-radius:6px;height:28px;padding:0;font:600 10px Inter,sans-serif;cursor:pointer;color:#3c3c43}.bt:disabled{cursor:default;opacity:.55}.bt.l0{background:rgba(120,120,128,.14)}.bt.l1{background:#fff3b0}.bt.l2{background:#ffe066}.bt.l3{background:#ffd60a;color:#111}.bt.l4{background:#b38900;color:#fff}.bt.sel{outline:2px solid var(--ink,#111);outline-offset:1px}
+.smc{display:flex;flex-direction:column;align-items:flex-start;gap:5px;width:100%;text-align:left;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;color:inherit;cursor:pointer}.smc:last-child{border-bottom:0}.smc b{font-size:16px}.smc ol{margin:0;padding-left:18px;font-size:13px;line-height:1.45}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.vchip{font-size:11px;font-weight:600;background:#fff0a8;color:#4a3b00;padding:2px 7px;border-radius:6px}.tchip{font-size:11px;background:rgba(120,120,128,.14);padding:2px 7px;border-radius:6px}
 .vpanel .prow{margin:6px 0 4px}.vsec{margin-top:14px}.vsec>summary{list-style:none;cursor:pointer;font-weight:700;font-size:17px;padding:6px 0;display:flex;gap:8px;align-items:center}.vsec>summary::-webkit-details-marker{display:none}
 .vrow{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:11px 14px;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;color:inherit;cursor:pointer}.vrow:last-child{border-bottom:0}
 .vrow b{font-size:15px}.vd,.vf{font-size:12px;color:var(--mut)}.vx{font-size:14px;line-height:1.45;color:var(--ink,#111);opacity:.85}
@@ -380,8 +389,8 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='22 · 23 Nov 2026';
-const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log'];
+const VERSION='23 · 23 Nov 2026';
+const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
 let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null),VERSE=ls.get('hq-verse',null);
@@ -541,7 +550,7 @@ function today(){
  ${tsec('email',`<h2>Email <span class="n">${BRIEF?BRIEF.unread:''}</span></h2>`,emailList())}
  ${tsec('verse','<h2>Verse of the day</h2>',`${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}`)}
  ${tsec('news','<h2>News brief</h2>',newsBrief())}
- ${tsec('links','<h2>Quick links</h2>',`<div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>`)}
+ ${tsec('links','<h2>Quick links</h2>',`<div class="links"><button class="lk" data-a="go" data-v="sermons"><i style="background:#ffd60a"></i>Sermon map</button><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>`)}
  ${tsec('cash','<h2>Cashbook</h2>',`${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}`)}
  ${['morning','noon','evening'].map(p=>tsec(p,`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>`,grp(items.filter(i=>i.part===p).map(row),'Nothing planned.'))).join('')}
  ${tsec('overdue',`<h2 style="color:${over.length?'var(--red)':'inherit'}">Overdue <span class="n">${over.length}</span>${over.length?'<button class="btn link act" data-a="fresh">Fresh start</button>':''}</h2>`,`${grp(over.map(row),'All caught up.')}`)}
@@ -702,6 +711,7 @@ function notes(){
   const smart=D.notes_index.filter(n=>n.kind==='smart'&&!yes(n.void));const tagc={};all.forEach(n=>(n.tags||'').split(' ').filter(Boolean).forEach(t=>tagc[t]=(tagc[t]||0)+1));const tagk=Object.entries(tagc).sort((a,b)=>a[0].localeCompare(b[0]));
   const tree=(p,depth)=>kids(p).map(f=>{const k=kids(f).length,open=UI.open[f];return `<div class="frow" style="--d:${depth}" data-a="fopen" data-v="${esc(f)}">${ICON.folder}<span class="ttl">${esc(fname(f))}</span><span class="cnt">${count(f)}</span>${k?`<button class="fx${open?' on':''}" data-a="fx" data-v="${esc(f)}" aria-label="${open?'Collapse':'Expand'}">›</button>`:'<span class="fx-sp">›</span>'}</div>${k&&open?tree(f,depth+1):''}`}).join('');
   body=`<div class="nhead"><h1 class="ntitle">Folders</h1><button class="circ" data-a="newfolder" aria-label="New folder">${ICON.newfolder}</button></div>
+  <button class="smentry" data-a="go" data-v="sermons"><span><b>Sermon map</b><span>Every message you've preached, by verse, place and theme</span></span><span aria-hidden="true">›</span></button>
   <div class="group folders2"><div class="frow" style="--d:0" data-a="fopen" data-v="Notes">${ICON.folder}<span class="ttl">Notes</span><span class="cnt">${count('Notes')}</span><span class="fx-sp">›</span></div>${tree('',0)}</div>
   <div class="group folders2" style="margin-top:18px"><div class="frow" style="--d:0" data-a="fopen" data-v="__deleted"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span class="ttl">Recently Deleted</span><span class="cnt">${D.notes_index.filter(n=>yes(n.void)&&n.kind!=='folder'&&n.kind!=='smart').length}</span><span class="fx-sp">›</span></div></div>
   ${smart.length?`<h2 class="nsec">Smart Folders</h2><div class="group folders2">${smart.map(x=>`<div class="frow" style="--d:0" data-a="fopen" data-v="smart:${esc(x.id)}">${ICON.smart}<span class="ttl">${esc(x.title)}</span><span class="cnt">${all.filter(n=>matchQ(n,x.text)).length}</span><span class="fx-sp">›</span></div>`).join('')}</div>`:''}
@@ -1141,7 +1151,57 @@ function settings(){
  <h2>Data</h2><div class="group" style="padding:16px"><div class="prow"><button class="btn" data-a="reload">Reload from Google</button></div><p class="meta" style="margin-top:10px">${dirty.size+dirtyNotes.size?`${dirty.size+dirtyNotes.size} change(s) waiting to sync.`:'Everything is synced.'}</p></div>`}
 
 /* ---------- routing & events ---------- */
-const V={today,notes,money,people,library,settings};
+/* ---------- SERMON MAP: every message preached, with filters and a Bible map ----------
+   Rows come from the `sermons` tab (filled by Claude from your sermon notes: place, context, themes, theology, points)
+   plus any note in a sermon/teaching folder that has no row yet, so the map works from day one. */
+const OTB=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL'];
+const NTB=['MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
+const SHORTB={GEN:'Kej',EXO:'Kel',LEV:'Im',NUM:'Bil',DEU:'Ul',JOS:'Yos',JDG:'Hak',RUT:'Rut','1SA':'1Sam','2SA':'2Sam','1KI':'1Raj','2KI':'2Raj','1CH':'1Taw','2CH':'2Taw',EZR:'Ezr',NEH:'Neh',EST:'Est',JOB:'Ayb',PSA:'Mzm',PRO:'Ams',ECC:'Pkh',SNG:'Kid',ISA:'Yes',JER:'Yer',LAM:'Rat',EZK:'Yeh',DAN:'Dan',HOS:'Hos',JOL:'Yl',AMO:'Am',OBA:'Ob',JON:'Yun',MIC:'Mi',NAM:'Nah',HAB:'Hab',ZEP:'Zef',HAG:'Hag',ZEC:'Za',MAL:'Mal',MAT:'Mat',MRK:'Mrk',LUK:'Luk',JHN:'Yoh',ACT:'Kis',ROM:'Rm','1CO':'1Kor','2CO':'2Kor',GAL:'Gal',EPH:'Ef',PHP:'Flp',COL:'Kol','1TH':'1Tes','2TH':'2Tes','1TI':'1Tim','2TI':'2Tim',TIT:'Tit',PHM:'Flm',HEB:'Ibr',JAS:'Yak','1PE':'1Ptr','2PE':'2Ptr','1JN':'1Yoh','2JN':'2Yoh','3JN':'3Yoh',JUD:'Yud',REV:'Why'};
+const SERMON_FOLDER=/sermon|khotbah|preach|teaching|pengajaran/i;
+function sermonList(){
+ const rows=(D.sermons||[]).filter(r=>!yes(r.void)),seen=new Set(rows.map(r=>r.noteId).filter(Boolean));
+ const out=rows.map(r=>({...r,refs:(r.refs||'').split(' ').filter(x=>x&&x!=='-')}));
+ noteRows().filter(n=>SERMON_FOLDER.test(fpath(n))&&!seen.has(n.id)).forEach(n=>out.push({id:'n:'+n.id,noteId:n.id,title:n.title,date:n.date,place:'',context:fname(fpath(n)),series:'',refs:refsOf(n).filter(x=>x!=='-'),themes:'',theology:'',points:'',bigIdea:'',preacher:''}));
+ return out.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+}
+let SMV=[];
+function sermons(){
+ const F=UI.sm=UI.sm||{who:'mine'};const all=sermonList();
+ const split=v=>String(v||'').split(/\s*[|;,]\s*/).filter(Boolean);
+ const qr=queryRefs(F.q||''),qw=(F.q||'').toLowerCase().trim();
+ const pass=(x,skip)=>{
+  if(skip!=='who'&&F.who==='mine'&&x.preacher&&x.preacher!=='me')return false;
+  if(skip!=='who'&&F.who==='others'&&(!x.preacher||x.preacher==='me'))return false;
+  if(skip!=='book'&&F.book&&!x.refs.some(r=>r.split('.')[0]===F.book))return false;
+  for(const k of ['place','context','themes','theology'])if(skip!==k&&F[k]&&!split(x[k]).includes(F[k])&&x[k]!==F[k])return false;
+  if(skip!=='year'&&F.year&&!(x.date||'').startsWith(F.year))return false;
+  if(qr.length)return x.refs.some(r=>refMatch(r,qr[0])>=(qr[0].split('.').length>2?3:2));
+  if(qw&&!(x.title+' '+(x.points||'')+' '+(x.bigIdea||'')+' '+(x.themes||'')).toLowerCase().includes(qw))return false;
+  return true};
+ const list=all.filter(x=>pass(x));SMV=list;
+ const opts=(k,label)=>{const vals=new Map();all.filter(x=>pass(x,k)).forEach(x=>(k==='year'?[(x.date||'').slice(0,4)]:split(x[k])).filter(Boolean).forEach(v=>vals.set(v,(vals.get(v)||0)+1)));
+  const arr=[...vals].sort((a,b)=>k==='year'?b[0].localeCompare(a[0]):b[1]-a[1]);
+  return `<label class="smf${F[k]?' on':''}"><span class="sr">${label}</span><select data-sm="${k}" aria-label="${label}"><option value="">${label}</option>${arr.map(([v,c])=>`<option value="${esc(v)}"${F[k]===v?' selected':''}>${esc(v)} (${c})</option>`).join('')}</select></label>`};
+ const bc={};all.filter(x=>pass(x,'book')).forEach(x=>new Set(x.refs.map(r=>r.split('.')[0])).forEach(b=>bc[b]=(bc[b]||0)+1));const mx=Math.max(1,...Object.values(bc));
+ const tile=b=>{const c=bc[b]||0,l=c?Math.ceil(c/mx*4):0;return `<button class="bt l${l}${F.book===b?' sel':''}" data-a="smbook" data-v="${b}" aria-label="${esc(BOOKNAME[b])}: ${c} message${c===1?'':'s'}"${c?'':' disabled'}>${SHORTB[b]}</button>`};
+ const card=x=>{const pts=split(x.points).slice(0,3),vs=[...new Set(x.refs)].slice(0,4),tags=[x.themes&&'Theme: '+x.themes,x.theology&&'Theology: '+x.theology,x.series&&'Series: '+x.series].filter(Boolean);
+  return `<button class="smc" data-a="smopen" data-id="${esc(x.noteId||'')}"><span class="vd">${x.date?esc(new Date(x.date+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})):'No date'}${x.place?' · '+esc(x.place):''}${x.context?' · '+esc(x.context):''}${x.preacher&&x.preacher!=='me'?' · '+esc(x.preacher):''}</span><b>${esc(x.title)}</b>
+  ${vs.length?`<span class="chips">${vs.map(r=>`<span class="vchip">${esc(refLabel(r))}</span>`).join('')}</span>`:''}${x.bigIdea?`<span class="vx">${esc(x.bigIdea)}</span>`:''}
+  ${pts.length?`<ol>${pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ol>`:''}${tags.length?`<span class="chips">${tags.map(t=>`<span class="tchip">${esc(t)}</span>`).join('')}</span>`:''}</button>`};
+ const any=['place','book','context','themes','theology','year'].some(k=>F[k])||F.q;const enriched=(D.sermons||[]).length;
+ view.innerHTML=`<div class="nwrap"><button class="btn link nback" data-a="go" data-v="notes">‹ Notes</button>
+ <div class="smh"><h1>Preached</h1><span class="sub">${list.length} of ${all.length} messages</span></div>
+ <div class="seg3">${[['mine','Mine'],['others','Heard from others'],['both','Both']].map(([k,t])=>`<button data-a="smwho" data-v="${k}" class="${(F.who||'mine')===k?'on':''}">${t}</button>`).join('')}</div>
+ <label class="smsearch">${ICON.search}<input type="search" id="smq" placeholder="Title, word or verse (yoh 3:16)" value="${esc(F.q||'')}" aria-label="Search sermons"></label>
+ <div class="smfs">${opts('place','Place')}${opts('context','Context')}${opts('themes','Theme')}${opts('theology','Theology')}${opts('year','Year')}${any?'<button class="btn link" data-a="smclear">Clear all</button>':''}</div>
+ <details class="tsec smmap"${UI.smMap===false?'':' open'}><summary><h2>Bible map${F.book?` · ${esc(BOOKNAME[F.book])}`:''}</h2></summary><div class="group bmap"><p class="meta">Darker = preached more. Tap a book to filter${F.book?', tap again to clear':''}.</p><span class="bl">Old Testament</span><div class="bg">${OTB.map(tile).join('')}</div><span class="bl">New Testament</span><div class="bg">${NTB.map(tile).join('')}</div></div></details>
+ ${list.length?`<div class="prow"><button class="btn y" data-a="smsum">Summarise ${list.length===all.length?'all':'these '+list.length} with Claude</button></div><div class="group">${list.slice(0,UI.smMore?1000:60).map(card).join('')}</div>${list.length>60&&!UI.smMore?'<button class="btn" data-a="smmore" style="margin-top:10px">Show all '+list.length+'</button>':''}`:`<div class="group"><div class="empty">${all.length?'Nothing matches these filters.':'No sermons yet. They appear here once your sermon notes are in HQ Notes.'}</div></div>`}
+ ${enriched?'':`<p class="samp">Points, place, theme and theology fill in once Claude has read each sermon note. Until then you see titles, dates and verses.</p>`}</div>`;
+ view.querySelectorAll('select[data-sm]').forEach(sl=>sl.onchange=()=>{F[sl.dataset.sm]=sl.value;saveUI();sermons()});
+ const q=$('#smq');q.oninput=()=>{F.q=q.value;saveUI();const p=q.selectionStart;sermons();const n2=$('#smq');n2.focus();n2.setSelectionRange(p,p)};
+ const d=view.querySelector('.smmap');d.addEventListener('toggle',()=>{UI.smMap=d.open;saveUI()});
+}
+const V={today,notes,money,people,library,settings,sermons};
 function bridgeVersion(){const el=$('#bridge-v');if(!el||!live())return;api({action:'ping'}).then(j=>{el.textContent=j.version||'older than 22 Nov 18:00 (please update)'}).catch(e=>{el.textContent="couldn't check ("+e.message+')'})}
 function render(){ensure();TODAY=iso(0);TMRW=iso(1);document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===UI.view));(V[UI.view]||today)();showSync();if(UI.view==='settings')bridgeVersion()}
 const find=(k,id)=>D[k].find(x=>x.id===id);
@@ -1158,6 +1218,15 @@ document.addEventListener('click',async e=>{
   window.open('https://claude.ai/new?q='+encodeURIComponent(pr),'_blank','noopener');return}
  if(a==='vnew'&&VP){const lab=refLabel(VP.q),L=VP.hits.slice().sort((x,y)=>(y.n.date||'').localeCompare(x.n.date||''));const f=folderList().find(x=>/sermon note/i.test(x))||'Notes';
   const n=RCTX.newNote('New message – '+lab,`<h1>New message – ${esc(lab)}</h1><p><b>Passage:</b> ${esc(lab)}</p><h2>Big idea</h2><p><br></p><h2>Outline</h2><ol><li><br></li></ol><h2>From my past notes</h2><ul>${L.map(h=>`<li><b>${esc(h.n.title)}</b> · ${esc(h.n.date||'')} · ${esc(fpath(h.n))}<br><i>${esc(refExcerpt(h.n,VP.q))}</i></li>`).join('')}</ul>`,f);n.tags='sermon';n.type='Church';UI.q='';saveUI();notes();notePane(n);return}
+ if(a==='smwho'){UI.sm.who=v;saveUI();sermons();return}
+ if(a==='smbook'){UI.sm.book=UI.sm.book===v?'':v;saveUI();sermons();return}
+ if(a==='smclear'){UI.sm={who:UI.sm.who};saveUI();sermons();return}
+ if(a==='smmore'){UI.smMore=1;sermons();return}
+ if(a==='smopen'){const n=id&&find('notes_index',id);if(n)notePane(n);else say('This sermon has no note in HQ yet.');return}
+ if(a==='smsum'){const L=SMV.slice(0,80);let ex=L.map(x=>`- ${x.date||'undated'} · ${x.title}${x.place?' · '+x.place:''}${x.context?' · '+x.context:''} · ${x.refs.map(refLabel).join(', ')}${x.points?' · points: '+x.points:''}`).join('\n');if(ex.length>6500)ex=ex.slice(0,6500)+'\n…';
+  const F=UI.sm,flt=['place','context','themes','theology','year'].filter(k=>F[k]).map(k=>k+': '+F[k]).concat(F.book?['book: '+BOOKNAME[F.book]]:[],F.q?['search: '+F.q]:[]).join(', ');
+  const pr=`Here is a list of messages I have preached${flt?' ('+flt+')':''}, newest first.\n\n1. Summarise the main things I have taught across them, in short points.\n2. Group them by theme and show how my emphasis has changed over time.\n3. Point out passages and themes I keep returning to, and important ones I have hardly preached.\n4. Suggest 3 sermon or series ideas that build on this without repeating it.\nOnly use what is in the list.\n\n${ex}`;
+  window.open('https://claude.ai/new?q='+encodeURIComponent(pr),'_blank','noopener');return}
  if(a==='tsall'){const open=el.textContent==='Open all';view.querySelectorAll('details.tsec').forEach(d=>{d.open=open;TSO[d.dataset.ts]=open});ls.set('hq-today-open',TSO);tsLabel();return}
  if(a==='tick'){e.stopPropagation();buzz();
   if(k==='task'){const t=find('tasks',id);t.status=t.status==='done'?'':'done';t.updated=TODAY;touch('tasks')}
@@ -1231,6 +1300,7 @@ addEventListener('popstate',()=>{
  const rd=document.getElementById('rdr');
  if(rd){const sh=rd.querySelector('.rsheet,.rsel');if(sh){rd.querySelectorAll('.rsheet,.rsel').forEach(x=>x.remove())}else{try{window.HQReader.close()}catch(e){rd.remove()}}guard();return}
  if(pane.classList.contains('open')){closePane();guard();return}
+ if(UI.view==='sermons'){UI.view='notes';saveUI();render();guard();return}
  if(UI.view!=='today'){UI.view='today';saveUI();render();$('#main').scrollTop=0;guard();return}
  if(!backArmed){backArmed=true;say('Press back again to leave HQ.');guard();setTimeout(()=>backArmed=false,2500);return}
  history.back();
