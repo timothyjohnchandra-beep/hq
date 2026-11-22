@@ -14,9 +14,9 @@ const THEMES = {
   focus:    { name: 'Focus',    bg: '#fffcf2', fg: '#1d1d1f', ui: '#f3eedc' },
   night:    { name: 'Night',    bg: '#000000', fg: '#cfcfd4', ui: '#1c1c1e', dark: 1 }
 };
-const FONTS = { original: ['Original', ''], serif: ['Serif', '"Source Serif 4", Charter, Georgia, serif'], sans: ['Sans', 'Inter, -apple-system, system-ui, sans-serif'], georgia: ['Georgia', 'Georgia, serif'], dyslexic: ['Easy read', 'Verdana, Tahoma, sans-serif'] };
+const FONTS = { original: ['Original', ''], serif: ['Serif', 'Charter, "Iowan Old Style", "Source Serif 4", Georgia, serif'], sans: ['Sans', '-apple-system, "SF Pro Text", Inter, system-ui, sans-serif'], georgia: ['Georgia', 'Georgia, serif'], palatino: ['Palatino', 'Palatino, "Palatino Linotype", "Book Antiqua", serif'], times: ['Times', '"Times New Roman", Times, serif'], dyslexic: ['Easy read', 'Verdana, Tahoma, sans-serif'] };
 const COLS = { y: ['Yellow', '#ffe066'], g: ['Green', '#b6e3a8'], b: ['Blue', '#b5d3f3'], p: ['Pink', '#f5bcd4'], o: ['Orange', '#ffc78a'] };
-const DEF = { theme: 'paper', font: 'original', size: 100, lh: 1.5, sp: 0, margin: 2, justify: 1, flow: 'paginated', autoNight: 1, goal: 10, yearGoal: 24, ruler: 0, spp: 50 };
+const DEF = { theme: 'paper', font: 'original', size: 100, lh: 1.5, sp: 0, margin: 2, justify: 1, flow: 'paginated', anim: 'slide', autoNight: 1, goal: 10, yearGoal: 24, ruler: 0, spp: 50 };
 
 let pdf = null, pdfPage = 1, pdfZoom = 1, pdfObs = null;
 let X, S, book, rend, B, el, chromeOn = true, sel = null, history = [], saveT, minT, lastAct = Date.now(), turnAt = Date.now(), speaking = false, locReady = false, curLoc = null;
@@ -59,11 +59,11 @@ function shell() {
 #rdr .rib{width:40px;height:40px;border-radius:20px;display:grid;place-items:center;background:var(--rui)}#rdr .rib svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #rdr .rib.on svg{fill:currentColor}
 #rdr .rttl{flex:1;min-width:0;text-align:center;font-size:13px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#rdr .rview{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:pan-y pinch-zoom}
+#rdr .rview{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:pan-y pinch-zoom}#rdr .rview .epub-container{will-change:transform}
 #rdr .rprog{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;font-size:12px;opacity:.85;text-align:center}
 #rdr .rprog input{width:100%;accent-color:#c6613f}
 #rdr .rstat{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;font-size:15px;line-height:1.5}
-#rdr .rsheet{position:absolute;left:0;right:0;bottom:0;max-height:78%;overflow:auto;background:var(--rui);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.2);z-index:5}
+#rdr .rsheet{position:absolute;left:0;right:0;bottom:0;max-height:58%;overflow:auto;background:var(--rui);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.2);z-index:5}
 @media(min-width:760px){#rdr .rsheet{left:auto;right:16px;bottom:72px;width:380px;border-radius:16px;max-height:70%}}
 #rdr .rsheet h3{margin:4px 0 10px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
 #rdr .rsheet h4{margin:14px 0 6px;font-size:12px;opacity:.65;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
@@ -73,6 +73,8 @@ function shell() {
 #rdr .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 #rdr .rth{border-radius:12px;padding:10px 8px;border:2px solid transparent;font-size:13px;text-align:center}#rdr .rth.on{border-color:#c6613f}
 #rdr .rth b{display:block;font:600 20px Georgia,serif;margin-bottom:2px}
+#rdr .rfonts{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 6px}#rdr .rfonts::-webkit-scrollbar{display:none}#rdr .rfonts button{flex:0 0 auto;min-width:74px;padding:10px 12px;border-radius:12px;background:rgba(128,128,128,.14);font-size:16px;line-height:1.1;text-align:center}#rdr .rfonts button small{display:block;font-size:11px;opacity:.7;margin-top:3px;font-family:-apple-system,system-ui,sans-serif}#rdr .rfonts button.on{outline:2px solid #c6613f;background:var(--rbg)}
+#rdr .rsize{display:flex;align-items:center;gap:8px}#rdr .rsize button{flex:1 1 0;min-width:0;height:44px;padding:0 10px;border-radius:12px;background:rgba(128,128,128,.14)}#rdr .rsize span{min-width:56px;text-align:center;font-size:13px;opacity:.8}
 #rdr .rseg{display:flex;background:rgba(128,128,128,.18);border-radius:10px;padding:2px;gap:2px}#rdr .rseg button{flex:1;padding:7px 4px;border-radius:8px;font-size:13px}#rdr .rseg button.on{background:var(--rbg);font-weight:600}
 #rdr .rline{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}#rdr .rline span{min-width:96px}#rdr .rline input[type=range]{flex:1;accent-color:#c6613f}
 #rdr .rbtn{padding:9px 14px;border-radius:10px;background:rgba(128,128,128,.18);font-size:14px}#rdr .rbtn.y{background:#ffd60a;color:#000;font-weight:600}
@@ -121,6 +123,7 @@ function paint() {
   if (t.weight) body['font-weight'] = t.weight + ' !important';
   rend.themes.default({ body, 'p,li,div,span': Object.assign({ 'line-height': S.lh + ' !important' }, f ? { 'font-family': f + ' !important' } : {}), 'a': { color: t.dark ? '#9cc3ff !important' : '#1f5fbf !important' }, 'img': { 'max-width': '100% !important' }, '::selection': { background: 'rgba(255,214,10,.45)' } });
   rend.themes.fontSize(S.size + '%');
+  try { if (f) rend.themes.override('font-family', f, true); else rend.themes.override('font-family', '', false); } catch (e) {}
 }
 
 /* ---------- open ---------- */
@@ -152,7 +155,31 @@ async function open(b, ctx) {
     const s = $('#r-stat'); if (s) s.insertAdjacentHTML('beforeend', `<div style="margin-top:14px">${X.link(B) ? `<a class="rbtn y" style="text-decoration:none;display:inline-block" href="${esc(X.link(B))}" target="_blank" rel="noopener">Open in Drive</a>` : ''}</div>`);
   }
 }
-let swiped = 0;
+let swiped = 0, turning = false;
+function markOn(btn) { const p = btn.parentElement; p.querySelectorAll('.on').forEach(x => x.classList.remove('on')); btn.classList.add('on'); }
+function stage() { return el.querySelector('#r-view .epub-container') || el.querySelector('#r-view'); }
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+/* Turn a page with a Kindle / Apple Books style slide. from = how far the finger already dragged (px). */
+async function turn(dir, from) {
+  if (!rend || turning) return; if (sel) closeSel();
+  const go = () => dir > 0 ? rend.next() : rend.prev();
+  if (S.flow !== 'paginated' || S.anim === 'none' || matchMedia('(prefers-reduced-motion: reduce)').matches) { snap(); return go(); }
+  turning = true; const st = stage(), w = st.clientWidth || innerWidth;
+  try {
+    if (S.anim === 'fade') {
+      st.style.transition = 'opacity .14s ease'; st.style.opacity = '0'; await wait(140); await go();
+      st.style.opacity = '0'; await wait(16); st.style.transition = 'opacity .2s ease'; st.style.opacity = '1'; await wait(200);
+    } else {
+      const left = Math.max(120, 260 * (1 - Math.abs(from || 0) / w));
+      st.style.transition = `transform ${left}ms ${EASE}, opacity ${left}ms ease`; st.style.transform = `translateX(${-dir * w}px)`; st.style.opacity = '.4'; await wait(left);
+      st.style.transition = 'none'; st.style.opacity = '0'; await go();
+      st.style.transform = `translateX(${dir * w * 0.35}px)`; void st.offsetWidth;
+      st.style.transition = `transform 240ms ${EASE}, opacity 200ms ease`; st.style.transform = 'translateX(0)'; st.style.opacity = '1'; await wait(240);
+    }
+  } finally { snap(); turning = false; }
+}
+function snap() { const st = stage(); if (!st) return; st.style.transition = ''; st.style.transform = ''; st.style.opacity = ''; }
+const wait = ms => new Promise(r => setTimeout(r, ms));
 function makeRendition() {
   const v = $('#r-view'); v.innerHTML = '';
   rend = book.renderTo(v, { width: '100%', height: '100%', flow: S.flow, manager: S.flow === 'scrolled' ? 'continuous' : 'default', spread: innerWidth > 1000 ? 'auto' : 'none', allowScriptedContent: false });
@@ -164,12 +191,23 @@ function makeRendition() {
   rend.hooks.content.register(c => {
     const d = c.document; let t0 = null;
     if (S.flow === 'paginated') d.documentElement.style.touchAction = 'pan-y pinch-zoom';
-    d.addEventListener('touchstart', e => { lastAct = Date.now(); const t = e.touches[0]; t0 = e.touches.length === 1 ? { x: t.clientX, y: t.clientY, at: Date.now() } : null; }, { passive: true });
-    d.addEventListener('touchend', e => {
-      if (!t0 || S.flow !== 'paginated') return; const t = e.changedTouches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y, dt = Date.now() - t0.at; t0 = null;
-      if (String(c.window.getSelection() || '').trim()) return;
-      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3 && dt < 800) { swiped = Date.now(); if (sel) closeSel(); dx < 0 ? rend.next() : rend.prev(); }
+    d.addEventListener('touchstart', e => { lastAct = Date.now(); const t = e.touches[0]; t0 = e.touches.length === 1 && !turning ? { x: t.clientX, y: t.clientY, at: Date.now(), drag: false } : null; }, { passive: true });
+    d.addEventListener('touchmove', e => {
+      if (!t0 || S.flow !== 'paginated' || e.touches.length !== 1) return; const t = e.touches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y;
+      if (!t0.drag) { if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2 || String(c.window.getSelection() || '').trim()) return; t0.drag = true; }
+      if (S.anim === 'slide') { const st = stage(); st.style.transition = 'none'; st.style.transform = `translateX(${dx * 0.9}px)`; }
     }, { passive: true });
+    const end = e => {
+      if (!t0 || S.flow !== 'paginated') { t0 = null; return; } const t = e.changedTouches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y, dt = Date.now() - t0.at, drag = t0.drag; t0 = null;
+      if (!drag && String(c.window.getSelection() || '').trim()) return;
+      const w = stage().clientWidth || innerWidth, fast = dt < 300 && Math.abs(dx) > 30;
+      if (drag || (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3)) {
+        swiped = Date.now();
+        if (Math.abs(dx) > w * 0.18 || fast) turn(dx < 0 ? 1 : -1, dx);
+        else { const st = stage(); st.style.transition = `transform 200ms ${EASE}`; st.style.transform = 'translateX(0)'; setTimeout(snap, 220); }
+      }
+    };
+    d.addEventListener('touchend', end, { passive: true }); d.addEventListener('touchcancel', end, { passive: true });
   });
   rend.on('markClicked', (cfi, data) => { const h = marks().find(m => m.cfi === cfi); if (h) noteSheet(h); });
 }
@@ -241,14 +279,14 @@ function tapZone(e) {
   const vb = $('#r-view').getBoundingClientRect(), w = vb.width || innerWidth; let x = e.clientX;
   try { const fr = e.view.frameElement.getBoundingClientRect(); x = fr.left + e.clientX - vb.left; } catch (er) { if (x > w) x = x % w; }
   if (S.ruler) { const r = $('.rruler'); if (r) r.style.top = (e.clientY - 32 + 56) + 'px'; }
-  if (S.flow === 'paginated' && x < w * 0.28) return rend.prev();
-  if (S.flow === 'paginated' && x > w * 0.72) return rend.next();
+  if (S.flow === 'paginated' && x < w * 0.28) return turn(-1);
+  if (S.flow === 'paginated' && x > w * 0.72) return turn(1);
   chromeOn = !chromeOn; el.classList.toggle('bare', !chromeOn);
 }
 function onKey(e) {
   if (!el || !el.isConnected) return; const t = e.target && e.target.tagName; if (t === 'INPUT' || t === 'TEXTAREA') return;
-  if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) { e.preventDefault && e.preventDefault(); if (pdf) pdfGo(pdfPage + 1); else rend && rend.next(); }
-  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { if (pdf) pdfGo(pdfPage - 1); else rend && rend.prev(); }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) { e.preventDefault && e.preventDefault(); if (pdf) pdfGo(pdfPage + 1); else turn(1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { if (pdf) pdfGo(pdfPage - 1); else turn(-1); }
   else if (e.key === 'Escape') { if (el.querySelector('.rsheet,.rsel')) closeSheet(); else close(); }
 }
 
@@ -259,16 +297,17 @@ const hd = (t) => `<h3>${t}<button class="rbtn" data-r="x">Done</button></h3>`;
 function aaSheet() {
   if (pdf) { sheet(`${hd('Themes &amp; Settings')}<div class="rline" style="justify-content:space-between"><button class="rbtn" data-r="zoom" data-v="-0.15" aria-label="Zoom out">−</button><span style="text-align:center;flex:1">Zoom ${Math.round(pdfZoom * 100)}%</span><button class="rbtn" data-r="zoom" data-v="0.15" aria-label="Zoom in">+</button></div><div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}"><b>Aa</b>${t.name}</button>`).join('')}</div><div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div><div class="rline"><span>Reading ruler</span><button class="rbtn" data-r="tog" data-v="ruler">${S.ruler ? 'On' : 'Off'}</button></div><p style="font-size:13px;opacity:.7">This is a PDF, so its pages keep their printed layout. Fonts and spacing apply to EPUB books.</p>`); return; }
   const s = sheet(`${hd('Themes &amp; Settings')}
-  <div class="rline" style="justify-content:space-between"><button class="rbtn" data-r="fs" data-v="-10" aria-label="Smaller text" style="font-size:13px">A</button><span style="text-align:center;flex:1">${S.size}%</span><button class="rbtn" data-r="fs" data-v="10" aria-label="Larger text" style="font-size:19px">A</button></div>
+  <div class="rsize"><button data-r="fs" data-v="-10" aria-label="Smaller text" style="font-size:14px">A</button><span id="r-fsv">${S.size}%</span><button data-r="fs" data-v="10" aria-label="Larger text" style="font-size:22px">A</button></div>
   <div class="rgrid">${Object.entries(THEMES).map(([k, t]) => `<button class="rth${S.theme === k ? ' on' : ''}" data-r="th" data-v="${k}" style="background:${t.bg};color:${t.fg}${t.weight ? ';font-weight:700' : ''}"><b>Aa</b>${t.name}</button>`).join('')}</div>
   <div class="rline"><span>Match dark mode</span><button class="rbtn" data-r="tog" data-v="autoNight">${S.autoNight ? 'On' : 'Off'}</button></div>
-  <h4>Font</h4><div class="rseg">${Object.entries(FONTS).map(([k, f]) => `<button class="${S.font === k ? 'on' : ''}" data-r="font" data-v="${k}" style="${f[1] ? 'font-family:' + f[1].replace(/"/g, "'") : ''}">${f[0]}</button>`).join('')}</div>
+  <h4>Font</h4><div class="rfonts">${Object.entries(FONTS).map(([k, f]) => `<button class="${S.font === k ? 'on' : ''}" data-r="font" data-v="${k}" style="${f[1] ? 'font-family:' + f[1].replace(/"/g, "'") : ''}">Aa<small>${f[0]}</small></button>`).join('')}</div>
   <h4>Customise</h4>
   <div class="rline"><span>Line spacing</span><input type="range" min="1.1" max="2.2" step="0.1" value="${S.lh}" data-set="lh"></div>
   <div class="rline"><span>Letter spacing</span><input type="range" min="0" max="12" step="1" value="${S.sp}" data-set="sp"></div>
   <div class="rline"><span>Margins</span><input type="range" min="0" max="5" step="1" value="${S.margin}" data-set="margin"></div>
   <div class="rline"><span>Justify text</span><button class="rbtn" data-r="tog" data-v="justify">${S.justify ? 'On' : 'Off'}</button></div>
   <div class="rline"><span>Page turn</span><div class="rseg" style="flex:1"><button class="${S.flow === 'paginated' ? 'on' : ''}" data-r="flow" data-v="paginated">Pages</button><button class="${S.flow === 'scrolled' ? 'on' : ''}" data-r="flow" data-v="scrolled">Scroll</button></div></div>
+  <div class="rline"><span>Animation</span><div class="rseg" style="flex:1">${[['slide', 'Slide'], ['fade', 'Fade'], ['none', 'None']].map(([k, n]) => `<button class="${S.anim === k ? 'on' : ''}" data-r="anim" data-v="${k}">${n}</button>`).join('')}</div></div>
   <div class="rline"><span>Reading ruler</span><button class="rbtn" data-r="tog" data-v="ruler">${S.ruler ? 'On' : 'Off'}</button></div>
   <button class="rbtn" data-r="reset" style="margin-top:6px">Reset to defaults</button>`);
   s.querySelectorAll('[data-set]').forEach(i => i.oninput = () => { S[i.dataset.set] = Number(i.value); saveS(); paint(); });
@@ -433,7 +472,7 @@ async function openPdf(buf) {
   box.addEventListener('scroll', () => { lastAct = Date.now(); const pgs = box.querySelectorAll('.rpg'); const mid = box.scrollTop + box.clientHeight * 0.35; let n = 1; pgs.forEach((p, i) => { if (p.offsetTop <= mid) n = i + 1; }); if (n !== pdfPage) { const dt = (Date.now() - turnAt) / 1000; turnAt = Date.now(); if (dt > 4 && dt < 240) { S.spp = Math.round(S.spp * 0.85 + dt * 0.15); saveS(); } pdfPage = n; curLoc = { start: { cfi: 'pdf:' + n } }; place(); queueSave(); } }, { passive: true });
   let p0 = null;
   box.addEventListener('touchstart', e => { const t = e.touches[0]; p0 = e.touches.length === 1 && pdfZoom <= 1 ? { x: t.clientX, y: t.clientY, at: Date.now() } : null; }, { passive: true });
-  box.addEventListener('touchend', e => { if (!p0) return; const t = e.changedTouches[0], dx = t.clientX - p0.x, dy = t.clientY - p0.y, dt = Date.now() - p0.at; p0 = null; if (getSelection().toString().trim()) return; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 800) pdfGo(pdfPage + (dx < 0 ? 1 : -1)); }, { passive: true });
+  box.addEventListener('touchend', e => { if (!p0) return; const t = e.changedTouches[0], dx = t.clientX - p0.x, dy = t.clientY - p0.y, dt = Date.now() - p0.at; p0 = null; if (getSelection().toString().trim()) return; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 800) { const n = pdfPage + (dx < 0 ? 1 : -1), d = el.querySelector(`.rpg[data-n="${n}"]`); if (d) box.scrollTo({ top: d.offsetTop - 8, behavior: 'smooth' }); } }, { passive: true });
   box.addEventListener('mouseup', pdfSel); box.addEventListener('touchend', () => setTimeout(pdfSel, 350));
   box.addEventListener('click', e => { if (!getSelection().toString() && !e.target.closest('.rsel')) { if (sel) closeSel(); else { chromeOn = !chromeOn; el.classList.toggle('bare', !chromeOn); } } });
   const start = /^pdf:\d+$/.test(B.cfi || '') ? Number(B.cfi.slice(4)) : 1;
@@ -518,8 +557,10 @@ async function onClick(e) {
     case 'finish': { const f = B.finished ? '' : X.today(); B.finished = f; X.ls.set('hq-data', X.D); if (X.live()) X.post({ action: 'patch', name: 'books', id: B.id, fields: { finished: f, updated: X.today() } }).catch(err => X.say("Couldn't save: " + err.message)); X.say(f ? 'Marked as finished. Nice work.' : 'Back in Reading now.'); return moreSheet(); }
     case 'zoom': pdfZoom = Math.min(3, Math.max(0.5, pdfZoom + Number(v))); pdfLayout(); return aaSheet();
     case 'fs': S.size = Math.min(220, Math.max(60, S.size + Number(v))); saveS(); paint(); return aaSheet();
-    case 'th': S.theme = v; saveS(); paint(); return aaSheet();
-    case 'font': S.font = v; saveS(); paint(); return aaSheet();
+    case 'th': S.theme = v; saveS(); paint(); return markOn(t);
+    case 'font': S.font = v; saveS(); paint(); return markOn(t);
+    case 'fs': S.size = Math.max(60, Math.min(240, (Number(S.size) || 100) + Number(v))); saveS(); paint(); { const o = el.querySelector('#r-fsv'); if (o) o.textContent = S.size + '%'; } return;
+    case 'anim': S.anim = v; saveS(); return markOn(t);
     case 'tog': S[v] = S[v] ? 0 : 1; saveS(); if (v === 'ruler') ruler(S.ruler); paint(); return aaSheet();
     case 'flow': if (S.flow !== v) { const at = curLoc && curLoc.start.cfi; S.flow = v; saveS(); rend.destroy(); makeRendition(); await rend.display(at); attach(); } return aaSheet();
     case 'reset': { const g = [S.goal, S.yearGoal]; S = Object.assign({}, DEF, { goal: g[0], yearGoal: g[1] }); saveS(); paint(); return aaSheet(); }
