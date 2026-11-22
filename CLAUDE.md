@@ -26,6 +26,9 @@ Built so far (iOS 15–27): nested folders, Pinned, Recently Deleted, date group
 Not built: locked notes, Math Notes, sketching, shared notes, Quick Note.
 A monthly scheduled task checks Apple's latest Notes features and adds small missing ones; anything big goes to Timothy as a proposal first.
 
+## Library sorting (bridge script)
+`sortNewBooks` runs nightly (~3 a.m.): every new EPUB anywhere in Drive goes to Claude/Library/<category> by title keywords. Under [Teaching] = copy (tracked so it copies once); elsewhere = move. Unclear titles land in "00 New – to sort" for Claude to place by hand. Categories: 01 OT, 02 NT, 03 Theology, 04 Holy Spirit/Pentecost/Revival, 05 Discipleship & Spiritual Formation, 06 Church & Pastoral Leadership, 07 Counseling, 08 Apologetics, 09 Leadership & Business, 10 Personal Growth, 11 Money & Giving, 12 Marriage/Family/Youth, 13 Fiction, 14 History/Economics, 99 Duplicates & files to check.
+
 ## Never put in this repo
 Tokens, the Sheet ID, ID numbers, bank/card numbers, member names, phone numbers, financial figures, pastoral notes. Those live only in the Sheet. The repo is public.
 

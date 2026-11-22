@@ -267,6 +267,88 @@ function contacts_() {
   return out;
 }
 
+/* ---------- Library: sort new EPUBs automatically (nightly) ----------
+ * Any new EPUB anywhere in Drive is filed into Claude/Library/<category>.
+ * Books under a [Teaching] folder are COPIED (the original stays put); all others are MOVED.
+ * Books it cannot place go to "00 New – to sort" for Claude to look at.
+ * Run setupBookTrigger once to switch on the nightly run (about 3 a.m. Jakarta).
+ */
+const LIB_FOLDERS = ['00 New – to sort', '01 Bible – Old Testament', '02 Bible – New Testament', '03 Theology & Bible Study', '04 Holy Spirit, Pentecost & Revival', '05 Discipleship & Spiritual Formation', '06 Church & Pastoral Leadership', '07 Counseling & Care', '08 Apologetics & Faith Questions', '09 Leadership & Business', '10 Personal Growth & Psychology', '11 Money & Giving', '12 Marriage, Family & Youth', '13 Fiction', '14 History, Economics & World Affairs', '99 Duplicates & files to check'];
+const OT = 'genesis|exodus|leviticus|numbers|deuteronomy|joshua|judges|ruth|samuel|kings|chronicles|ezra|nehemiah|esther|job|psalms?|proverbs|ecclesiastes|song of songs|isaiah|jeremiah|lamentations|ezekiel|daniel|hosea|joel|amos|obadiah|jonah|micah|nahum|habakkuk|zephaniah|haggai|zechariah|malachi|old testament|hebrew bible|pentateuch|wisdom books';
+const NT = 'matthew|mark|luke|john|acts|romans|corinthians|galatians|ephesians|philippians|colossians|thessalonians|timothy|titus|philemon|hebrews|james|peter|jude|revelation|new testament|gospels?|paul';
+const COMMENTARY = /commentar|nicot|nicnt|nigtc|pntc|pillar|tntc|totc|tyndale|wbc|word biblical|expositor|niv application|apollos|holman|zecnt|baker exegetical|bible speaks|for you\b/i;
+const RULES = [
+  ['04', /holy spirit|pentecost|revival|charismatic|spiritual gifts|baptism in the spirit|roh kudus|mighty wind/i],
+  ['07', /counsel|inner healing|trauma|grief|soul care/i],
+  ['08', /apologet|case for|historical jesus|real jesus|islam|muhammad|allah|atheis|mere christianity|what'?s so great about god|god and christianity|wrestle with god/i],
+  ['05', /disciple|spiritual disciplines?|spiritual formation|willard|renovat|hearing god|pursuit of god|prayer|devotion|celebration of discipline|true spirituality|respectable sins/i],
+  ['06', /church|pastor|pastoral|ministry|ministries|preach|sermon|mission|shepherd|elders?\b|fivefold|body of christ|communicating for a change|culture of honor/i],
+  ['03', /theolog|doctrine|trinity|catechism|systematic|justification|sanctification|hermeneutic|read the bible|grace|tithing|tolerance/i],
+  ['11', /money|wealth|financ|rich|invest|budget|debt|tithe|bank/i],
+  ['12', /marriage|married|family|parent|kids|children|\bdad\b|\bmom\b|youth|teen|generation z|gen z|love as a way|love language/i],
+  ['09', /leader|leadership|manage|business|startup|marketing|strategy|art of war|sun tzu|maxwell|sinek|godin|entrepreneur|company|e-myth|zero to one|infinite game|originals/i],
+  ['10', /habit|mindset|psycholog|productiv|think|grit|success|human nature|rules of life|5 ?am|procrastinat|dopamine|body language|irrational|freak|gladwell|range\b|let them|relentless|life skills/i],
+  ['14', /history|politic|econom|world order|nations|capital in|power\b|sniper|prophet/i],
+  ['13', /jeffrey archer|baldacci|patterson|grisham|dashner|maze runner|novel|a romance of/i]
+];
+function libFolder_(code) {
+  const lib = sub_(rootFolder_(), 'Library');
+  const name = LIB_FOLDERS.filter(n => n.indexOf(code + ' ') === 0)[0];
+  return sub_(lib, name);
+}
+function classifyBook_(title) {
+  const t = title.toLowerCase();
+  if (COMMENTARY.test(t) || new RegExp('^\\(?(\\d\\s?)?(' + OT + '|' + NT + ')\\s*(\\d|$|-|:|\\()', 'i').test(t)) {
+    if (new RegExp('\\b(' + OT + ')\\b', 'i').test(t)) return '01';
+    if (new RegExp('\\b(' + NT + ')\\b', 'i').test(t)) return '02';
+  }
+  for (const [code, re] of RULES) if (re.test(t)) return code;
+  return '00';
+}
+function cleanBookName_(name) {
+  return name.replace(/\.epub$/i, '').replace(/[_ ]?\(?(z[-_ ]?library|libgen|1lib|z-lib|anna'?s[-_ ]archive|pdfdrive)[^)]*\)?.*$/i, '')
+    .replace(/_/g, ' ').replace(/^copy of /i, '').replace(/\s+/g, ' ').trim().replace(/[ ,-]+$/, '') + '.epub';
+}
+function isUnder_(file, folderId) {
+  const seen = {}, queue = [];
+  const ps = file.getParents(); while (ps.hasNext()) queue.push(ps.next());
+  while (queue.length) {
+    const f = queue.shift(); if (seen[f.getId()]) continue; seen[f.getId()] = 1;
+    if (f.getId() === folderId) return true;
+    const up = f.getParents(); while (up.hasNext()) queue.push(up.next());
+  }
+  return false;
+}
+function sortNewBooks() {
+  const props = PropertiesService.getScriptProperties();
+  const since = props.getProperty('booksSince') || new Date(Date.now() - 2 * 864e5).toISOString();
+  const lib = sub_(rootFolder_(), 'Library');
+  const teachIt = DriveApp.getFoldersByName('[Teaching]');
+  const teachId = teachIt.hasNext() ? teachIt.next().getId() : '';
+  const copied = JSON.parse(props.getProperty('booksCopied') || '{}');
+  const started = new Date().toISOString(), log = [];
+  const it = DriveApp.searchFiles('mimeType = "application/epub+zip" and trashed = false and createdDate > "' + since + '"');
+  while (it.hasNext()) {
+    const f = it.next();
+    if (isUnder_(f, lib.getId())) continue;                       // already in the Library
+    const code = classifyBook_(f.getName()), dest = libFolder_(code), name = cleanBookName_(f.getName());
+    if (teachId && isUnder_(f, teachId)) {
+      if (copied[f.getId()]) continue;
+      const c = f.makeCopy(name, dest); copied[f.getId()] = c.getId(); log.push('Copied ' + name + ' → ' + dest.getName());
+    } else {
+      f.moveTo(dest); if (f.getName() !== name) f.setName(name); log.push('Moved ' + name + ' → ' + dest.getName());
+    }
+  }
+  props.setProperty('booksCopied', JSON.stringify(copied));
+  props.setProperty('booksSince', started);
+  Logger.log(log.length ? log.join('\n') : 'No new books.');
+  return log;
+}
+function setupBookTrigger() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sortNewBooks').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('sortNewBooks').timeBased().everyDays(1).atHour(3).inTimezone(TZ).create();
+}
+
 /** Run once from the editor to check everything is wired up. */
 function test() {
   Logger.log(JSON.stringify(readTab_('places')));
