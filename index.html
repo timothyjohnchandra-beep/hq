@@ -247,6 +247,37 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .colors{display:flex;gap:8px;flex-wrap:wrap;padding:0 4px}
 .colors button{border:0;background:var(--fill);border-radius:12px;min-width:44px;height:44px;display:grid;place-items:center;padding:0 10px}
 @media(min-width:1101px){.pane.noting .ned{padding-top:16px}}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.msum{background:var(--card);border-radius:16px;padding:16px 18px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:end}
+.msum b{display:block;font-size:13px;color:var(--mut);font-weight:600;margin-bottom:3px}
+.msum .big{font-size:clamp(22px,5vw,30px);white-space:nowrap}
+.msum>div>div:not(.big){font-weight:700;font-size:17px;white-space:nowrap}
+@media(max-width:520px){.msum{grid-template-columns:1fr 1fr}.msum>div:first-child{grid-column:1/-1}}
+.mamt{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mfilt{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:8px;margin-top:14px}
+.mday{display:flex;justify-content:space-between;align-items:baseline;margin-top:18px}
+.mday span:last-child{font-size:14px;font-weight:700}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+.mrow:last-child{border-bottom:0}
+.mright{text-align:right}
+.mtags{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.mtags span{font-size:12px;font-weight:600;background:var(--fill);color:var(--mut);padding:2px 8px;border-radius:99px}
+.mbar{position:sticky;bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;z-index:3}
+.mbtn{border:0;border-radius:14px;min-height:54px;font-size:17px;font-weight:700;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.14)}
+.mbtn.in{background:#1f8a4c}.mbtn.out{background:#c62f3a}
+.mbig{font-size:28px!important;font-weight:700;font-variant-numeric:tabular-nums}
+.mcard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;border:0;background:var(--card);border-radius:16px;padding:14px 16px;margin-top:12px;text-align:left;color:var(--ink)}
+.mci{width:40px;height:40px;border-radius:12px;background:var(--accsoft);display:grid;place-items:center}
+.mci svg{width:22px;height:22px;stroke:var(--acc);fill:none;stroke-width:1.8}
+.mct b{display:block;font-size:16px}.mct span{font-size:14px;color:var(--mut)}.mct em{font-style:normal;font-weight:600}
+.mcgo{color:var(--mut);font-size:24px}
+.rbar{display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr) auto;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.rl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt{height:12px;background:var(--fill);border-radius:6px;overflow:hidden}
+.rt i{display:block;height:100%;border-radius:6px}.rt i.pos{background:#1f8a4c}.rt i.neg{background:#c62f3a}.rt i.mid{background:var(--accfill)}
+.rv{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+.rtab{width:100%;border-collapse:collapse;font-size:14px}.rtab th,.rtab td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}.rtab .num{text-align:right;white-space:nowrap}
+@media print{body.printing .app>*:not(.pane){display:none!important}body.printing .pane{position:static!important;transform:none!important;width:100%!important;box-shadow:none;border:0;overflow:visible}body.printing .dhead{display:none}body.printing{overflow:visible;background:#fff}html,body{height:auto!important}}
 .tagbox{display:flex;flex-wrap:wrap;gap:8px}
 .tagchip{border:0;background:var(--card);border-radius:99px;padding:8px 14px;font-size:15px;font-weight:600;color:var(--acc);min-height:40px}
 .tagchip span{color:var(--mut);font-weight:500;margin-left:4px}
@@ -274,6 +305,7 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
     <div class="brand"><span class="mono" aria-hidden="true">TJC</span>Timothy <span>HQ</span></div>
     <button class="tab" data-v="today" id="t-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Today</button>
     <button class="tab" data-v="notes" id="t-notes"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Notes</button>
+    <button class="tab" data-v="money" id="t-money"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg>Money</button>
     <button class="tab" data-v="people" id="t-people"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 5.4"/></svg>People</button>
     <button class="tab" data-v="library" id="t-library"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2z"/><path d="M20 19V5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z"/></svg>Library</button>
     <button class="tab" data-v="settings" id="t-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
@@ -304,8 +336,8 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='5 · 22 Nov 2026';
-const TABS=['tasks','people','notes_index','places','habits','books','highlights'];
+const VERSION='6 · 22 Nov 2026';
+const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
 let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null);
@@ -331,6 +363,7 @@ function sample(){
  notes_index:[{id:'n1',title:'The Prodigal Son',para:'Projects',type:'Church',date:iso(-1),text:''},{id:'n2',title:'Ops review',para:'Areas',type:'Work',date:iso(-4),text:''},{id:'n3',title:'HQ plan and email sort',para:'Projects',type:'Claude session',date:TODAY,text:''}],
  places:[{id:'home',name:'Home',address:'Daan Mogot Baru'}],
  habits:[{id:'h1',name:'Morning prayer',part:'morning',link:'',log:''},{id:'h2',name:'Bible reading plan',part:'morning',link:'youversion',log:''},{id:'h3',name:'Family time',part:'evening',link:'',log:''}],
+ ...cashSample(),
  books:[{id:'b1',title:'Building a Second Brain',author:'Tiago Forte',driveLink:'',position:'0.4'}],highlights:[]}}
 if(!D&&!live())D=sample();
 const ensure=()=>{if(!D)D={};TABS.forEach(t=>{if(!Array.isArray(D[t]))D[t]=[]})};
@@ -364,17 +397,17 @@ async function flush(){
  try{
   for(const id of [...dirtyNotes]){const n=D.notes_index.find(x=>x.id===id);if(!n){dirtyNotes.delete(id);continue}
    const j=await post({action:'note',id,title:n.title,html:BODY[id]||''});n.driveLink=j.driveLink;dirtyNotes.delete(id);dirty.add('notes_index')}
-  for(const t of [...dirty]){await post({action:'save',name:t,rows:D[t]});dirty.delete(t)}
+  for(const t of [...dirty]){try{await post({action:'save',name:t,rows:D[t]});dirty.delete(t);if(CASH_TABS.includes(t))cashNeedsScript=false}catch(err){if(CASH_TABS.includes(t)&&/Unknown tab|Tab missing/.test(err.message)){cashNeedsScript=true;continue}throw err}}
   syncState={s:'ok',at:hm(new Date())}}
  catch(e){syncState={s:'error',msg:e.message}}
- flushing=false;persist();showSync();if(dirty.size||dirtyNotes.size)if(syncState.s==='ok')flush()}
+ flushing=false;persist();showSync();if((dirty.size&&![...dirty].every(t=>CASH_TABS.includes(t)&&cashNeedsScript))||dirtyNotes.size)if(syncState.s==='ok')flush()}
 async function load(){
  if(!live()){syncState={s:'sample'};showSync();ensure();render();return}
  if(D){ensure();render()}
  syncState={s:'loading'};showSync();
  try{
   if(dirty.size||dirtyNotes.size)await flush();
-  const j=await api({action:'all'});const keep=D||{};D=j.data;TABS.forEach(t=>{if(dirty.has(t)&&keep[t])D[t]=keep[t]});ensure();persist();
+  const j=await api({action:'all'});const keep=D||{};D=j.data;cashNeedsScript=!Array.isArray(j.data.cash_entries);TABS.forEach(t=>{if((dirty.has(t)||!Array.isArray(D[t]))&&keep[t])D[t]=keep[t]});ensure();persist();
   syncState={s:'ok',at:hm(new Date())};render();
   api({action:'calendar',days:2}).then(c=>{EV=c.events;ls.set('hq-ev',EV);if(UI.view==='today')render()}).catch(e=>{syncState={s:'error',msg:'Calendar: '+e.message};showSync()});
   api({action:'brief'}).then(b=>{BRIEF=b.brief;ls.set('hq-brief',BRIEF);if(UI.view==='today')render()}).catch(()=>{});
@@ -419,6 +452,7 @@ function today(){
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
  </section>
  <div class="links"><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||'https://music.youtube.com')}" target="_blank" rel="noopener"><i style="background:#ff0033"></i>Worship playlist</a></div>
+ ${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}
  ${['morning','noon','evening'].map(p=>`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>${grp(items.filter(i=>i.part===p).map(row),'Nothing planned.')}`).join('')}
  <h2 style="color:${over.length?'var(--red)':'inherit'}">Overdue <span class="n">${over.length}</span>${over.length?'<button class="btn link act" data-a="fresh">Fresh start</button>':''}</h2>${grp(over.map(row),'All caught up.')}
  <h2>No date <span class="n">${nod.length}</span></h2>${grp(nod.map(row),'Nothing waiting for a date.')}
@@ -777,6 +811,115 @@ function bookPane(b){
  <div class="prow">${['y','g','b','p'].map(c=>`<button class="btn" data-a="hl" data-v="${c}" data-id="${esc(b.id)}" aria-label="Save highlight"><span class="sw m-${c}"></span></button>`).join('')}</div></div>`);
  const r=$('#bk-p');r.oninput=()=>{$('#bk-v').textContent=r.value+'%'};r.onchange=()=>{b.position=String(r.value/100);b.updated=TODAY;touch('books');if(UI.view==='library')library()}}
 
+/* ---------- MONEY (Cashbook style: books, cash in / cash out, running balance, reports) ---------- */
+const CASH_TABS=['cashbooks','cash_entries'];
+let cashNeedsScript=false;
+const MODES=['Cash','Bank transfer','QRIS','Debit card','Credit card','E-wallet'];
+const rp=n=>{const v=Math.round(Number(n)||0);return (v<0?'−':'')+'Rp '+Math.abs(v).toLocaleString('id-ID')};
+const amt=e=>Number(String(e.amount||'0').replace(/[^\d.-]/g,''))||0;
+const liveEntries=bid=>D.cash_entries.filter(e=>!yes(e.void)&&(!bid||e.bookId===bid));
+const ord=(a,b)=>(a.date||'').localeCompare(b.date||'')||(a.time||'').localeCompare(b.time||'')||(a.created||'').localeCompare(b.created||'');
+function totals(list){let i=0,o=0;list.forEach(e=>{if(e.type==='in')i+=amt(e);else o+=amt(e)});return{i,o,net:i-o}}
+function periodRange(p){const t=new Date(TODAY+'T00:00');const y=t.getFullYear(),m=t.getMonth();
+ if(p==='today')return[TODAY,TODAY];if(p==='week'){const d=new Date(t);d.setDate(d.getDate()-((d.getDay()+6)%7));return[ymd(d),TODAY]}
+ if(p==='month')return[ymd(new Date(y,m,1)),ymd(new Date(y,m+1,0))];if(p==='lastmonth')return[ymd(new Date(y,m-1,1)),ymd(new Date(y,m,0))];
+ if(p==='year')return[`${y}-01-01`,`${y}-12-31`];return['0000','9999']}
+const PERIODS=[['all','All time'],['today','Today'],['week','This week'],['month','This month'],['lastmonth','Last month'],['year','This year']];
+function filtered(bid){const f=UI.cf||{};const[a,b]=periodRange(f.p||'all');const q=(f.q||'').toLowerCase();
+ return liveEntries(bid).filter(e=>e.date>=a&&e.date<=b&&(!f.t||e.type===f.t)&&(!f.c||e.category===f.c)&&(!f.m||e.mode===f.m)&&(!q||(e.remark+' '+e.party+' '+e.category+' '+e.amount).toLowerCase().includes(q)))}
+function cashSample(){return{cashbooks:[{id:'cb1',name:'Household',world:'personal',currency:'IDR',order:'1',created:TODAY,void:''},{id:'cb2',name:'Church petty cash',world:'church',currency:'IDR',order:'2',created:TODAY,void:''}],
+ cash_entries:[{id:'x1',bookId:'cb1',type:'in',amount:'15000000',date:iso(-20),time:'09:00',remark:'Monthly allowance',category:'Income',mode:'Bank transfer',party:'',created:iso(-20)},{id:'x2',bookId:'cb1',type:'out',amount:'1250000',date:iso(-3),time:'19:10',remark:'Groceries',category:'Food',mode:'Debit card',party:'',created:iso(-3)},{id:'x3',bookId:'cb1',type:'out',amount:'350000',date:TODAY,time:'08:15',remark:'Fuel',category:'Transport',mode:'QRIS',party:'',created:TODAY},{id:'x4',bookId:'cb2',type:'in',amount:'2000000',date:iso(-6),time:'10:00',remark:'Top up from treasurer',category:'Top up',mode:'Cash',party:'',created:iso(-6)},{id:'x5',bookId:'cb2',type:'out',amount:'480000',date:iso(-1),time:'13:00',remark:'Snacks for Build',category:'Events',mode:'Cash',party:'',created:iso(-1)}]}}
+function money(){
+ const bk=UI.book&&D.cashbooks.find(b=>b.id===UI.book&&!yes(b.void));
+ if(bk)return bookView(bk);
+ const books=D.cashbooks.filter(b=>!yes(b.void)).sort((a,b)=>(+a.order||0)-(+b.order||0));
+ const all=totals(liveEntries());const[ma,mb]=periodRange('month');const mt=totals(liveEntries().filter(e=>e.date>=ma&&e.date<=mb));
+ view.innerHTML=`<h1>Money</h1><p class="sub">Cash books for home, church and the companies. Every entry is kept, never erased.</p>
+ ${cashNeedsScript?'<div class="sync note" style="margin-bottom:14px">Saved on this device for now. It will sync to your Google Sheet once the bridge script is updated.</div>':''}
+ <section class="msum"><div><b>Net balance, all books</b><div class="big ${all.net<0?'neg':''}">${rp(all.net)}</div></div><div><b>This month in</b><div class="pos">${rp(mt.i)}</div></div><div><b>This month out</b><div class="neg">${rp(mt.o)}</div></div></section>
+ <h2>Books <span class="n">${books.length}</span><button class="btn link act" data-a="newbook">New book</button></h2>
+ ${grp(books.map(b=>{const t=totals(liveEntries(b.id));const last=liveEntries(b.id).sort(ord).pop();return `<div class="row nt" data-a="openbook" data-id="${esc(b.id)}"><span class="dot w-${esc(b.world||'personal')}"></span><div><div class="ttl">${esc(b.name)}</div><div class="meta">${last?'Last entry '+nice(last.date):'No entries yet'}</div></div><span class="mamt ${t.net<0?'neg':'pos'}">${rp(t.net)}</span></div>`}),'No books yet. Make one for each pot of money you track, like Household or Church petty cash.')}
+ <div id="nb"></div>`}
+function bookView(bk){
+ const f=UI.cf=UI.cf||{};const list=filtered(bk.id);const t=totals(list);
+ // running balance over the whole book (not just the filter), like Cashbook
+ const run={};let bal=0;liveEntries(bk.id).sort(ord).forEach(e=>{bal+=e.type==='in'?amt(e):-amt(e);run[e.id]=bal});
+ const days={};[...list].sort(ord).reverse().forEach(e=>{(days[e.date]=days[e.date]||[]).push(e)});
+ const cats=[...new Set(liveEntries(bk.id).map(e=>e.category).filter(Boolean))].sort();
+ const modes=[...new Set([...MODES,...liveEntries(bk.id).map(e=>e.mode).filter(Boolean)])];
+ view.innerHTML=`<div class="nhead"><button class="btn link nback" data-a="openbook" data-id="">‹ Money</button><button class="btn link" data-a="bookmenu" data-id="${esc(bk.id)}">Edit book</button></div>
+ <h1>${esc(bk.name)}</h1>
+ ${cashNeedsScript?'<p class="meta" style="margin:0 0 10px">Saved on this device until the bridge script is updated.</p>':''}
+ <section class="msum"><div><b>Net balance${f.p&&f.p!=='all'||f.t||f.c||f.m||f.q?' (filtered)':''}</b><div class="big ${t.net<0?'neg':''}">${rp(t.net)}</div></div><div><b>Total in</b><div class="pos">${rp(t.i)}</div></div><div><b>Total out</b><div class="neg">${rp(t.o)}</div></div></section>
+ <div class="mfilt"><select id="mf-p" aria-label="Period">${PERIODS.map(([k,l])=>`<option value="${k}" ${(f.p||'all')===k?'selected':''}>${l}</option>`).join('')}</select>
+  <select id="mf-t" aria-label="Type"><option value="">In and out</option><option value="in" ${f.t==='in'?'selected':''}>Cash in</option><option value="out" ${f.t==='out'?'selected':''}>Cash out</option></select>
+  <select id="mf-c" aria-label="Category"><option value="">All categories</option>${cats.map(c=>`<option ${f.c===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+  <select id="mf-m" aria-label="Payment mode"><option value="">All payment modes</option>${modes.map(c=>`<option ${f.m===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+ <div class="quick" style="margin-top:8px"><input type="search" id="mf-q" placeholder="Search remark, name or amount" value="${esc(f.q||'')}" aria-label="Search entries"><button class="btn" data-a="report" data-id="${esc(bk.id)}">Report</button></div>
+ <p class="meta" style="margin:10px 2px 0">Showing ${list.length} entr${list.length===1?'y':'ies'}</p>
+ ${Object.keys(days).length?Object.entries(days).map(([d,es])=>{const dt=totals(es);return `<h2 class="nsec mday"><span>${new Date(d+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span><span class="${dt.net<0?'neg':'pos'}">${rp(dt.net)}</span></h2><div class="group">${es.map(e=>`<div class="mrow" data-a="entry" data-id="${esc(e.id)}"><div><div class="ttl">${esc(e.remark||e.category||(e.type==='in'?'Cash in':'Cash out'))}</div><div class="mtags">${e.category?`<span>${esc(e.category)}</span>`:''}${e.mode?`<span>${esc(e.mode)}</span>`:''}${e.party?`<span>${esc(e.party)}</span>`:''}${e.attachment?'<span>📎 Bill</span>':''}</div><div class="meta">${esc(e.time||'')}</div></div><div class="mright"><div class="mamt ${e.type==='in'?'pos':'neg'}">${e.type==='in'?'+':'−'} ${rp(amt(e)).replace('Rp ','Rp ')}</div><div class="meta">Balance ${rp(run[e.id])}</div></div></div>`).join('')}</div>`}).join(''):'<div class="group" style="margin-top:14px"><div class="empty">No entries match. Add one with the buttons below.</div></div>'}
+ <div class="mbar"><button class="mbtn in" data-a="newentry" data-v="in">+ Cash in</button><button class="mbtn out" data-a="newentry" data-v="out">− Cash out</button></div>`;
+ const setF=(k,v)=>{UI.cf[k]=v;saveUI();bookView(bk)};
+ $('#mf-p').onchange=e=>setF('p',e.target.value);$('#mf-t').onchange=e=>setF('t',e.target.value);$('#mf-c').onchange=e=>setF('c',e.target.value);$('#mf-m').onchange=e=>setF('m',e.target.value);
+ const q=$('#mf-q');q.oninput=()=>{UI.cf.q=q.value;saveUI();const p=q.selectionStart;bookView(bk);const q2=$('#mf-q');q2.focus();q2.setSelectionRange(p,p)}}
+function entryPane(e,bk,type){
+ const isNew=!e;e=e||{id:uid(),bookId:bk.id,type,amount:'',date:TODAY,time:hm(new Date()),remark:'',category:'',mode:'',party:'',attachment:'',created:TODAY,updated:TODAY,void:''};
+ const cats=[...new Set(D.cash_entries.filter(x=>x.type===e.type&&!yes(x.void)).map(x=>x.category).filter(Boolean))].sort();
+ const modes=[...new Set([...MODES,...D.cash_entries.map(x=>x.mode).filter(Boolean)])];
+ openPane(`<div class="detail"><div class="dhead">${back}<span class="pill">${esc(bk.name)}</span></div>
+ <div class="seg" role="group" aria-label="Type"><button type="button" data-et="in" aria-pressed="${e.type==='in'}">Cash in</button><button type="button" data-et="out" aria-pressed="${e.type==='out'}">Cash out</button></div>
+ <div class="field"><label for="e-a">Amount (Rp)</label><input type="text" id="e-a" inputmode="numeric" class="mbig ${e.type==='in'?'pos':'neg'}" value="${e.amount?Number(amt(e)).toLocaleString('id-ID'):''}" placeholder="0" autocomplete="off"></div>
+ <div class="two"><div class="field"><label for="e-d">Date</label><input type="date" id="e-d" value="${esc(e.date)}"></div><div class="field"><label for="e-t">Time</label><input type="time" id="e-t" value="${esc(e.time)}" style="width:100%"></div></div>
+ <div class="field"><label for="e-r">Remark</label><input type="text" id="e-r" value="${esc(e.remark)}" placeholder="What was it for?"></div>
+ <div class="field"><label for="e-c">Category</label><input type="text" id="e-c" list="e-cl" value="${esc(e.category)}" placeholder="${e.type==='in'?'Income, Top up, Offering…':'Food, Transport, Events…'}"><datalist id="e-cl">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+ <div class="field"><label>Payment mode</label><div class="chips" style="flex-wrap:wrap">${modes.map(m=>`<button type="button" class="chip" data-em="${esc(m)}" aria-pressed="${e.mode===m}">${esc(m)}</button>`).join('')}</div></div>
+ <div class="field"><label for="e-p">Paid to / received from (optional)</label><input type="text" id="e-p" list="e-pl" value="${esc(e.party)}"><datalist id="e-pl">${D.people.filter(p=>!yes(p.void)).map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist></div>
+ <div class="field"><label>Bill or receipt</label>${e.attachment?`<a class="btn" style="text-decoration:none;display:inline-block" href="${esc(e.attachment)}" target="_blank" rel="noopener">Open bill</a>`:''}<label class="btn" style="display:inline-block;margin-left:6px">${e.attachment?'Replace':'Attach photo'}<input type="file" id="e-f" accept="image/*,application/pdf" hidden></label> <span class="meta" id="e-fs"></span></div>
+ <div class="prow" style="margin-top:8px"><button class="btn y" id="e-save">Save</button>${isNew?'<button class="btn" id="e-more">Save and add another</button>':`<button class="btn" id="e-void">Remove entry</button>`}</div>
+ <p class="samp">${isNew?'':'Removed entries stay in the Sheet marked void, so the history is never lost.'}</p></div>`);
+ let mode=e.mode,typ=e.type,att=e.attachment;
+ pane.querySelectorAll('[data-et]').forEach(b=>b.onclick=()=>{typ=b.dataset.et;pane.querySelectorAll('[data-et]').forEach(x=>x.setAttribute('aria-pressed',x===b));const a=$('#e-a');a.classList.toggle('pos',typ==='in');a.classList.toggle('neg',typ==='out')});
+ pane.querySelectorAll('[data-em]').forEach(b=>b.onclick=()=>{mode=mode===b.dataset.em?'':b.dataset.em;pane.querySelectorAll('[data-em]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.em===mode))});
+ const ai=$('#e-a');ai.oninput=()=>{const d=ai.value.replace(/\D/g,'');ai.value=d?Number(d).toLocaleString('id-ID'):''};
+ setTimeout(()=>{if(isNew&&ai.isConnected)ai.focus()},50);
+ $('#e-f').onchange=async ev=>{const file=ev.target.files[0];ev.target.value='';if(!file)return;const st=$('#e-fs');
+  if(!live()){st.textContent='Connect your Google Sheet first to keep bills.';return}
+  try{st.textContent='Uploading…';let data,mime=file.type||'application/octet-stream',name=file.name;
+   if(file.type.startsWith('image/')){const src=await shrinkImage(file);data=src.split(',')[1];mime='image/jpeg';name=name.replace(/\.\w+$/,'')+'.jpg'}else data=await fileB64(file);
+   const j=await post({action:'attach',name:'Bill '+(e.date||TODAY)+' '+name,mime,data});att=j.url;st.textContent='Bill attached.'}
+  catch(err){st.textContent=/Unknown action/.test(err.message)?'Bills need the updated bridge script. Save the entry now and attach the bill later.':"Couldn't upload: "+err.message}};
+ const save=again=>{const v=Number($('#e-a').value.replace(/\D/g,''));if(!v){say('Type the amount first.');$('#e-a').focus();return false}
+  Object.assign(e,{type:typ,amount:String(v),date:$('#e-d').value||TODAY,time:$('#e-t').value,remark:$('#e-r').value.trim(),category:$('#e-c').value.trim(),mode,party:$('#e-p').value.trim(),attachment:att||'',updated:TODAY});
+  if(isNew)D.cash_entries.push(e);touch('cash_entries');buzz();money();say((typ==='in'?'Cash in ':'Cash out ')+rp(v)+' saved.');
+  if(again)entryPane(null,bk,typ);else closePane();return true};
+ $('#e-save').onclick=()=>save(false);if(isNew)$('#e-more').onclick=()=>save(true);
+ else $('#e-void').onclick=()=>{e.void='1';e.updated=TODAY;touch('cash_entries');money();closePane();say('Entry removed. It stays in the Sheet history.')}}
+function bookPaneEdit(bk){
+ openPane(`<div class="detail"><div class="dhead">${back}</div><h1 style="font-size:26px">${bk?'Edit book':'New book'}</h1>
+ <div class="field"><label for="b-n">Name</label><input type="text" id="b-n" value="${esc(bk?bk.name:'')}" placeholder="Household, Church petty cash, CWM operations…"></div>
+ <div class="field"><label for="b-w">World</label><select id="b-w">${['personal','church','company'].map(w=>`<option ${bk&&bk.world===w?'selected':''}>${w}</option>`).join('')}</select></div>
+ <div class="prow"><button class="btn y" id="b-save">Save</button>${bk?'<button class="btn" id="b-void">Close this book</button>':''}</div>
+ ${bk?'<p class="samp">Closing hides the book. Its entries stay in the Sheet.</p>':''}</div>`);
+ setTimeout(()=>{const x=$('#b-n');x&&x.focus()},50);
+ $('#b-save').onclick=()=>{const name=$('#b-n').value.trim();if(!name){say('Give the book a name.');return}
+  if(bk){bk.name=name;bk.world=$('#b-w').value}else{bk={id:'cb'+uid(),name,world:$('#b-w').value,currency:'IDR',order:String(D.cashbooks.length+1),created:TODAY,void:''};D.cashbooks.push(bk);UI.book=bk.id;UI.cf={};saveUI()}
+  touch('cashbooks');money();closePane();say('Book saved.')};
+ if(bk)$('#b-void').onclick=()=>{bk.void='1';touch('cashbooks');UI.book='';saveUI();money();closePane();say('Book closed. Entries are kept in the Sheet.')}}
+function reportPane(bk){
+ const list=filtered(bk.id),t=totals(list),f=UI.cf||{};const pl=(PERIODS.find(p=>p[0]===(f.p||'all'))||[])[1];
+ const by=(type,key)=>{const m={};list.filter(e=>e.type===type).forEach(e=>{const k=e[key]||'Not set';m[k]=(m[k]||0)+amt(e)});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+ const bars=(rows,cls)=>{const max=Math.max(1,...rows.map(r=>r[1]));return rows.map(([k,v])=>`<div class="rbar"><span class="rl">${esc(k)}</span><span class="rt"><i class="${cls}" style="width:${(v/max*100).toFixed(1)}%"></i></span><span class="rv">${rp(v)}</span></div>`).join('')||'<p class="meta">None in this period.</p>'};
+ openPane(`<div class="detail report"><div class="dhead">${back}<span style="margin-left:auto;display:flex;gap:6px"><button class="btn" id="r-csv">Download CSV</button><button class="btn" id="r-pdf">Print or PDF</button></span></div>
+ <h1 style="font-size:26px">${esc(bk.name)} report</h1><p class="sub">${esc(pl)}${f.t?' · '+(f.t==='in'?'Cash in':'Cash out'):''}${f.c?' · '+esc(f.c):''}${f.m?' · '+esc(f.m):''} · ${list.length} entr${list.length===1?'y':'ies'}</p>
+ <section class="msum"><div><b>Net</b><div class="big ${t.net<0?'neg':''}">${rp(t.net)}</div></div><div><b>In</b><div class="pos">${rp(t.i)}</div></div><div><b>Out</b><div class="neg">${rp(t.o)}</div></div></section>
+ <h2>Money out by category</h2>${bars(by('out','category'),'neg')}
+ <h2>Money in by category</h2>${bars(by('in','category'),'pos')}
+ <h2>By payment mode</h2>${bars(Object.entries(list.reduce((m,e)=>{const k=e.mode||'Not set';m[k]=(m[k]||0)+amt(e);return m},{})).sort((a,b)=>b[1]-a[1]),'mid')}
+ <h2>Entries</h2><div class="scroll"><table class="rtab"><thead><tr><th>Date</th><th>Remark</th><th>Category</th><th>Mode</th><th class="num">In</th><th class="num">Out</th></tr></thead><tbody>${[...list].sort(ord).map(e=>`<tr><td>${nice(e.date)}</td><td>${esc(e.remark)}</td><td>${esc(e.category)}</td><td>${esc(e.mode)}</td><td class="num pos">${e.type==='in'?rp(amt(e)):''}</td><td class="num neg">${e.type==='out'?rp(amt(e)):''}</td></tr>`).join('')}</tbody></table></div></div>`);
+ $('#r-csv').onclick=()=>{const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const rows=[['Date','Time','Type','Amount','Remark','Category','Payment mode','Party','Bill'],...[...list].sort(ord).map(e=>[e.date,e.time,e.type==='in'?'Cash in':'Cash out',amt(e),e.remark,e.category,e.mode,e.party,e.attachment])];
+  const blob=new Blob(['﻿'+rows.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${bk.name} ${f.p||'all'} ${TODAY}.csv`;document.body.appendChild(a);a.click();a.remove();say('CSV downloaded. It opens in Excel or Google Sheets.')};
+ $('#r-pdf').onclick=()=>{document.body.classList.add('printing');setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('printing'),500)},50)}}
+
 /* ---------- SETTINGS ---------- */
 function settings(){
  view.innerHTML=`<h1>Settings</h1><p class="sub">These stay on this device only. Enter them once on each phone, tablet or computer.</p>
@@ -793,7 +936,7 @@ function settings(){
  <h2>Data</h2><div class="group" style="padding:16px"><div class="prow"><button class="btn" data-a="reload">Reload from Google</button></div><p class="meta" style="margin-top:10px">${dirty.size+dirtyNotes.size?`${dirty.size+dirtyNotes.size} change(s) waiting to sync.`:'Everything is synced.'}</p></div>`}
 
 /* ---------- routing & events ---------- */
-const V={today,notes,people,library,settings};
+const V={today,notes,money,people,library,settings};
 function render(){ensure();TODAY=iso(0);TMRW=iso(1);document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===UI.view));(V[UI.view]||today)();showSync()}
 const find=(k,id)=>D[k].find(x=>x.id===id);
 document.addEventListener('click',async e=>{
@@ -845,6 +988,12 @@ document.addEventListener('click',async e=>{
  if(a==='disconnect'){cfg={plan:cfg.plan,playlist:cfg.playlist};ls.set('hq-cfg',cfg);D=sample();dirty.clear();dirtyNotes.clear();persist();syncState={s:'sample'};render();say('Disconnected. Showing sample data.')}
  if(a==='links'){cfg.plan=$('#s-plan').value.trim();cfg.playlist=$('#s-pl').value.trim();ls.set('hq-cfg',cfg);say('Links saved.')}
  if(a==='reload')load();
+ if(a==='openbook'){UI.book=id;UI.cf={};saveUI();closePane();money();$('#main').scrollTop=0}
+ if(a==='newbook')bookPaneEdit(null);
+ if(a==='bookmenu')bookPaneEdit(find('cashbooks',id));
+ if(a==='newentry'){const bk=find('cashbooks',UI.book);if(bk)entryPane(null,bk,v)}
+ if(a==='entry'){const en=find('cash_entries',id);const bk=en&&find('cashbooks',en.bookId);if(en&&bk)entryPane(en,bk,en.type)}
+ if(a==='report')reportPane(find('cashbooks',id));
  if(a==='forceupdate'){say('Updating…');forceUpdate()}
 });
 addEventListener('keydown',e=>{if(e.key==='Escape')closePane()});
