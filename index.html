@@ -288,6 +288,7 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .nb ol{list-style:none;margin:0;padding:0}.nb li{padding:8px 0;border-top:.5px solid var(--line)}.nb li:first-child{border-top:0}
 .nb li a{color:var(--ink);font-weight:600;text-decoration:none;font-size:15px}.nb li p{margin:2px 0 0;color:var(--mut);font-size:14px;line-height:1.4}
 .nb .tag{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 6px;margin-right:6px;background:var(--accsoft);color:var(--ink);vertical-align:1px}
+.cos{margin-top:12px}.cos-ol{counter-reset:p}.cos-ol li{counter-increment:p;padding-left:26px;position:relative}.cos-ol li::before{content:counter(p);position:absolute;left:0;top:9px;width:18px;height:18px;border-radius:9px;background:#ffd60a;font-size:11px;font-weight:700;text-align:center;line-height:18px}
 .nb details summary{cursor:pointer;color:var(--acc);font-weight:600;font-size:14px;padding:6px 0;list-style:none}.nb details summary::-webkit-details-marker{display:none}.nb details[open] summary{display:none}
 .cfab{position:fixed;right:18px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:15;display:flex;align-items:center;gap:6px;border:0;border-radius:24px;padding:11px 16px;background:#c6613f;color:#fff;font:600 15px Inter,system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.18);cursor:pointer}
 .cfab svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
@@ -390,13 +391,15 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='26 · 23 Nov 2026';
+const VERSION='27 · 23 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
 let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null),VERSE=ls.get('hq-verse',null);
 let BODY=ls.get('hq-notes',{});
 let UI=ls.get('hq-ui',{view:'today',nf:'All',pw:'all',fs:19});
+/* HQ always opens on Today, and Notes always starts at its main list (not the last folder). */
+UI.view='today';UI.folder='';UI.q='';
 let dirty=new Set(ls.get('hq-dirty',[])),dirtyNotes=new Set(ls.get('hq-dirtynotes',[]));
 let evDone=ls.get('hq-evdone',{});
 const saveUI=()=>ls.set('hq-ui',UI);
@@ -517,6 +520,13 @@ function newsBrief(){
  return `<section class="nb" aria-label="News brief"><div class="nb-h"><b>News brief · ${esc(when)}</b>${head&&head.link?`<a href="${esc(head.link)}" target="_blank" rel="noopener">Full brief ›</a>`:''}</div>
  ${head&&head.title?`<div class="nb-t">${esc(head.title)}</div>`:''}
  ${list('attention','Needs attention','More')}${list('id','Berita Indonesia','Lihat semua')}${list('world','World news','Show all')}</section>`}
+/* Chief of Staff (from the morning brief, briefs tab): section priority = today's priorities, section keymail = key emails. */
+function cosRows(sec){const rows=(D.briefs||[]).filter(r=>!yes(r.void)&&r.date&&r.section===sec);if(!rows.length)return {day:'',b:[]};const day=rows.map(r=>r.date).sort().pop();return {day,b:rows.filter(r=>r.date===day).sort((x,y)=>(+x.n||0)-(+y.n||0))}}
+function cosLi(r){return `<li>${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noopener">`:'<span>'}${r.tag?`<span class="tag">${esc(r.tag)}</span>`:''}${esc(r.title)}${r.link?'</a>':'</span>'}${r.summary?`<p>${esc(r.summary)}</p>`:''}</li>`}
+function priorities(){const {day,b}=cosRows('priority');if(!b.length)return'';
+ return `<section class="nb cos" aria-label="Today's priorities"><div class="nb-h"><b>Today's priorities${day!==TODAY?' · '+esc(nice(day)):''}</b></div><ol class="cos-ol">${b.map(cosLi).join('')}</ol></section>`}
+function keyMail(){const {day,b}=cosRows('keymail');if(!b.length)return'';
+ return `<section class="nb cos" aria-label="Key emails"><div class="nb-h"><b>Key emails · from Claude${day!==TODAY?' · '+esc(nice(day)):''}</b></div><ol>${b.map(cosLi).join('')}</ol></section>`}
 /* Today sections open and close like Apple's grouped lists; the choice is remembered on this device. */
 const TSO=ls.get('hq-today-open',{});
 function tsec(key,head,body){return `<details class="tsec" data-ts="${key}"${TSO[key]===false?'':' open'}><summary>${head}</summary><div class="tsb">${body}</div></details>`}
@@ -532,14 +542,14 @@ function watchedMail(){
 }
 /* Email list: tap a row to open the gist of that email. */
 function emailList(){
- if(!BRIEF)return grp([],live()?'Loading your inbox…':'Connect your Google Sheet in Settings to see your email here.');
+ if(!BRIEF)return keyMail()+grp([],live()?'Loading your inbox…':'Connect your Google Sheet in Settings to see your email here.');
  const L=BRIEF.emails||BRIEF.important||[];const when=d=>{if(!d)return'';const x=new Date(d);return ymd(x)===TODAY?hm(x):x.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
  const rows=L.map((m,i)=>{const ask='Give me the gist of this email in 3 short points and tell me what I need to do, if anything.\n\nFrom: '+(m.from||'')+'\nSubject: '+(m.subject||'')+'\n\n'+(m.gist||'');
   return `<details class="em"><summary><span class="em-dot${m.important?' imp':''}" aria-hidden="true"></span><span class="em-t"><b>${esc(m.from||'Unknown sender')}</b><span>${esc(m.subject||'(no subject)')}</span></span><span class="em-w">${esc(when(m.date))}${m.count>1?` · ${m.count}`:''}${m.files&&m.files.length?' 📎':''}</span></summary>
   <div class="em-b">${m.gist?`<p class="em-g">${esc(m.gist)}</p>`:'<p class="meta">Update the bridge script to see what each email says here.</p>'}
   ${m.files&&m.files.length?`<p class="meta">Attached: ${m.files.map(esc).join(', ')}</p>`:''}
   <div class="prow">${m.link?`<a class="btn y" style="text-decoration:none" href="${esc(m.link)}" target="_blank" rel="noopener">Open in Gmail</a>`:''}<a class="btn" style="text-decoration:none;color:inherit" href="https://claude.ai/new?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">Ask Claude</a><button class="btn" data-a="emtask" data-v="${i}">Make a task</button></div></div></details>`});
- return `${watchedMail()}<div class="group emails">${rows.length?rows.join(''):'<div class="empty">No unread email. Inbox clear.</div>'}</div>${BRIEF.unread>L.length?`<p class="samp">${BRIEF.unread} unread in total. <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">Open Gmail</a></p>`:''}`;
+ return `${keyMail()}${watchedMail()}<div class="group emails">${rows.length?rows.join(''):'<div class="empty">No unread email. Inbox clear.</div>'}</div>${BRIEF.unread>L.length?`<p class="samp">${BRIEF.unread} unread in total. <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">Open Gmail</a></p>`:''}`;
 }
 function today(){
  const items=todayItems(TODAY),tm=todayItems(TMRW).filter(i=>i.kind!=='habit');
@@ -555,10 +565,10 @@ function today(){
   <div><b>Next</b><div class="big">${next?(next.leave?'Leave '+next.leave:next.time):'Free'}</div><p>${next?esc(next.title)+(next.travel?` · ${next.travel} min from ${esc(next.from==='home'?'home':next.from)}`:''):'Nothing else on the calendar'}</p></div>
   <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
- </section>`)}
- ${tsec('email',`<h2>Email <span class="n">${BRIEF?BRIEF.unread:''}</span></h2>`,emailList())}
+ </section>${priorities()}`)}
  ${tsec('verse','<h2>Verse of the day</h2>',`${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}`)}
  ${tsec('news','<h2>News brief</h2>',newsBrief())}
+ ${tsec('email',`<h2>Email <span class="n">${BRIEF?BRIEF.unread:''}</span></h2>`,emailList())}
  ${tsec('links','<h2>Quick links</h2>',`<div class="links"><button class="lk" data-a="go" data-v="sermons"><i style="background:#ffd60a"></i>Sermon map</button><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>`)}
  ${tsec('cash','<h2>Cashbook</h2>',`${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}`)}
  ${['morning','noon','evening'].map(p=>tsec(p,`<h2>${p==='noon'?'Afternoon':p[0].toUpperCase()+p.slice(1)}</h2>`,grp(items.filter(i=>i.part===p).map(row),'Nothing planned.'))).join('')}
@@ -1223,7 +1233,7 @@ function bridgeVersion(){const el=$('#bridge-v');if(!el||!live())return;api({act
 function render(){ensure();TODAY=iso(0);TMRW=iso(1);document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===UI.view));(V[UI.view]||today)();showSync();if(UI.view==='settings')bridgeVersion()}
 const find=(k,id)=>D[k].find(x=>x.id===id);
 document.addEventListener('click',async e=>{
- const tab=e.target.closest('.tab');if(tab){UI.view=tab.dataset.v;saveUI();closePane();render();$('#main').scrollTop=0;return}
+ const tab=e.target.closest('.tab');if(tab){UI.view=tab.dataset.v;if(UI.view==='notes'){UI.folder='';UI.q=''}saveUI();closePane();render();$('#main').scrollTop=0;return}
  const wl=e.target.closest('a[data-worship]');if(wl&&!cfg.playlist)wl.href=worshipMix();
  if(e.target.closest('a'))return;
  const el=e.target.closest('[data-a]');if(!el)return;
@@ -1314,6 +1324,9 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closePane()});
    Order: reader panel or menu → reader → open item → previous tab → Today. On Today, a second back leaves. */
 let backArmed=false;const guard=()=>{try{history.pushState({hq:1},'')}catch(e){}};
 try{history.replaceState({hq:0},'');guard()}catch(e){}
+/* Browsers ignore a history step added without a tap, so back could leave HQ. Re-arm it on every tap. */
+const rearm=()=>{try{if(!history.state||history.state.hq!==1)guard()}catch(e){}};
+addEventListener('pointerdown',rearm,{capture:true,passive:true});addEventListener('keydown',rearm,{capture:true});
 addEventListener('popstate',()=>{
  const rd=document.getElementById('rdr');
  if(rd){const sh=rd.querySelector('.rsheet,.rsel');if(sh){rd.querySelectorAll('.rsheet,.rsel').forEach(x=>x.remove())}else{try{window.HQReader.close()}catch(e){rd.remove()}}guard();return}
@@ -1332,7 +1345,10 @@ addEventListener('popstate',()=>{
   if(!ar){ar=document.createElement('div');ar.className='edgeback';ar.innerHTML='‹';document.body.appendChild(ar)}ar.style.top=(t.clientY-22)+'px';ar.style.transform=`translateX(${Math.min(dx,90)-44}px)`;ar.classList.toggle('go',dx>80)},{passive:true});
  const end=e=>{if(x0===null)return;const t=e.changedTouches[0],dx=t.clientX-x0;x0=null;if(ar){ar.remove();ar=null}if(dx>80)history.back()};
  addEventListener('touchend',end,{passive:true});addEventListener('touchcancel',end,{passive:true})})();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&live()&&iso(0)!==TODAY)load()});
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){hiddenAt=Date.now();return}
+ if(hiddenAt&&Date.now()-hiddenAt>10*60*1000&&!document.getElementById('rdr')&&UI.view!=='today'){closePane();UI.view='today';UI.folder='';UI.q='';saveUI();render();$('#main').scrollTop=0}
+ if(live()&&iso(0)!==TODAY)load()});
 if('serviceWorker' in navigator&&location.protocol==='https:'){
  navigator.serviceWorker.register('sw.js').then(reg=>{reg.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update()})}).catch(()=>{});
  let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded)return;reloaded=true;const ed=$('#ed');if(ed&&document.activeElement===ed)return;location.reload()})}
