@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-23 14.30'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-23 22.45'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -24,6 +24,7 @@ function doGet(e) {
     if (a === 'brief') return { ok: true, brief: brief_() };
     if (a === 'note') return { ok: true, html: readNote_(p.id) };
     if (a === 'verse') return { ok: true, verse: verse_() };
+    if (a === 'img') return img_(p.id);
     if (a === 'contacts') return { ok: true, contacts: contacts_() };
     if (a === 'book') return bookFile_(p.id);
     if (a === 'sortbooks') return { ok: true, log: sortNewBooks() };
@@ -198,6 +199,22 @@ function brief_() {
     return c;
   });
   return { unread: unread, important: imp.map(card), emails: list };
+}
+
+/* A picture from Drive for a note, sent through the bridge so it shows on iPhone too
+   (Safari blocks Google's sign-in cookie for drive.google.com pictures inside the app). */
+function img_(id) {
+  if (!/^[\w-]{20,}$/.test(String(id || ''))) throw new Error('Unknown picture.');
+  const f = DriveApp.getFileById(id), mime = f.getMimeType();
+  if (!/^image\//.test(mime)) throw new Error('That file is not a picture.');
+  let blob = null;
+  try {
+    const auth = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+    const meta = JSON.parse(UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '?fields=thumbnailLink', auth).getContentText());
+    if (meta.thumbnailLink) { const r = UrlFetchApp.fetch(meta.thumbnailLink.replace(/=s\d+$/, '=s1600'), auth); if (r.getResponseCode() === 200) blob = r.getBlob(); }
+  } catch (e) {}
+  if (!blob) { if (f.getSize() > 8e6) throw new Error('That picture is too large to show here. Open it in Drive.'); blob = f.getBlob(); }
+  return { ok: true, mime: blob.getContentType() || mime, data: Utilities.base64Encode(blob.getBytes()) };
 }
 
 /* ---------- Notes bodies in Drive ---------- */
@@ -565,6 +582,7 @@ function mdToHtml_(md, imgs) {
   const inline = s => esc(s)
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, a, src) => { const id = imgs[decodeURIComponent(src).split('/').pop()]; return id ? `<img src="https://drive.google.com/thumbnail?id=${id}&amp;sz=w1200" alt="${a}">` : ''; })
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2">$1</a>').replace(/\[([^\]]+)\]\([a-z]+:[^)]*\)/gi, '$1')
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, a, src) => { const id = imgs[decodeURIComponent(src).split('/').pop()]; return id ? `<a class="att" href="https://drive.google.com/file/d/${id}/view" contenteditable="false">📎 ${a}</a>` : a; })   // files kept beside the note in the export
     .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/__([^_]+)__/g, '<b>$1</b>')
     .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>').replace(/~~([^~]+)~~/g, '<s>$1</s>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')

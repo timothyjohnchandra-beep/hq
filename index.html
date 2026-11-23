@@ -350,6 +350,7 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .amenu>:last-child{border-bottom:0}
 .acc .rec{background:var(--red);color:#fff}
 .wm-h{font-size:13px;font-weight:600;color:var(--mut);margin:14px 4px 6px;text-transform:uppercase;letter-spacing:.04em}.wm-t{margin:8px 4px 4px}
+.ed img.imgerr{display:block;min-height:44px;padding:12px;border-radius:10px;background:var(--fill);color:var(--mut);font-size:14px}
 </style>
 </head>
 <body>
@@ -391,7 +392,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='30 · 23 Nov 2026';
+const VERSION='31 · 23 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -786,6 +787,23 @@ function markFormat(){
   b.classList.toggle('on',on)})}
 function shrinkImage(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const k=Math.min(1,1400/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.72))};img.onerror=()=>rej(new Error('That picture could not be read.'));img.src=r.result};r.onerror=()=>rej(new Error('That file could not be read.'));r.readAsDataURL(file)})}
 const fileB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(new Error('That file could not be read.'));r.readAsDataURL(f)});
+/* Pictures kept in Drive (imported Apple Notes and Keep notes) come through the bridge and are kept on this device,
+   because iPhone Safari blocks drive.google.com pictures inside the app. */
+const IMGC={};
+async function driveImgs(root){
+ for(const im of [...root.querySelectorAll('img')]){
+  const s=im.dataset.drive||im.getAttribute('src')||'',m=s.match(/drive\.google\.com\/(?:thumbnail\?id=|uc\?(?:export=view&(?:amp;)?)?id=|file\/d\/)([\w-]{20,})/);
+  if(!m)continue;const id=m[1];im.dataset.drive=s;
+  try{let u=IMGC[id];
+   if(!u){let r=null,c=null;try{c=await caches.open('hq-imgs');r=await c.match('/img/'+id)}catch(x){}
+    if(!r){if(!live())throw new Error('connect to the internet to load it');const j=await api({action:'img',id});if(!j.data)throw new Error(j.error||'no picture came back');
+     r=new Response(Uint8Array.from(atob(j.data),ch=>ch.charCodeAt(0)),{headers:{'content-type':j.mime||'image/jpeg'}});if(c)try{await c.put('/img/'+id,r.clone())}catch(x){}}
+    u=IMGC[id]=URL.createObjectURL(await r.blob())}
+   im.src=u;im.classList.remove('imgerr')}
+  catch(e){im.removeAttribute('src');im.alt='Picture could not load ('+(/Unknown action/.test(e.message)?'the bridge script needs updating':e.message)+')';im.classList.add('imgerr')}
+ }
+}
+const edHTML=ed=>{if(!ed.querySelector('img[data-drive]'))return ed.innerHTML;const c=ed.cloneNode(true);c.querySelectorAll('img[data-drive]').forEach(i=>{i.setAttribute('src',i.dataset.drive);i.removeAttribute('data-drive');i.classList.remove('imgerr');i.removeAttribute('alt')});return c.innerHTML};
 async function notePane(n){
  if(!n)return;
  openPane(`<div class="ned">
@@ -817,12 +835,14 @@ async function notePane(n){
   <div class="acc" id="acc"><button data-f="fmt" aria-label="Format">Aa</button><button data-f="check" aria-label="Checklist">${ICON.checklist}</button><button data-f="table" aria-label="Table">${ICON.table}</button><button data-f="amenu" aria-label="Attach">${ICON.clip}</button><button data-f="mic" aria-label="Dictate">${ICON.mic}</button><button data-f="hr" aria-label="Divider line">—</button></div>
  </div></div>`);
  pane.classList.add('noting');
- const ed=$('#ed');
+ const ed=$('#ed'),hadBody=BODY[n.id]!=null;
  if(BODY[n.id]==null&&live()){try{const j=await api({action:'note',id:n.id});BODY[n.id]=j.html||`<h1>${esc(n.title)}</h1><p><br></p>`;persist();if($('#ed')===ed)ed.innerHTML=BODY[n.id]}catch(e){ed.innerHTML='';say("Couldn't open the note: "+e.message)}}
  else if(BODY[n.id]==null){BODY[n.id]=`<h1>${esc(n.title)}</h1><p><br></p>`;ed.innerHTML=BODY[n.id]}
- applyCollapse(ed);
+ applyCollapse(ed);driveImgs(ed);
+ // Imported notes may be improved on Drive after this device saved them (pictures, files): refresh quietly unless changed here.
+ if(hadBody&&live()&&/^md-/.test(n.id)&&!dirtyNotes.has(n.id))api({action:'note',id:n.id}).then(j=>{if(j.html&&j.html!==BODY[n.id]&&!dirtyNotes.has(n.id)&&$('#ed')===ed&&document.activeElement!==ed){BODY[n.id]=j.html;persist();ed.innerHTML=j.html;applyCollapse(ed);driveImgs(ed)}}).catch(()=>{});
  const fillSecs=()=>{const box=$('#nsecs');if(!box)return;const hs=sections(ed);box.innerHTML=hs.map(h=>`<button class="chip" data-h="${h.dataset.h}">${esc(plain(h.innerHTML).slice(0,40))}</button>`).join('')||'<span class="meta">Add a Title, Heading or Subheading to make sections.</span>'};
- const changed=()=>{BODY[n.id]=ed.innerHTML;const first=ed.querySelector('h1,h2,h3,p,li,div');n.title=(plain(first?first.innerHTML:ed.innerHTML)||plain(ed.innerHTML)).slice(0,80)||'New Note';n.text=plain(ed.innerHTML).slice(0,4000);n.refs=parseRefs(n.title+'\n'+plain(ed.innerHTML)).join(' ');n.date=TODAY;n.tags=tagsOf(plain(ed.innerHTML)).join(' ');n.people=[...new Set([...ed.querySelectorAll('a.ment')].map(a=>a.dataset.p))].join(' ');n.links=[...new Set([...ed.querySelectorAll('a.nlink')].map(a=>a.dataset.note))].join(' ');n.hasCheck=ed.querySelector('ul.check')?'1':'';n.hasAtt=ed.querySelector('img,.att,.aud')?'1':'';touchNote(n.id)};
+ const changed=()=>{BODY[n.id]=edHTML(ed);const first=ed.querySelector('h1,h2,h3,p,li,div');n.title=(plain(first?first.innerHTML:ed.innerHTML)||plain(ed.innerHTML)).slice(0,80)||'New Note';n.text=plain(ed.innerHTML).slice(0,4000);n.refs=parseRefs(n.title+'\n'+plain(ed.innerHTML)).join(' ');n.date=TODAY;n.tags=tagsOf(plain(ed.innerHTML)).join(' ');n.people=[...new Set([...ed.querySelectorAll('a.ment')].map(a=>a.dataset.p))].join(' ');n.links=[...new Set([...ed.querySelectorAll('a.nlink')].map(a=>a.dataset.note))].join(' ');n.hasCheck=ed.querySelector('ul.check')?'1':'';n.hasAtt=ed.querySelector('img,.att,.aud')?'1':'';touchNote(n.id)};
  ed.oninput=()=>{changed();if(!$('#fmt').hidden){$('#fmt').hidden=true}keepCaret()};
  ed.addEventListener('keydown',()=>{const f=$('#fmt');if(f&&!f.hidden)f.hidden=true});
  const dockEl=pane.querySelector('.ndock');
