@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-23 12:00'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-23 12:45'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -517,7 +517,7 @@ const IMPORT_SOURCES = [
   { name: 'Google Keep', path: ['Google', 'Notes'], prefix: 'Google Keep' }
 ];
 const PRIVATE_FOLDER = 'Private – not in HQ';
-const SENSITIVE = /password|passwd|kata ?sandi|\bpin\b|access ?(id|code)|kartu kredit|credit card|\bcvv\b|\botp\b|no\.? ?rek|rekening|account (no|number)|\bswift\b|\biban\b|npwp|\bktp\b|\bnik\b|paspor|passport|mandiri mobile|e-?banking|\bm-?banking/i;
+const SENSITIVE = /password|passwd|kata ?sandi|\bpin\b|access ?(id|code)|kartu kredit|credit card|\bcvv\b|\botp\b|mandiri mobile|e-?banking|\bm-?banking|\b(ktp|nik|npwp|paspor|passport|no\.? ?rek|rekening|account (no|number)|swift|iban)\b\W{0,20}\d[\d .\-]{5,}/i;   // ID words only count when a number follows
 const DIGITS = /(?<![\w.,\/])\d(?:[ \-]?\d){9,18}(?![\w.,\/])/;   // long bare numbers: cards, accounts, IDs
 /* Plain words only: no picture names, links or file codes (those are full of digits but harmless). */
 function plainForCheck_(md) {
@@ -560,7 +560,7 @@ function mdToHtml_(md, imgs) {
   const esc = s => s.replace(/&(?!(nbsp|amp|lt|gt|quot);)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const inline = s => esc(s)
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, a, src) => { const id = imgs[decodeURIComponent(src).split('/').pop()]; return id ? `<img src="https://drive.google.com/thumbnail?id=${id}&amp;sz=w1200" alt="${a}">` : ''; })
-    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2">$1</a>').replace(/\[([^\]]+)\]\([a-z]+:[^)]*\)/gi, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/__([^_]+)__/g, '<b>$1</b>')
     .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>').replace(/~~([^~]+)~~/g, '<s>$1</s>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
