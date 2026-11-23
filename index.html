@@ -391,7 +391,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='29 · 23 Nov 2026';
+const VERSION='30 · 23 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -488,15 +488,18 @@ const maps=loc=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIC
 /* ---------- TODAY ---------- */
 const WORSHIP=['Hillsong Worship','Elevation Worship','Bethel Music','Maverick City Music','Upperroom worship','Housefires','Planetshakers','JPCC Worship','GMS Live','True Worshippers','NDC Worship','Lagu rohani penyembahan','Jesus Culture','Phil Wickham','Brandon Lake','CityAlight','Gateway Worship','Kari Jobe'];
 const worshipMix=()=>'https://music.youtube.com/search?q='+encodeURIComponent(WORSHIP[Math.floor(Math.random()*WORSHIP.length)]);
+/* Projects Timothy and Claude are doing together (tasks with for=together, or the older "Claude to-do" rows). They get their own Today section. */
+const together=t=>t.for==='together'||/^Claude to-do/i.test(t.notes||'');
 function todayItems(date){
  const ev=EV.filter(e=>!e.allDay&&!e.birthday&&ymd(new Date(e.start))===date).map(e=>{const s=new Date(e.start),en=new Date(e.end);return{kind:'event',id:e.id,title:e.title,time:hm(s),end:hm(en),part:partOf(s.getHours()),place:e.location,leave:e.leave?hm(new Date(e.leave)):'',travel:e.travelMin,from:e.from,done:evDone[e.id+date]}});
- const tk=D.tasks.filter(t=>!yes(t.void)&&t.date===date).map(t=>({kind:'task',id:t.id,title:t.title,part:t.part||'noon',world:t.world,done:t.status==='done'}));
+ const tk=D.tasks.filter(t=>!yes(t.void)&&t.date===date&&!together(t)).map(t=>({kind:'task',id:t.id,title:t.title,part:t.part||'noon',world:t.world,done:t.status==='done'}));
  const hb=date===TODAY?D.habits.filter(h=>!yes(h.void)).map(h=>({kind:'habit',id:h.id,title:h.name,part:h.part||'morning',link:h.link,done:(h.log||'').includes(date)})):[];
  return[...hb,...ev,...tk].sort((a,b)=>(a.kind==='habit'?0:1)-(b.kind==='habit'?0:1)||(a.time||'99').localeCompare(b.time||'99'))}
 function row(i){
  const t=i.time?`<span class="time">${i.time}<small>${i.end||''}</small></span>`:`<span class="time"><small>${i.kind==='habit'?'Habit':i.date&&i.date<TODAY?nice(i.date):'Task'}</small></span>`;
  const meta=[];if(i.leave)meta.push(`<span class="leave">Leave by ${i.leave}</span>${i.travel?` · ${i.travel} min drive`:''}`);
  if(i.place)meta.push(`<a href="${maps(i.place)}" target="_blank" rel="noopener">${esc(i.place.split(',')[0])}</a>`);
+ if(i.note)meta.push(esc(i.note));
  if(i.link==='youversion')meta.push(`<a href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener">Open in YouVersion</a>`);
  return `<div class="row${i.done?' done':''}" data-a="item" data-k="${i.kind}" data-id="${esc(i.id)}"><button class="chk${i.kind==='habit'?' sq':''}" data-a="tick" data-k="${i.kind}" data-id="${esc(i.id)}" aria-label="Mark done">${CHECK}</button>${t}<div><div class="ttl">${i.world?`<span class="dot w-${i.world}"></span>`:''}${esc(i.title)}</div>${meta.length?`<div class="meta">${meta.join(' · ')}</div>`:''}</div><span></span></div>`}
 function claudePane(){
@@ -555,9 +558,10 @@ function emailList(){
 }
 function today(){
  const items=todayItems(TODAY),tm=todayItems(TMRW).filter(i=>i.kind!=='habit');
- const over=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done'&&t.for!=='claude').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,date:t.date}));
- const nod=D.tasks.filter(t=>!yes(t.void)&&!t.date&&t.status!=='done'&&t.for!=='claude').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world}));
+ const over=D.tasks.filter(t=>!yes(t.void)&&t.date&&t.date<TODAY&&t.status!=='done'&&t.for!=='claude'&&!together(t)).map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,date:t.date}));
+ const nod=D.tasks.filter(t=>!yes(t.void)&&!t.date&&t.status!=='done'&&t.for!=='claude'&&!together(t)).map(t=>({kind:'task',id:t.id,title:t.title,world:t.world}));
  const fc=D.tasks.filter(t=>!yes(t.void)&&t.for==='claude'&&t.status!=='done').map(t=>({kind:'task',id:t.id,title:(t.type==='note'?'Note: ':'')+t.title,world:t.world}));
+ const wc=D.tasks.filter(t=>!yes(t.void)&&together(t)&&t.status!=='done').map(t=>({kind:'task',id:t.id,title:t.title,world:t.world,note:(t.notes||'').replace(/^Claude to-do #\d+\s*[—-]?\s*/i,'')}));
  const now=hm(new Date());const next=items.filter(i=>i.kind==='event'&&!i.done).find(i=>(i.leave||i.time)>=now);
  const bd=[...EV.filter(e=>e.birthday&&ymd(new Date(e.start))<=iso(7)).map(e=>esc(e.title)),...D.people.filter(p=>!yes(p.void)&&bdayIn(p.birthday)<=7).map(p=>esc(p.name)+(bdayIn(p.birthday)?' in '+bdayIn(p.birthday)+'d':' today'))];
  const allday=EV.filter(e=>e.allDay&&!e.birthday&&ymd(new Date(e.start))===TODAY);
@@ -565,11 +569,12 @@ function today(){
  view.innerHTML=`<h1>${d.toLocaleDateString('en-GB',{weekday:'long'})}</h1><p class="sub tsub"><button class="btn link tsall" data-a="tsall">Close all</button>${d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}${allday.length?' · '+allday.map(e=>esc(e.title)).join(', '):''}</p>
  ${tsec('glance','<h2>At a glance</h2>',`<section class="brief" aria-label="Morning brief">
   <div><b>Next</b><div class="big">${next?(next.leave?'Leave '+next.leave:next.time):'Free'}</div><p>${next?esc(next.title)+(next.travel?` · ${next.travel} min from ${esc(next.from==='home'?'home':next.from)}`:''):'Nothing else on the calendar'}</p></div>
-  <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
+  <div><b>Today</b><p>${items.filter(i=>i.kind==='event').length} events · ${items.filter(i=>i.kind==='task'&&!i.done).length} tasks · ${over.length} overdue${wc.length?` · ${wc.length} with Claude`:''}</p><p style="margin-top:6px">${bd.length?'Birthdays: '+bd.slice(0,4).join(', '):'No birthdays this week'}</p></div>
   <div><b>Email</b>${BRIEF?`<p>${BRIEF.unread} unread in inbox</p>${BRIEF.important.length?`<p style="margin-top:6px"><strong>Needs you:</strong> ${BRIEF.important.slice(0,3).map(m=>m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${esc(m.subject)}</a>`:esc(m.subject)).join('; ')}</p>`:''}`:'<p>Loading…</p>'}</div>
  </section>${priorities()}`)}
  ${tsec('verse','<h2>Verse of the day</h2>',`${VERSE&&VERSE.text?`<a class="verse" href="${esc(VERSE.link||'https://www.bible.com/verse-of-the-day')}" target="_blank" rel="noopener">${VERSE.image?`<img src="${esc(VERSE.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<span><q>${esc(VERSE.text)}</q><b>${esc(VERSE.ref||'')}</b></span></a>`:VERSE&&VERSE.err&&VERSE.err!=='old'?`<p class="meta" style="margin-top:12px">Verse of the Day: ${esc(VERSE.err)}</p>`:''}`)}
  ${tsec('news','<h2>News brief</h2>',newsBrief())}
+ ${tsec('withclaude',`<h2>With Claude <span class="n">${wc.length}</span></h2>`,`${grp(wc.map(row),'Nothing unfinished between us.')}<p class="samp">Our projects that aren't finished yet. Claude updates this list every night; tick one when it's done.</p>`)}
  ${tsec('email',`<h2>Email <span class="n">${BRIEF?BRIEF.unread:''}</span></h2>`,emailList())}
  ${tsec('links','<h2>Quick links</h2>',`<div class="links"><button class="lk" data-a="go" data-v="sermons"><i style="background:#ffd60a"></i>Sermon map</button><a class="lk" href="https://www.bible.com/verse-of-the-day" target="_blank" rel="noopener"><i style="background:#c4262e"></i>Verse of the Day</a><a class="lk" href="${esc(cfg.plan||'https://www.bible.com/reading-plans')}" target="_blank" rel="noopener"><i style="background:#c4262e"></i>My reading plan</a><a class="lk" href="${esc(cfg.playlist||worshipMix())}" target="_blank" rel="noopener" data-worship="1"><i style="background:#ff0033"></i>Worship playlist</a></div>`)}
  ${tsec('cash','<h2>Cashbook</h2>',`${(()=>{const[a,b]=periodRange('month');const mt=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date>=a&&e.date<=b));const td=totals(D.cash_entries.filter(e=>!yes(e.void)&&e.date===TODAY));return `<button class="mcard" data-a="go" data-v="money"><span class="mci"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span><span class="mct"><b>Cashbook</b><span>Today: <em class="pos">+${rp(td.i).replace('Rp ','')}</em> <em class="neg">−${rp(td.o).replace('Rp ','')}</em> · This month net <em class="${mt.net<0?'neg':'pos'}">${rp(mt.net)}</em></span></span><span class="mcgo">›</span></button>`})()}`)}
