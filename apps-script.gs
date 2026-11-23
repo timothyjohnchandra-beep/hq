@@ -657,7 +657,7 @@ function fixImportedNotes() {
     } catch (e) {}
     done.setProperty('fix1-' + r.id, '1');
   });
-  Logger.log(left ? `Fixed ${n}; ${left} to go. Run fixImportedNotes again.` : `All done. Fixed ${n} notes.`);
+  Logger.log(left ? `Fixed ${n}; ${left} to go. Run fixImportedNotes again.` : `All done. Fixed ${n} notes.`); return left;
 }
 
 /* Adds rows at the bottom of a tab without rewriting it. */
@@ -726,5 +726,19 @@ function indexVerses() {
     const r = parseRefs(v[i][tc] + '\n' + text).join(' ');
     s.getRange(i + 1, rc + 1).setNumberFormat('@').setValue(r || '-'); n++;
   }
-  Logger.log(left ? `Indexed ${n} notes; ${left} to go. Run indexVerses again.` : `All done. Indexed ${n} notes.`);
+  Logger.log(left ? `Indexed ${n} notes; ${left} to go. Run indexVerses again.` : `All done. Indexed ${n} notes.`); return left;
+}
+
+/* Runs the notes import, then fixImportedNotes, then indexVerses, every 10 minutes until all three say All done, then switches itself off. Start with startAutoNotes. */
+function startAutoNotes() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'autoNotes').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('autoNotes').timeBased().everyMinutes(10).create();
+}
+function autoNotes() {
+  const p = PropertiesService.getScriptProperties(), step = p.getProperty('autoNotesStep') || 'import';
+  const stop = () => ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'autoNotes').forEach(t => ScriptApp.deleteTrigger(t));
+  if (step === 'import') { const log = importNotes(); if (/^All done/.test(log[0])) p.setProperty('autoNotesStep', 'fix'); return; }
+  if (step === 'fix') { if (!fixImportedNotes()) p.setProperty('autoNotesStep', 'index'); return; }
+  if (step === 'index') { if (!indexVerses()) { p.setProperty('autoNotesStep', 'done'); stop(); } return; }
+  stop();
 }
