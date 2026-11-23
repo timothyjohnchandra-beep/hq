@@ -42,7 +42,7 @@ View `sermons` (from Notes › Sermon map and Today › Quick links). Rows: `ser
 `notebooks` tab (id, title, url, kind commentary|sermon|study, books = codes like "1KI 2KI", refs, topics). Personal NotebookLM has no API: HQ shows matching notebooks in the verse panel and Sermon map (book filter) with links, and "Ask my notebooks" opens Claude with the notebook list (Claude asks each via Chrome) and saves a For Claude task. Only Timothy's own work (Q&A, notes, outputs) may be copied out, never the commentary books.
 
 ## Email sorting
-Separate Apps Script project "HQ Email Sort": `sortInbox` labels, marks read and archives bank mail (Banks/BCA, Permata, Bank Jago, BSI) and Promotions; subjects with approval/tagihan/payroll/bulk stay in the inbox. `setupDailyTrigger` = daily ~4 a.m.
+Separate Apps Script project "HQ Email Sort": `sortInbox` labels, marks read and archives bank mail (Banks/BCA, Permata, Bank Jago, BSI), Investments/Samuel Sekuritas and Investments/Stockbit, "YLG – Lausanne – AEA" (lausanne.org, asiaea.org) and Promotions; subjects with approval/tagihan/payroll/bulk stay in the inbox. `setupDailyTrigger` = daily ~4 a.m.; `startCatchUp` runs it every 10 min until the inbox is clear, then stops.
 
 ## Never put in this repo
 Tokens, the Sheet ID, ID numbers, bank/card numbers, member names, phone numbers, financial figures, pastoral notes. Those live only in the Sheet. The repo is public.
