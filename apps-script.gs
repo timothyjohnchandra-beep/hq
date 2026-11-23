@@ -742,3 +742,18 @@ function autoNotes() {
   if (step === 'index') { if (!indexVerses()) { p.setProperty('autoNotesStep', 'done'); stop(); } return; }
   stop();
 }
+/* Counts the note files waiting in the export folders, so we know how many the import should end up with. */
+function countNotes() {
+  const out = [];
+  IMPORT_SOURCES.forEach(src => {
+    const root = folderByPath_(src.path); if (!root) { out.push(src.path.join('/') + ': not found'); return; }
+    const c = { md: 0, priv: 0, other: {}, folders: 0 };
+    const walk = (f, inPriv) => { c.folders++; const nm = f.getName(); if (/^(images|attachments)$/i.test(nm)) return;
+      const fs = f.getFiles(); while (fs.hasNext()) { const x = fs.next(), n = x.getName(); if (/\.md$/i.test(n)) { if (inPriv) c.priv++; else c.md++; } else { const e = (n.match(/\.([a-z0-9]+)$/i) || [,'(none)'])[1].toLowerCase(); c.other[e] = (c.other[e] || 0) + 1; } }
+      const ss = f.getFolders(); while (ss.hasNext()) { const s = ss.next(); walk(s, inPriv || s.getName() === PRIVATE_FOLDER); } };
+    walk(root, false);
+    out.push(src.path.join('/') + ': ' + c.md + ' notes, ' + c.priv + ' in private folder, ' + c.folders + ' folders, other files ' + JSON.stringify(c.other));
+  });
+  const rows = readTab_('notes_index'); out.push('In HQ now: ' + rows.filter(r => r.tags === 'imported').length + ' imported, ' + rows.filter(r => r.kind === 'note').length + ' notes in total');
+  Logger.log(out.join('\n'));
+}
