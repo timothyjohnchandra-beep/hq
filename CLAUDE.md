@@ -38,6 +38,12 @@ A monthly scheduled task checks Apple's latest Notes features and adds small mis
 ## Sermon map
 View `sermons` (from Notes › Sermon map and Today › Quick links). Rows: `sermons` tab (id, noteId, title, date, place, context, series, refs, themes, theology, points " | ", bigIdea, preacher = "me" or name, docLink, void, updated, checked), filled by Claude from sermon notes/Docs; notes in folders matching /sermon|khotbah|preach|teaching|pengajaran/ without a row still show (title, date, verses). Filters: Mine/Others/Both, Place, Context, Theme, Theology, Year, Book (Bible map), search or verse. "Summarise with Claude" sends the filtered list.
 
+## NotebookLM
+`notebooks` tab (id, title, url, kind commentary|sermon|study, books = codes like "1KI 2KI", refs, topics). Personal NotebookLM has no API: HQ shows matching notebooks in the verse panel and Sermon map (book filter) with links, and "Ask my notebooks" opens Claude with the notebook list (Claude asks each via Chrome) and saves a For Claude task. Only Timothy's own work (Q&A, notes, outputs) may be copied out, never the commentary books.
+
+## Email sorting
+Separate Apps Script project "HQ Email Sort": `sortInbox` labels, marks read and archives bank mail (Banks/BCA, Permata, Bank Jago, BSI) and Promotions; subjects with approval/tagihan/payroll/bulk stay in the inbox. `setupDailyTrigger` = daily ~4 a.m.
+
 ## Never put in this repo
 Tokens, the Sheet ID, ID numbers, bank/card numbers, member names, phone numbers, financial figures, pastoral notes. Those live only in the Sheet. The repo is public.
 

@@ -6,11 +6,11 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-23 00:15'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-23 12:00'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
-const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs', 'reading_log', 'meetings', 'sermons'];
+const TABS = ['tasks', 'people', 'notes_index', 'places', 'habits', 'books', 'highlights', 'cashbooks', 'cash_entries', 'briefs', 'reading_log', 'meetings', 'sermons', 'notebooks'];
 
 function doGet(e) {
   return handle_(() => {
@@ -518,11 +518,16 @@ const IMPORT_SOURCES = [
 ];
 const PRIVATE_FOLDER = 'Private – not in HQ';
 const SENSITIVE = /password|passwd|kata ?sandi|\bpin\b|access ?(id|code)|kartu kredit|credit card|\bcvv\b|\botp\b|no\.? ?rek|rekening|account (no|number)|\bswift\b|\biban\b|npwp|\bktp\b|\bnik\b|paspor|passport|mandiri mobile|e-?banking|\bm-?banking/i;
-const DIGITS = /(?:\d[ \-.]?){10,}/;   // long numbers: cards, accounts, IDs
+const DIGITS = /(?<![\w.,\/])\d(?:[ \-]?\d){9,18}(?![\w.,\/])/;   // long bare numbers: cards, accounts, IDs
+/* Plain words only: no picture names, links or file codes (those are full of digits but harmless). */
+function plainForCheck_(md) {
+  return String(md || '').replace(/\\(.)/g, '$1').replace(/!?\[[^\]]*\]\([^)]*\)/g, ' ').replace(/(https?:\/\/|www\.)\S+/gi, ' ')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, ' ').replace(/\b(19|20)\d\d[-\/.]\d\d?[-\/.]\d\d?\b/g, ' ');
+}
 function sensitive_(title, text) {
-  const t = String(title || ''), b = String(text || '');
-  if (/^[\d\s\-.]+$/.test(t.replace(/\.md$/, ''))) return true;
-  return SENSITIVE.test(t) || SENSITIVE.test(b) || DIGITS.test(t) || DIGITS.test(b.replace(/\b(19|20)\d\d[-\/.]\d\d?[-\/.]\d\d?\b/g, ''));
+  const t = String(title || '').replace(/\.md$/, ''), b = plainForCheck_(text);
+  if (/^[\d\s\-.]{6,}$/.test(t)) return true;
+  return SENSITIVE.test(t) || SENSITIVE.test(b) || DIGITS.test(t) || DIGITS.test(b);
 }
 function folderByPath_(path) {
   let it = DriveApp.getFoldersByName(path[0]), f = null;
@@ -560,7 +565,8 @@ function mdToHtml_(md, imgs) {
     .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>').replace(/~~([^~]+)~~/g, '<s>$1</s>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\\([#!*_\[\]().\-+>`~|&])/g, '$1');
-  const lines = String(md || '').replace(/\r/g, '').split('\n'); let out = '', list = null;
+  md = String(md || '').replace(/\\([\\`*_{}\[\]()#+\-.!|>~&<])/g, '$1');   // Apple Notes export escapes Markdown characters
+  const lines = md.replace(/\r/g, '').split('\n'); let out = '', list = null;
   const close = () => { if (list) { out += `</${list}>`; list = null; } };
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
@@ -573,7 +579,7 @@ function mdToHtml_(md, imgs) {
     if ((m = l.match(/^\s*\d+[.)]\s+(.*)$/))) { if (list !== 'ol') { close(); out += '<ol>'; list = 'ol'; } out += `<li>${inline(m[1])}</li>`; continue; }
     if ((m = l.match(/^>\s?(.*)$/))) { close(); out += `<blockquote>${inline(m[1])}</blockquote>`; continue; }
     if (/^\|.*\|\s*$/.test(l)) { close(); const rows = []; while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) { if (!/^\|[\s:\-|]+\|\s*$/.test(lines[i])) rows.push(lines[i].trim().slice(1, -1).split('|').map(c => `<td>${inline(c.trim())}</td>`).join('')); i++; } i--; out += `<table>${rows.map(r => `<tr>${r}</tr>`).join('')}</table>`; continue; }
-    close(); out += `<p>${inline(l.replace(/\s{2,}$/, ''))}</p>`;
+    close(); const para = inline(l.replace(/\s{2,}$/, '')).trim(); if (para) out += `<p>${para}</p>`;
   }
   close();
   return out.replace(/<\/ul class="check">/g, '</ul>');
@@ -593,6 +599,10 @@ function importNotes() {
     const root = folderByPath_(src.path);
     if (!root) { log.push('Could not find the folder ' + src.path.join('/') + ' in Drive.'); continue; }
     let priv = null;
+    if (src.name === 'Google Keep') {   // notes held back by an older, stricter check go back to be sorted
+      const pf = root.getFoldersByName(PRIVATE_FOLDER);
+      if (pf.hasNext()) { const fs = pf.next().getFiles(); while (fs.hasNext()) { const f = fs.next(); if (/\.md$/i.test(f.getName()) && !sensitive_(f.getName(), f.getBlob().getDataAsString())) f.moveTo(root); } }
+    }
     const walk = (folder, rel) => {
       const name = folder.getName();
       if (/^(images|attachments|recently deleted)$/i.test(name) && rel) return true;
@@ -632,6 +642,24 @@ function importNotes() {
   Logger.log(log.join('\n'));
   return log;
 }
+/* Run once after the import fix of 23 Nov: rewrites imported notes so their pictures and formatting show. Safe to run again. */
+function fixImportedNotes() {
+  const t0 = Date.now(), done = PropertiesService.getScriptProperties();
+  const rows = readTab_('notes_index').filter(r => r.kind === 'note' && r.tags === 'imported' && /^md-/.test(r.id));
+  let n = 0, left = 0;
+  rows.forEach(r => {
+    if (done.getProperty('fix1-' + r.id)) return;
+    if (Date.now() - t0 > 4.5 * 60 * 1000) { left++; return; }
+    try {
+      const f = DriveApp.getFileById(r.id.slice(3)), imgs = {}, par = f.getParents().next();
+      ['images', 'attachments'].forEach(nm => { const it = par.getFoldersByName(nm); while (it.hasNext()) { const fi = it.next().getFiles(); while (fi.hasNext()) { const x = fi.next(); imgs[x.getName()] = x.getId(); } } });
+      writeNote_(r.id, r.title, mdToHtml_(f.getBlob().getDataAsString(), imgs)); n++;
+    } catch (e) {}
+    done.setProperty('fix1-' + r.id, '1');
+  });
+  Logger.log(left ? `Fixed ${n}; ${left} to go. Run fixImportedNotes again.` : `All done. Fixed ${n} notes.`);
+}
+
 /* Adds rows at the bottom of a tab without rewriting it. */
 function appendRows_(name, rows) {
   if (!rows.length) return;

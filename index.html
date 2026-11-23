@@ -389,8 +389,8 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='24 · 23 Nov 2026';
-const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons'];
+const VERSION='25 · 23 Nov 2026';
+const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
 let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null),VERSE=ls.get('hq-verse',null);
@@ -683,8 +683,15 @@ function versePanel(qr,all){
  const sec=(k,t,list)=>list.length?`<details class="vsec"${k==='3'||!g[0].length?' open':''}><summary>${t} <span class="n">${list.length}</span></summary><div class="group">${list.slice().reverse().map(row).join('')}</div></details>`:'';
  return `<section class="vpanel"><h1 class="ntitle">${esc(label)}</h1><p class="sub">${hits.length?`In ${hits.length} note${hits.length===1?'':'s'}${yrs.length?` · ${yrs[0]}–${yrs[yrs.length-1]}`:''}`:'Not in your notes yet.'}</p>
  ${hits.length?`<div class="prow"><button class="btn y" data-a="vsum">Summarise with Claude</button><button class="btn" data-a="vnew">Start a new sermon</button></div>`:''}
- ${sec('3',q.split('.').length>2?'This verse':'This passage',g[0])}${sec('2','Same chapter',g[1])}${sec('1','Elsewhere in '+BOOKNAME[q.split('.')[0]],g[2])}</section>`}
+ ${nbBlock(q)}${sec('3',q.split('.').length>2?'This verse':'This passage',g[0])}${sec('2','Same chapter',g[1])}${sec('1','Elsewhere in '+BOOKNAME[q.split('.')[0]],g[2])}</section>`}
 let VP=null;
+/* NotebookLM notebooks (notebooks tab) that cover a book or passage. */
+function notebooksFor(q){const b=q.split('.')[0];return (D.notebooks||[]).filter(n=>!yes(n.void)&&(String(n.books||'').split(/\s+/).includes(b)||String(n.refs||'').split(/\s+/).some(r=>r&&refMatch(r,q)))).sort((a,c)=>(String(c.refs||'').split(/\s+/).some(r=>r&&refMatch(r,q)>=2)?1:0)-(String(a.refs||'').split(/\s+/).some(r=>r&&refMatch(r,q)>=2)?1:0))}
+function nbBlock(q){const L=notebooksFor(q);if(!L.length)return'';return `<details class="vsec"${L.length<4?' open':''}><summary>Your NotebookLM notebooks <span class="n">${L.length}</span></summary><div class="group">${L.map(n=>`<a class="vrow" href="${esc(n.url)}" target="_blank" rel="noopener"><b>${esc(n.title)}</b><span class="vf">${esc(n.kind||'')}${n.topics?' · '+esc(n.topics):''}</span></a>`).join('')}</div><div class="prow" style="margin-top:8px"><button class="btn" data-a="nbask" data-v="${esc(q)}">Ask my notebooks</button></div></details>`}
+function askNotebooks(q,question){const L=notebooksFor(q);if(!L.length){say('No notebooks cover '+refLabel(q)+' yet.');return}const lab=refLabel(q);
+ const pr=`Please use Claude in Chrome on my laptop to ask my NotebookLM notebooks about ${lab}${question?': '+question:''}.\n\nNotebooks to ask, one at a time:\n${L.map(n=>'- '+n.title+' — '+n.url).join('\n')}\n\nAsk each one: key verses, explanation from its sources, illustrations, and applications for ${lab}. Then give me one combined answer in Bahasa Indonesia, saying which notebook said what. Commentary lines are NotebookLM's paraphrases: no direct quotes or page numbers unless I check them in the book.`;
+ D.tasks.push({id:uid(),title:'Ask my NotebookLM notebooks about '+lab+(question?': '+question:''),world:'church',date:'',part:'morning',status:'',for:'claude',type:'task',notes:pr,void:'',created:TODAY,updated:TODAY});touch('tasks');
+ window.open('https://claude.ai/new?q='+encodeURIComponent(pr),'_blank','noopener');say('Sent to Claude, and saved under For Claude in case your laptop is off.')}
 function matchQ(n,q){const words=String(q||'').toLowerCase().split(/\s+/).filter(Boolean);if(!words.length)return false;const tags=(n.tags||'').split(' ');const hay=(n.title+' '+(n.text||'')+' '+plain(BODY[n.id])+' '+fpath(n)+' '+(n.type||'')+' '+peopleNames(n)).toLowerCase();
  return words.every(w=>{let m;if(w.startsWith('#'))return tags.includes(w.slice(1));if(w==='is:checklist')return yes(n.hasCheck);if(w==='is:attachment')return yes(n.hasAtt);if(w==='is:pinned')return yes(n.pinned);if(m=w.match(/^edited:(\d+)d$/))return days(n.date,TODAY)<=+m[1];if(w.startsWith('@'))return peopleNames(n).toLowerCase().includes(w.slice(1));return hay.includes(w)})}
 function dateGroups(list){const g=[];list.forEach(n=>{const dd=n.date?days(n.date,TODAY):9999;const k=dd<=0?'Today':dd===1?'Yesterday':dd<=7?'Previous 7 Days':dd<=30?'Previous 30 Days':n.date?new Date(n.date+'T00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Older';let x=g.find(y=>y.k===k);if(!x){x={k,items:[]};g.push(x)}x.items.push(n)});return g}
@@ -1195,6 +1202,7 @@ function sermons(){
  <label class="smsearch">${ICON.search}<input type="search" id="smq" placeholder="Title, word or verse (yoh 3:16)" value="${esc(F.q||'')}" aria-label="Search sermons"></label>
  <div class="smfs">${opts('place','Place')}${opts('context','Context')}${opts('themes','Theme')}${opts('theology','Theology')}${opts('year','Year')}${any?'<button class="btn link" data-a="smclear">Clear all</button>':''}</div>
  <details class="tsec smmap"${UI.smMap===false?'':' open'}><summary><h2>Bible map${F.book?` · ${esc(BOOKNAME[F.book])}`:''}</h2></summary><div class="group bmap"><p class="meta">Darker = preached more. Tap a book to filter${F.book?', tap again to clear':''}.</p><span class="bl">Old Testament</span><div class="bg">${OTB.map(tile).join('')}</div><span class="bl">New Testament</span><div class="bg">${NTB.map(tile).join('')}</div></div></details>
+ ${F.book?nbBlock(F.book):''}
  ${list.length?`<div class="prow"><button class="btn y" data-a="smsum">Summarise ${list.length===all.length?'all':'these '+list.length} with Claude</button></div><div class="group">${list.slice(0,UI.smMore?1000:60).map(card).join('')}</div>${list.length>60&&!UI.smMore?'<button class="btn" data-a="smmore" style="margin-top:10px">Show all '+list.length+'</button>':''}`:`<div class="group"><div class="empty">${all.length?'Nothing matches these filters.':'No sermons yet. They appear here once your sermon notes are in HQ Notes.'}</div></div>`}
  ${enriched?'':`<p class="samp">Points, place, theme and theology fill in once Claude has read each sermon note. Until then you see titles, dates and verses.</p>`}</div>`;
  view.querySelectorAll('select[data-sm]').forEach(sl=>sl.onchange=()=>{F[sl.dataset.sm]=sl.value;saveUI();sermons()});
@@ -1218,6 +1226,7 @@ document.addEventListener('click',async e=>{
   window.open('https://claude.ai/new?q='+encodeURIComponent(pr),'_blank','noopener');return}
  if(a==='vnew'&&VP){const lab=refLabel(VP.q),L=VP.hits.slice().sort((x,y)=>(y.n.date||'').localeCompare(x.n.date||''));const f=folderList().find(x=>/sermon note/i.test(x))||'Notes';
   const n=RCTX.newNote('New message – '+lab,`<h1>New message – ${esc(lab)}</h1><p><b>Passage:</b> ${esc(lab)}</p><h2>Big idea</h2><p><br></p><h2>Outline</h2><ol><li><br></li></ol><h2>From my past notes</h2><ul>${L.map(h=>`<li><b>${esc(h.n.title)}</b> · ${esc(h.n.date||'')} · ${esc(fpath(h.n))}<br><i>${esc(refExcerpt(h.n,VP.q))}</i></li>`).join('')}</ul>`,f);n.tags='sermon';n.type='Church';UI.q='';saveUI();notes();notePane(n);return}
+ if(a==='nbask'){const qq=prompt('What would you like to ask your notebooks about '+refLabel(v)+'? (optional)','');if(qq===null)return;askNotebooks(v,qq.trim());return}
  if(a==='smwho'){UI.sm.who=v;saveUI();sermons();return}
  if(a==='smbook'){UI.sm.book=UI.sm.book===v?'':v;saveUI();sermons();return}
  if(a==='smclear'){UI.sm={who:UI.sm.who};saveUI();sermons();return}
