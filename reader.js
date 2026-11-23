@@ -79,7 +79,7 @@ function shell() {
 #rdr .rib{width:40px;height:40px;border-radius:20px;display:grid;place-items:center;background:var(--rui)}#rdr .rib svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #rdr .rib.on svg{fill:currentColor}
 #rdr .rttl{flex:1;min-width:0;text-align:center;font-size:13px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#rdr .rview{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:pan-y pinch-zoom}#rdr .rview .epub-container{will-change:transform}
+#rdr .rview{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:pan-y pinch-zoom}#rdr .rview .epub-container{will-change:transform}#rdr .redge{position:absolute;top:0;bottom:0;width:11%;z-index:3;border:0;background:transparent;padding:0;-webkit-tap-highlight-color:transparent;touch-action:pan-y}#rdr .redge.prev{left:0}#rdr .redge.next{right:0}#rdr.scrolled .redge{display:none}
 #rdr .rprog{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;font-size:12px;opacity:.85;text-align:center}
 #rdr .rprog input{width:100%;accent-color:#c6613f}
 #rdr .rstat{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;font-size:15px;line-height:1.5}
@@ -144,7 +144,7 @@ function paint() {
   if (f) body['font-family'] = f + ' !important';
   if (t.weight) body['font-weight'] = t.weight + ' !important';
   body['font-size'] = S.size + '% !important';
-  rend.themes.default({ 'html': { 'font-size': '100% !important' }, body, 'p,li,div,span,blockquote,dd,dt,td,th,pre,section,article': Object.assign({ 'line-height': S.lh + ' !important', 'font-size': '1em !important' }, f ? { 'font-family': f + ' !important' } : {}), 'small,sub,sup': { 'font-size': '0.8em !important' }, 'h1': { 'font-size': '1.6em !important', 'line-height': '1.25 !important' }, 'h2': { 'font-size': '1.35em !important', 'line-height': '1.3 !important' }, 'h3': { 'font-size': '1.15em !important' }, 'h4,h5,h6': { 'font-size': '1em !important' }, 'a': { color: t.dark ? '#9cc3ff !important' : '#1f5fbf !important' }, 'img': { 'max-width': '100% !important' }, '::selection': { background: 'rgba(255,214,10,.45)' } });
+  rend.themes.default({ 'html': { 'font-size': '100% !important' }, body, 'p,li,div,span,blockquote,dd,dt,td,th,pre,section,article': Object.assign({ 'line-height': S.lh + ' !important', 'font-size': '1em !important' }, f ? { 'font-family': f + ' !important' } : {}), 'small,sub,sup': { 'font-size': '0.8em !important' }, 'p:not([class*="center"]):not([style*="center"]):not([align]),li,blockquote,dd': { 'text-align': (S.justify ? 'justify' : 'left') + ' !important', '-webkit-hyphens': (S.justify ? 'auto' : 'manual') + ' !important', 'hyphens': (S.justify ? 'auto' : 'manual') + ' !important' }, 'h1': { 'font-size': '1.6em !important', 'line-height': '1.25 !important' }, 'h2': { 'font-size': '1.35em !important', 'line-height': '1.3 !important' }, 'h3': { 'font-size': '1.15em !important' }, 'h4,h5,h6': { 'font-size': '1em !important' }, 'a': { color: t.dark ? '#9cc3ff !important' : '#1f5fbf !important' }, 'img': { 'max-width': '100% !important' }, '::selection': { background: 'rgba(255,214,10,.45)' } });
   rend.themes.fontSize(S.size + '%');
   try { if (f) rend.themes.override('font-family', f, true); else rend.themes.override('font-family', '', false); } catch (e) {}
 }
@@ -203,9 +203,33 @@ async function turn(dir, from) {
 }
 function snap() { const st = stage(); if (!st) return; st.style.transition = ''; st.style.transform = ''; st.style.opacity = ''; }
 const wait = ms => new Promise(r => setTimeout(r, ms));
+/* Remove anything executable from a book's pages (scripts, on… handlers, javascript: links) before they are shown. */
+function cleanBook(b) {
+  if (b.__clean) return; b.__clean = 1;
+  b.spine.hooks.serialize.register((output, section) => {
+    section.output = String(output || '')
+      .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '').replace(/<script\b[^>]*\/>/gi, '')
+      .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      .replace(/(href|src|xlink:href)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, '$1=$2#$2');
+  });
+}
+/* Backup page turning that never depends on the book frame: thin tap/swipe strips on the left and right edges. */
+function edgeZones() {
+  const v = el.querySelector('#r-view'); if (!v || v.querySelector('.redge')) return;
+  ['prev', 'next'].forEach(k => {
+    const z = document.createElement('button'); z.className = 'redge ' + k; z.setAttribute('aria-label', k === 'next' ? 'Next page' : 'Previous page');
+    let x0 = null;
+    z.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+    z.addEventListener('touchend', e => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; swiped = Date.now(); if (S.flow !== 'paginated') return; if (Math.abs(dx) > 30) turn(dx < 0 ? 1 : -1, dx); else turn(k === 'next' ? 1 : -1); e.preventDefault(); });
+    z.addEventListener('click', () => { if (Date.now() - swiped < 600 || S.flow !== 'paginated') return; turn(k === 'next' ? 1 : -1); });
+    v.appendChild(z);
+  });
+}
 function makeRendition() {
+  cleanBook(book);
   const v = $('#r-view'); v.innerHTML = '';
-  rend = book.renderTo(v, { width: '100%', height: '100%', flow: S.flow, manager: S.flow === 'scrolled' ? 'continuous' : 'default', spread: innerWidth > 1000 ? 'auto' : 'none', allowScriptedContent: false });
+  rend = book.renderTo(v, { width: '100%', height: '100%', flow: S.flow, manager: S.flow === 'scrolled' ? 'continuous' : 'default', spread: innerWidth > 1000 ? 'auto' : 'none', allowScriptedContent: true });   // Safari ignores touch/tap listeners in a frame without scripts; book scripts are stripped in cleanBook()
+  edgeZones(); el.classList.toggle('scrolled', S.flow === 'scrolled');
   paint();
   rend.on('relocated', loc => { curLoc = loc; place(); queueSave(); if (speaking) speakPage(); const now = Date.now(), dt = (now - turnAt) / 1000; turnAt = now; if (dt > 4 && dt < 240 && S.flow === 'paginated') { S.spp = Math.round(S.spp * 0.85 + dt * 0.15); saveS(); } lastAct = now; });
   rend.on('selected', (cfi, contents) => { const t = contents.window.getSelection().toString().trim(); if (!t) return; sel = { cfi, text: t, contents }; selBar(); lastAct = Date.now(); });
