@@ -288,7 +288,7 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .nb ol{list-style:none;margin:0;padding:0}.nb li{padding:8px 0;border-top:.5px solid var(--line)}.nb li:first-child{border-top:0}
 .nb li a{color:var(--ink);font-weight:600;text-decoration:none;font-size:15px}.nb li p{margin:2px 0 0;color:var(--mut);font-size:14px;line-height:1.4}
 .nb .tag{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 6px;margin-right:6px;background:var(--accsoft);color:var(--ink);vertical-align:1px}
-.cos{margin-top:12px}.cos-ol{counter-reset:p}.cos-ol li{counter-increment:p;padding-left:26px;position:relative}.cos-ol li::before{content:counter(p);position:absolute;left:0;top:9px;width:18px;height:18px;border-radius:9px;background:#ffd60a;font-size:11px;font-weight:700;text-align:center;line-height:18px}
+.docm{color:var(--acc);font-weight:600}.cos{margin-top:12px}.cos-ol{counter-reset:p}.cos-ol li{counter-increment:p;padding-left:26px;position:relative}.cos-ol li::before{content:counter(p);position:absolute;left:0;top:9px;width:18px;height:18px;border-radius:9px;background:#ffd60a;font-size:11px;font-weight:700;text-align:center;line-height:18px}
 .nb details summary{cursor:pointer;color:var(--acc);font-weight:600;font-size:14px;padding:6px 0;list-style:none}.nb details summary::-webkit-details-marker{display:none}.nb details[open] summary{display:none}
 .cfab{position:fixed;right:18px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:15;display:flex;align-items:center;gap:6px;border:0;border-radius:24px;padding:11px 16px;background:#c6613f;color:#fff;font:600 15px Inter,system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.18);cursor:pointer}
 .cfab svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
@@ -391,7 +391,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='27 · 23 Nov 2026';
+const VERSION='28 · 23 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -1186,7 +1186,7 @@ const SHORTB={GEN:'Kej',EXO:'Kel',LEV:'Im',NUM:'Bil',DEU:'Ul',JOS:'Yos',JDG:'Hak
 const SERMON_FOLDER=/sermon|khotbah|preach|teaching|pengajaran/i;
 function sermonList(){
  const rows=(D.sermons||[]).filter(r=>!yes(r.void)),seen=new Set(rows.map(r=>r.noteId).filter(Boolean));
- const out=rows.map(r=>({...r,refs:(r.refs||'').split(' ').filter(x=>x&&x!=='-')}));
+ const out=rows.map(r=>({...r,refs:(r.refs||'').split(/[\s;,]+/).filter(x=>x&&x!=='-')}));
  noteRows().filter(n=>SERMON_FOLDER.test(fpath(n))&&!seen.has(n.id)).forEach(n=>out.push({id:'n:'+n.id,noteId:n.id,title:n.title,date:n.date,place:'',context:fname(fpath(n)),series:'',refs:refsOf(n).filter(x=>x!=='-'),themes:'',theology:'',points:'',bigIdea:'',preacher:''}));
  return out.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 }
@@ -1211,7 +1211,7 @@ function sermons(){
  const bc={};all.filter(x=>pass(x,'book')).forEach(x=>new Set(x.refs.map(r=>r.split('.')[0])).forEach(b=>bc[b]=(bc[b]||0)+1));const mx=Math.max(1,...Object.values(bc));
  const tile=b=>{const c=bc[b]||0,l=c?Math.ceil(c/mx*4):0;return `<button class="bt l${l}${F.book===b?' sel':''}" data-a="smbook" data-v="${b}" aria-label="${esc(BOOKNAME[b])}: ${c} message${c===1?'':'s'}"${c?'':' disabled'}>${SHORTB[b]}</button>`};
  const card=x=>{const pts=split(x.points).slice(0,3),vs=[...new Set(x.refs)].slice(0,4),tags=[x.themes&&'Theme: '+x.themes,x.theology&&'Theology: '+x.theology,x.series&&'Series: '+x.series].filter(Boolean);
-  return `<button class="smc" data-a="smopen" data-id="${esc(x.noteId||'')}"><span class="vd">${x.date?esc(new Date(x.date+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})):'No date'}${x.place?' · '+esc(x.place):''}${x.context?' · '+esc(x.context):''}${x.preacher&&x.preacher!=='me'?' · '+esc(x.preacher):''}</span><b>${esc(x.title)}</b>
+  return `<button class="smc" data-a="smopen" data-id="${esc(x.noteId||'')}" data-v="${esc(x.docLink||'')}"><span class="vd">${x.date?esc(new Date(x.date+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})):'No date'}${x.place?' · '+esc(x.place):''}${x.context?' · '+esc(x.context):''}${x.preacher&&x.preacher!=='me'?' · '+esc(x.preacher):''}${x.docLink?' · <span class="docm">Google Doc ↗</span>':''}</span><b>${esc(x.title)}</b>
   ${vs.length?`<span class="chips">${vs.map(r=>`<span class="vchip">${esc(refLabel(r))}</span>`).join('')}</span>`:''}${x.bigIdea?`<span class="vx">${esc(x.bigIdea)}</span>`:''}
   ${pts.length?`<ol>${pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ol>`:''}${tags.length?`<span class="chips">${tags.map(t=>`<span class="tchip">${esc(t)}</span>`).join('')}</span>`:''}</button>`};
  const any=['place','book','context','themes','theology','year'].some(k=>F[k])||F.q;const enriched=(D.sermons||[]).length;
@@ -1250,7 +1250,7 @@ document.addEventListener('click',async e=>{
  if(a==='smbook'){UI.sm.book=UI.sm.book===v?'':v;saveUI();sermons();return}
  if(a==='smclear'){UI.sm={who:UI.sm.who};saveUI();sermons();return}
  if(a==='smmore'){UI.smMore=1;sermons();return}
- if(a==='smopen'){const n=id&&find('notes_index',id);if(n)notePane(n);else say('This sermon has no note in HQ yet.');return}
+ if(a==='smopen'){const n=id&&find('notes_index',id);if(n)notePane(n);else if(v){window.open(v,'_blank','noopener')}else say('This sermon has no note or Doc linked yet.');return}
  if(a==='smsum'){const L=SMV.slice(0,80);let ex=L.map(x=>`- ${x.date||'undated'} · ${x.title}${x.place?' · '+x.place:''}${x.context?' · '+x.context:''} · ${x.refs.map(refLabel).join(', ')}${x.points?' · points: '+x.points:''}`).join('\n');if(ex.length>6500)ex=ex.slice(0,6500)+'\n…';
   const F=UI.sm,flt=['place','context','themes','theology','year'].filter(k=>F[k]).map(k=>k+': '+F[k]).concat(F.book?['book: '+BOOKNAME[F.book]]:[],F.q?['search: '+F.q]:[]).join(', ');
   const pr=`Here is a list of messages I have preached${flt?' ('+flt+')':''}, newest first.\n\n1. Summarise the main things I have taught across them, in short points.\n2. Group them by theme and show how my emphasis has changed over time.\n3. Point out passages and themes I keep returning to, and important ones I have hardly preached.\n4. Suggest 3 sermon or series ideas that build on this without repeating it.\nOnly use what is in the list.\n\n${ex}`;
