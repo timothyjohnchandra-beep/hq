@@ -348,6 +348,7 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .amenu label,.amenu button{border:0;background:none;padding:14px 18px;text-align:left;font-size:17px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--ink)}
 .amenu>:last-child{border-bottom:0}
 .acc .rec{background:var(--red);color:#fff}
+.wm-h{font-size:13px;font-weight:600;color:var(--mut);margin:14px 4px 6px;text-transform:uppercase;letter-spacing:.04em}.wm-t{margin:8px 4px 4px}
 </style>
 </head>
 <body>
@@ -389,7 +390,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='25 · 23 Nov 2026';
+const VERSION='26 · 23 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -521,6 +522,14 @@ const TSO=ls.get('hq-today-open',{});
 function tsec(key,head,body){return `<details class="tsec" data-ts="${key}"${TSO[key]===false?'':' open'}><summary>${head}</summary><div class="tsb">${body}</div></details>`}
 function watchToday(){view.querySelectorAll('details.tsec').forEach(d=>d.addEventListener('toggle',()=>{TSO[d.dataset.ts]=d.open;ls.set('hq-today-open',TSO);tsLabel()}));tsLabel()}
 function tsLabel(){const b=view.querySelector('.tsall');if(b)b.textContent=[...view.querySelectorAll('details.tsec')].some(d=>d.open)?'Close all':'Open all'}
+/* Watched email: Claude's morning summaries of Samuel Sekuritas, Stockbit and YLG/Lausanne/AEA mail (briefs tab, section mail). */
+function watchedMail(){
+ const rows=(D.briefs||[]).filter(r=>!yes(r.void)&&r.section==='mail'&&r.date);if(!rows.length)return'';
+ const day=rows.map(r=>r.date).sort().pop(),b=rows.filter(r=>r.date===day).sort((x,y)=>(+x.n||0)-(+y.n||0));
+ const tags=[...new Set(b.map(r=>r.tag||'Other'))];
+ return `<h3 class="wm-h">Read for you · ${esc(day===TODAY?'this morning':nice(day))}</h3>`+tags.map(t=>`<p class="meta wm-t">${esc(t==='YLG'?'YLG · Lausanne · AEA':t==='Samuel'?'Samuel Sekuritas':t)}</p><div class="group emails">${b.filter(r=>(r.tag||'Other')===t).map(r=>{const act=/^action:/i.test(r.summary||'');
+  return `<details class="em"><summary><span class="em-dot${act?' imp':''}" aria-hidden="true"></span><span class="em-t"><b>${esc(r.title||'')}</b><span>${esc((r.summary||'').slice(0,90))}</span></span></summary><div class="em-b"><p class="em-g">${esc(r.summary||'')}</p>${r.link?`<div class="prow"><a class="btn y" style="text-decoration:none" href="${esc(r.link)}" target="_blank" rel="noopener">Open in Gmail</a></div>`:''}</div></details>`}).join('')}</div>`).join('')+'<h3 class="wm-h">Inbox</h3>';
+}
 /* Email list: tap a row to open the gist of that email. */
 function emailList(){
  if(!BRIEF)return grp([],live()?'Loading your inbox…':'Connect your Google Sheet in Settings to see your email here.');
@@ -530,7 +539,7 @@ function emailList(){
   <div class="em-b">${m.gist?`<p class="em-g">${esc(m.gist)}</p>`:'<p class="meta">Update the bridge script to see what each email says here.</p>'}
   ${m.files&&m.files.length?`<p class="meta">Attached: ${m.files.map(esc).join(', ')}</p>`:''}
   <div class="prow">${m.link?`<a class="btn y" style="text-decoration:none" href="${esc(m.link)}" target="_blank" rel="noopener">Open in Gmail</a>`:''}<a class="btn" style="text-decoration:none;color:inherit" href="https://claude.ai/new?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">Ask Claude</a><button class="btn" data-a="emtask" data-v="${i}">Make a task</button></div></div></details>`});
- return `<div class="group emails">${rows.length?rows.join(''):'<div class="empty">No unread email. Inbox clear.</div>'}</div>${BRIEF.unread>L.length?`<p class="samp">${BRIEF.unread} unread in total. <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">Open Gmail</a></p>`:''}`;
+ return `${watchedMail()}<div class="group emails">${rows.length?rows.join(''):'<div class="empty">No unread email. Inbox clear.</div>'}</div>${BRIEF.unread>L.length?`<p class="samp">${BRIEF.unread} unread in total. <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">Open Gmail</a></p>`:''}`;
 }
 function today(){
  const items=todayItems(TODAY),tm=todayItems(TMRW).filter(i=>i.kind!=='habit');
