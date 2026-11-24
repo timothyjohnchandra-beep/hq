@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-23 22.45'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-24 09.40'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -633,7 +633,7 @@ function importNotes() {
       ['images', 'attachments'].forEach(n => { const it = folder.getFoldersByName(n); while (it.hasNext()) { const fi = it.next().getFiles(); while (fi.hasNext()) { const f = fi.next(); imgs[f.getName()] = f.getId(); } } });
       const files = folder.getFiles();
       while (files.hasNext()) {
-        if (Date.now() - t0 > 4.5 * 60 * 1000) return false;
+        if (Date.now() - t0 > 3.5 * 60 * 1000) return false;   // leave time to save before Google's 6-minute limit
         const f = files.next(); if (!/\.md$/i.test(f.getName())) continue;
         const id = 'md-' + f.getId(); if (have[id]) continue;
         const md = f.getBlob().getDataAsString(), title = f.getName().replace(/\.md$/i, '').trim();
