@@ -506,17 +506,18 @@ function geminiJson_(key, models, prompt, deadline, slow) {   // deadline (ms) a
   for (const model of models) {
     if (bad[model] && Date.now() - bad[model] < 864e5) continue;
     if (slow[model]) continue;   // answered slowly or "busy" earlier in this run
-    // A busy full Flash model can hold a request for over 2 minutes before answering 503 (seen 24 Nov 2026: 137 s), and
-    // Apps Script cannot cut a request short, so it is only tried with 150 s to spare; Lite models answer in seconds.
-    const margin = /lite/.test(model) ? 40000 : 150000;
     for (let tries = 0; tries < 2; tries++) {
-      if (deadline && Date.now() > deadline - margin) break;
+      // A busy Gemini can hold a request for minutes (seen 24 Nov 2026: 137 s and 205 s) and UrlFetchApp has no timeout,
+      // so Google's X-Server-Timeout header makes the server give up (504) in time: 45 s at most, less near the deadline.
+      const limit = deadline ? Math.min(45, Math.floor((deadline - Date.now()) / 1000) - 15) : 0;   // 0 = no cap (news, Telegram)
+      if (deadline && limit < 10) break;
       tried++;
       const g0 = Date.now();
       const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-        method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: JSON.stringify(bodyFor(model)), muteHttpExceptions: true });
+        method: 'post', contentType: 'application/json', headers: Object.assign({ 'x-goog-api-key': key }, limit ? { 'X-Server-Timeout': String(limit) } : {}),
+        payload: JSON.stringify(bodyFor(model)), muteHttpExceptions: true });
       const code = r.getResponseCode(), txt = r.getContentText(), secs = (Date.now() - g0) / 1000;
-      if (secs > 45) slow[model] = 1;   // too slow for a run with a time limit; try other models first
+      if (secs > 30) slow[model] = 1;   // too slow for a run with a time limit; try other models first
       if (code === 400 && !noThink[model] && /thinking/i.test(txt)) { noThink[model] = 1; props.setProperty('geminiNoThink', JSON.stringify(noThink)); tries--; continue; }
       if (code === 200) {
         props.setProperty('geminiGood', model); props.setProperty('geminiBad', JSON.stringify(bad));
@@ -525,8 +526,8 @@ function geminiJson_(key, models, prompt, deadline, slow) {   // deadline (ms) a
       }
       last = model + ' ' + code + ': ' + (((JSON.parse(txt || '{}').error) || {}).message || txt).slice(0, 160);
       if (code === 429 && /per ?day|PerDay|limit: 0|free_tier|quota/i.test(txt) && !/per ?minute|PerMinute/i.test(txt)) { bad[model] = Date.now(); break; }   // no free quota today → next model
-      if (code >= 500) { if (secs > 10) slow[model] = 1; break; }   // busy ("high demand"): go straight to the next model, don't wait
-      if (code === 429) { if (deadline && Date.now() + 15000 > deadline - margin) break; Utilities.sleep(15000); continue; }   // per-minute limit: wait once if there is time
+      if (code >= 500) { if (secs > 10) slow[model] = 1; break; }   // busy (503) or timed out (504): go straight to the next model, don't wait
+      if (code === 429) { if (deadline && Date.now() + 15000 > deadline - 60000) break; Utilities.sleep(15000); continue; }   // per-minute limit: wait once if there is time
       if (code === 404 || code === 400 || code === 403) { bad[model] = Date.now(); break; }   // model not available to this key
       throw new Error('Gemini error ' + last);
     }
@@ -562,10 +563,9 @@ function indexSermonsGemini() {
   const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
   if (!key) throw new Error('No Gemini key yet. Run setGeminiKey first.');
   const started = Date.now(), T = () => Math.round((Date.now() - started) / 1000) + 's ';
-  // Lite models only: they answer in about a second. When busy, full Flash/Hydrogen models held single requests for
-  // 137 s and 205 s (24 Nov 2026) and Apps Script cannot cut a request short, so one busy call could sink the run.
-  // If every Lite model is busy, the run stops and the next hour carries on. Full models only if the key has no Lite.
-  const all = geminiModels_(key), lite = all.filter(n => /lite/.test(n)), models = lite.length ? lite : all;
+  // Lite models first: they answer in about a second. Full Flash/Hydrogen models are the fallback; every call is capped by
+  // X-Server-Timeout in geminiJson_, so a busy model can no longer hold the run past Google's limit.
+  const all = geminiModels_(key), models = all.filter(n => /lite/.test(n)).concat(all.filter(n => !/lite/.test(n)));
   const log = ['Gemini models to try: ' + models.join(', ')], slow = {};
   Logger.log(T() + 'Models: ' + models.join(', '));
   const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), known = {};
