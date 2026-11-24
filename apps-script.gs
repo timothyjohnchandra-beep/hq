@@ -555,7 +555,7 @@ function cleanSermon_(o) {
   const s = v => String(v == null ? '' : Array.isArray(v) ? v.join(' | ') : v).trim();
   const refs = s(o.refs).split(/\s*;\s*/).map(r => r.trim().toUpperCase()).filter(r => /^([1-3]?[A-Z]{2,3})\.\d+(\.\d+(-\d+)?)?$/.test(r) && codes[r.split('.')[0]]).slice(0, 8);
   const ctx = SERMON_CONTEXTS.find(c => c.toLowerCase() === s(o.context).toLowerCase()) || '';
-  return { title: s(o.title), date: /^\d{4}-\d{2}-\d{2}$/.test(s(o.date)) ? s(o.date) : '', place: s(o.place), context: ctx, series: s(o.series),
+  return { title: s(o.title), date: /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s(o.date)) ? s(o.date) : '', place: s(o.place), context: ctx, series: s(o.series),
     refs: refs.join('; '), themes: s(o.themes), theology: s(o.theology), points: s(o.points), bigIdea: s(o.bigIdea), preacher: s(o.preacher) || 'me' };
 }
 function indexSermonsGemini() {
@@ -617,8 +617,8 @@ function indexSermonsGemini() {
       } else if (kind === 'brief') { moves.push({ id, folder: '08', title: name, added: today }); log.push('Theme/brief: ' + name); }
       else if (kind === 'others') { moves.push({ id, folder: '09', title: name, added: today }); log.push('Others\' sermons: ' + name); }
       else if (kind === 'unclear') { moves.push({ id, folder: '00', title: name, added: today }); log.push('To check: ' + name); }
-      else moves.push({ id, folder: 'skip', title: name, added: today });
-      save(); Logger.log(T() + (log[log.length - 1] || 'Not a sermon: ' + name));
+      else { moves.push({ id, folder: 'skip', title: name, added: today }); log.push('Not a sermon: ' + name); }
+      save(); Logger.log(T() + log[log.length - 1]);
       Utilities.sleep(2000);   // stay inside Gemini's free-tier rate limit
     } catch (e) { log.push('Failed: ' + name + ' – ' + (e.message || e)); Logger.log(T() + log[log.length - 1]); if (/busy|quota|key|out of time/i.test(e.message || '')) { stop = true; left++; } }
   }
