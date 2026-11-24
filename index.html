@@ -281,6 +281,12 @@ input[type=time]{background:var(--card);border:1px solid var(--line);border-radi
 .colors{display:flex;gap:8px;flex-wrap:wrap;padding:0 4px}
 .colors button{border:0;background:var(--fill);border-radius:12px;min-width:44px;height:44px;display:grid;place-items:center;padding:0 10px}
 @media(min-width:1101px){.pane.noting .ned{padding-top:16px}}
+/* Editing: the note sheet follows the visible screen (above the keyboard) every frame, so the format bar stays put while scrolling. */
+.pane.noting{overscroll-behavior:contain}
+html.editing,html.editing body{overscroll-behavior:none}
+@media(max-width:1100px){.pane.noting{top:var(--vvt,0px);bottom:auto;height:var(--vvh,100%);--kb:0px}}
+.kbopen .ndock{bottom:calc(var(--kb,0px) + 8px)}
+.circ.saving{opacity:.55;pointer-events:none}
 .nb{margin-top:12px;background:var(--card);border-radius:16px;padding:14px 16px}
 .nb-h{display:flex;gap:10px;align-items:baseline;justify-content:space-between}.nb-h b{font-size:13px;color:var(--mut);font-weight:600}.nb-h a{color:var(--acc);font-weight:600;text-decoration:none;font-size:14px;white-space:nowrap}
 .nb-t{font-size:17px;font-weight:600;margin:4px 0 2px;line-height:1.3}
@@ -834,7 +840,7 @@ async function notePane(n){
   <div class="amenu" id="amenu" hidden><label><input type="file" id="attach" hidden>Photo or file</label><label><input type="file" id="scan" accept="image/*" capture="environment" hidden>Scan with camera</label><button data-f="rec">Record audio</button></div>
   <div class="acc" id="acc"><button data-f="fmt" aria-label="Format">Aa</button><button data-f="check" aria-label="Checklist">${ICON.checklist}</button><button data-f="table" aria-label="Table">${ICON.table}</button><button data-f="amenu" aria-label="Attach">${ICON.clip}</button><button data-f="mic" aria-label="Dictate">${ICON.mic}</button><button data-f="hr" aria-label="Divider line">—</button></div>
  </div></div>`);
- pane.classList.add('noting');
+ pane.classList.add('noting');followVV();
  const ed=$('#ed'),hadBody=BODY[n.id]!=null;
  if(BODY[n.id]==null&&live()){try{const j=await api({action:'note',id:n.id});BODY[n.id]=j.html||`<h1>${esc(n.title)}</h1><p><br></p>`;persist();if($('#ed')===ed)ed.innerHTML=BODY[n.id]}catch(e){ed.innerHTML='';say("Couldn't open the note: "+e.message)}}
  else if(BODY[n.id]==null){BODY[n.id]=`<h1>${esc(n.title)}</h1><p><br></p>`;ed.innerHTML=BODY[n.id]}
@@ -861,7 +867,16 @@ async function notePane(n){
   if(e.target.closest('[data-a=nmd]'))copyOut(toMd(ed),'Markdown');if(e.target.closest('[data-a=ntxt]'))copyOut(ed.innerText,'Text')});
  pane.querySelector('[data-a=nmore]').addEventListener('click',()=>{const m=$('#nmore');m.hidden=!m.hidden;if(!m.hidden)fillSecs()});
  pane.querySelector('[data-a=nshare]').addEventListener('click',async()=>{const text=ed.innerText;if(navigator.share){try{await navigator.share({title:n.title,text});return}catch(x){if(x.name==='AbortError')return}}copyOut(text,'Note')});
- pane.querySelector('[data-a=ndone]').addEventListener('click',()=>{ed.blur();$('#fmt').hidden=true;$('#colors').hidden=true;$('#seclist').hidden=true;getSelection().removeAllRanges()});
+ pane.querySelector('[data-a=ndone]').addEventListener('click',async e=>{const btn=e.currentTarget;ed.blur();$('#fmt').hidden=true;$('#colors').hidden=true;$('#seclist').hidden=true;getSelection().removeAllRanges();
+  if(edHTML(ed)!==BODY[n.id])changed();
+  const done=m=>{closePane();if(UI.view==='notes')notes();say(m)};
+  if(!live()){done('Saved on this device.');return}
+  if(!dirtyNotes.has(n.id)&&!dirty.has('notes_index')){done('Saved.');return}
+  btn.classList.add('saving');say('Saving…');clearTimeout(flushT);
+  for(let i=0;i<150&&flushing;i++)await new Promise(r=>setTimeout(r,200));
+  await flush();btn.classList.remove('saving');
+  if(dirtyNotes.has(n.id))say("Couldn't save to Drive"+(syncState.msg?': '+syncState.msg:'')+". It's kept on this device and will try again.");
+  else done('Saved.')});
  $('#nm-f').onchange=e=>{n.folder=e.target.value;touch('notes_index');if(UI.view==='notes')notes();say('Moved to '+fname(n.folder)+'.')};
  $('#nm-t').onchange=e=>{n.type=e.target.value;touch('notes_index')};
  const dock=pane.querySelector('.ndock');
@@ -910,7 +925,11 @@ async function notePane(n){
  $('#attach').onchange=onFile;$('#scan').onchange=onFile;
 }
 const vv=window.visualViewport;
-if(vv){const kb=()=>{const h=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty('--kb',h+'px')};vv.addEventListener('resize',kb);vv.addEventListener('scroll',kb)}
+let vvLast='',vvLoop=0;
+const kb=()=>{if(!vv)return;const h=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop)),key=h+'|'+Math.round(vv.height)+'|'+Math.round(vv.offsetTop);if(key===vvLast)return;vvLast=key;const r=document.documentElement.style;r.setProperty('--kb',h+'px');r.setProperty('--vvh',Math.round(vv.height)+'px');r.setProperty('--vvt',Math.round(vv.offsetTop)+'px');document.documentElement.classList.toggle('kbopen',h>80)};
+/* iPhone reports keyboard and scroll moves late, so while a note is open HQ checks the visible screen every frame. */
+const followVV=()=>{if(!vv||vvLoop)return;document.documentElement.classList.add('editing');const tick=()=>{if(!pane.classList.contains('noting')){vvLoop=0;document.documentElement.classList.remove('editing');return}kb();vvLoop=requestAnimationFrame(tick)};vvLoop=requestAnimationFrame(tick)};
+if(vv){vv.addEventListener('resize',kb);vv.addEventListener('scroll',kb);kb()}
 function backlinks(n){const from=noteRows().filter(x=>x.id!==n.id&&(x.links||'').split(' ').includes(n.id));return from.length?`<div class="field"><label>Linked from</label><div class="chips" style="flex-wrap:wrap">${from.map(x=>`<button class="chip" data-bl="${esc(x.id)}">${esc(x.title)}</button>`).join('')}</div></div>`:''}
 function openPicker(kind,n,ed,changed){const pk=$('#picker'),q=$('#pick-q'),l=$('#pick-l');
  if(!pk.hidden&&pk.dataset.kind===kind){pk.hidden=true;return}pk.hidden=false;pk.dataset.kind=kind;q.value='';q.placeholder=kind==='mention'?'Search people':'Search notes';
