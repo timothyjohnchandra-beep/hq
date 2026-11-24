@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-24 09.45'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-24 15.00'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -81,7 +81,7 @@ function writeTab_(name, rows) {
     backup_(s);
     const head = s.getRange(1, 1, 1, Math.max(1, s.getLastColumn())).getDisplayValues()[0].filter(String);
     rows.forEach(r => Object.keys(r).forEach(k => { if (head.indexOf(k) < 0) head.push(k); }));
-    if (name === 'notes_index') {   // keep rows added meanwhile by the import or another device (HQ never deletes rows, it voids them)
+    if (name === 'notes_index' || name === 'tasks') {   // keep rows added meanwhile by the import, Telegram or another device (HQ never deletes rows, it voids them)
       const seen = {}; rows.forEach(r => seen[r.id] = 1);
       readTab_(name).forEach(r => { if (r.id && !seen[r.id]) { rows.push(r); Object.keys(r).forEach(k => { if (head.indexOf(k) < 0) head.push(k); }); } });
     }
