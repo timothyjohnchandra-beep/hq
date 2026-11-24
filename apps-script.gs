@@ -562,8 +562,10 @@ function indexSermonsGemini() {
   const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
   if (!key) throw new Error('No Gemini key yet. Run setGeminiKey first.');
   const started = Date.now(), T = () => Math.round((Date.now() - started) / 1000) + 's ';
-  // Lite models answer in about a second; full Flash/Hydrogen models can take minutes when busy, so they are only a fallback here.
-  const all = geminiModels_(key), models = all.filter(n => /lite/.test(n)).concat(all.filter(n => !/lite/.test(n)));
+  // Lite models only: they answer in about a second. When busy, full Flash/Hydrogen models held single requests for
+  // 137 s and 205 s (24 Nov 2026) and Apps Script cannot cut a request short, so one busy call could sink the run.
+  // If every Lite model is busy, the run stops and the next hour carries on. Full models only if the key has no Lite.
+  const all = geminiModels_(key), lite = all.filter(n => /lite/.test(n)), models = lite.length ? lite : all;
   const log = ['Gemini models to try: ' + models.join(', ')], slow = {};
   Logger.log(T() + 'Models: ' + models.join(', '));
   const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), known = {};
