@@ -477,19 +477,19 @@ const SERMON_TITLE_WORDS = ['Sermon', 'Khotbah', 'Kotbah', 'Firman', 'Equipping'
   'Doa', 'Paskah', 'Natal', 'Christmas', 'Easter', 'Devotion', 'Ibadah', 'Tema', 'Brief', 'Pemberkatan', 'Wedding', 'Preaching'];
 const SERMON_SKIP = /commentary|tyndale|word biblical|niv application|new international|new american|interpretation|\[?mom\]?\b|notulen|sinode|\[artikel\]|^artikel|survey|rundown|\btor\b|surat|invoice|budget|anggaran|\bhq\b/i;
 const SERMON_CONTEXTS = ['Sunday service', 'Youth', 'Encounter Night', 'Prayer / MIK', 'Equipping', 'Bible study', 'Guest preaching', 'Retreat', 'Conference', 'Special service', 'Other preacher'];
-function geminiModels_(key) {   // Flash models this key can use, newest first; the one that last worked goes first
+function geminiModels_(key) {   // Hydrogen/Flash models this key can use, newest first; the one that last worked goes first
   const props = PropertiesService.getScriptProperties();
   const fixed = props.getProperty('GEMINI_MODEL'); if (fixed) return [fixed];
   let list = JSON.parse(props.getProperty('geminiModels') || '{}');
   if (!list.names || Date.now() - list.at > 864e5) {
     const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true });
     if (r.getResponseCode() !== 200) throw new Error('Gemini did not accept the key (' + r.getResponseCode() + '). Run setGeminiKey again with a fresh key from aistudio.google.com.');
-    const ver = n => { const m = /gemini-(\d+(?:\.\d+)?)-flash/.exec(n); return m ? Number(m[1]) : 0; };
+    const ver = n => { const m = /gemini-(\d+(?:\.\d+)?)-(flash|hydrogen)/.exec(n); return m ? Number(m[1]) : 0; };
     const names = (JSON.parse(r.getContentText()).models || [])
       .filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0).map(m => m.name.replace(/^models\//, ''))
-      .filter(n => /^gemini-[\d.]+-flash(-lite)?$/.test(n))   // stable Flash and Flash-Lite only
+      .filter(n => /^gemini-[\d.]+-(flash|hydrogen)(-lite)?$/.test(n))   // stable Hydrogen (Gemini 4's name for Flash), Flash and their Lite versions
       .sort((x, y) => ver(y) - ver(x) || (/lite/.test(x) ? 1 : -1));
-    if (!names.length) throw new Error('No Gemini Flash model found for this key.');
+    if (!names.length) throw new Error('No Gemini Hydrogen or Flash model found for this key.');
     list = { names, at: Date.now() }; props.setProperty('geminiModels', JSON.stringify(list));
   }
   const good = props.getProperty('geminiGood'), bad = JSON.parse(props.getProperty('geminiBad') || '{}');
