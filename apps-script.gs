@@ -540,19 +540,25 @@ function indexSermonsGemini() {
   if (!mvS.getLastRow()) mvS.appendRow(['id', 'folder', 'title', 'added']);
   mvS.getRange('A:A').getDisplayValues().forEach(r => { if (r[0]) known[r[0]] = 1; });
   const sermonsId = sub_(rootFolder_(), 'Sermons').getId();
-  const q = 'mimeType = "application/vnd.google-apps.document" and trashed = false and "me" in owners and (' +
-    SERMON_TITLE_WORDS.map(w => 'title contains "' + w + '"').join(' or ') + ' or fullText contains "khotbah" or fullText contains "firman")';
-  const found = [], it = DriveApp.searchFiles(q);
-  while (it.hasNext()) { const f = it.next(); if (!known[f.getId()]) found.push(f); }
-  found.sort((a, b) => b.getLastUpdated() - a.getLastUpdated());
+  // One fast Drive API list instead of DriveApp, which needs an extra call per file.
   const auth = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+  const q = "mimeType = 'application/vnd.google-apps.document' and trashed = false and 'me' in owners and (" +
+    SERMON_TITLE_WORDS.map(w => "name contains '" + w + "'").join(' or ') + " or fullText contains 'khotbah' or fullText contains 'firman')";
+  const found = []; let page = '';
+  do {
+    const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=nextPageToken,files(id,name,modifiedTime)&q=' +
+      encodeURIComponent(q) + (page ? '&pageToken=' + encodeURIComponent(page) : ''), auth);
+    if (r.getResponseCode() !== 200) throw new Error('Drive search failed (' + r.getResponseCode() + '): ' + r.getContentText().slice(0, 200));
+    const j = JSON.parse(r.getContentText()); (j.files || []).forEach(f => { if (!known[f.id]) found.push(f); }); page = j.nextPageToken || '';
+  } while (page);
+  found.sort((a, b) => b.modifiedTime < a.modifiedTime ? -1 : 1);   // newest first (Drive can't sort full-text searches)
   const rows = [], moves = [];
   let done = 0, left = 0;
   for (const f of found) {
-    if (Date.now() - started > 240000 || done >= 20) { left++; continue; }   // Apps Script stops at 6 min; the next hour carries on
-    const id = f.getId(), name = f.getName();
-    if (SERMON_SKIP.test(name)) { moves.push({ id, folder: 'skip', title: name, added: today }); continue; }
-    if (isUnder_(f, sermonsId)) { moves.push({ id, folder: 'skip', title: name + ' (already in Sermons)', added: today }); continue; }
+    const id = f.id, name = f.name;
+    if (SERMON_SKIP.test(name)) { moves.push({ id, folder: 'skip', title: name, added: today }); continue; }   // cheap: no Gemini call
+    if (Date.now() - started > 270000 || done >= 25) { left++; continue; }   // Apps Script stops at 6 min; the next hour carries on
+    if (isUnder_(DriveApp.getFileById(id), sermonsId)) { moves.push({ id, folder: 'skip', title: name + ' (already in Sermons)', added: today }); continue; }
     try {
       const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text/plain', auth);
       if (r.getResponseCode() !== 200) throw new Error('could not read the Doc (' + r.getResponseCode() + ')');
