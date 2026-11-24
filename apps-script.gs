@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-24 15.00'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-24 15.10'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -496,19 +496,27 @@ function geminiModels_(key) {   // Hydrogen/Flash models this key can use, newes
   const ok = list.names.filter(n => !(bad[n] && Date.now() - bad[n] < 864e5));   // a model out of free quota rests for a day
   return good && ok.indexOf(good) >= 0 ? [good].concat(ok.filter(n => n !== good)) : ok;
 }
-function geminiJson_(key, models, prompt, deadline) {
+function geminiJson_(key, models, prompt, deadline, slow) {   // deadline (ms) and slow ({model: 1}, shared across one run) are optional
   const props = PropertiesService.getScriptProperties(), bad = JSON.parse(props.getProperty('geminiBad') || '{}');
+  slow = slow || {};
   const noThink = JSON.parse(props.getProperty('geminiNoThink') || '{}');   // models that reject the thinking setting
   const bodyFor = m => ({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: Object.assign({ temperature: 0.2, responseMimeType: 'application/json' },
     noThink[m] ? {} : { thinkingConfig: { thinkingLevel: 'low' } }) });   // little thinking = quick answers, well inside Google's 6-minute limit
-  let last = '';
+  let last = '', tried = 0;
   for (const model of models) {
     if (bad[model] && Date.now() - bad[model] < 864e5) continue;
+    if (slow[model]) continue;   // answered slowly or "busy" earlier in this run
+    // A busy full Flash model can hold a request for over 2 minutes before answering 503 (seen 24 Nov 2026: 137 s), and
+    // Apps Script cannot cut a request short, so it is only tried with 150 s to spare; Lite models answer in seconds.
+    const margin = /lite/.test(model) ? 40000 : 150000;
     for (let tries = 0; tries < 2; tries++) {
-      if (Date.now() > deadline - 70000) throw new Error('Out of time for this run (Gemini is slow right now). Will carry on next hour.');
+      if (deadline && Date.now() > deadline - margin) break;
+      tried++;
+      const g0 = Date.now();
       const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
         method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: JSON.stringify(bodyFor(model)), muteHttpExceptions: true });
-      const code = r.getResponseCode(), txt = r.getContentText();
+      const code = r.getResponseCode(), txt = r.getContentText(), secs = (Date.now() - g0) / 1000;
+      if (secs > 45) slow[model] = 1;   // too slow for a run with a time limit; try other models first
       if (code === 400 && !noThink[model] && /thinking/i.test(txt)) { noThink[model] = 1; props.setProperty('geminiNoThink', JSON.stringify(noThink)); tries--; continue; }
       if (code === 200) {
         props.setProperty('geminiGood', model); props.setProperty('geminiBad', JSON.stringify(bad));
@@ -517,12 +525,14 @@ function geminiJson_(key, models, prompt, deadline) {
       }
       last = model + ' ' + code + ': ' + (((JSON.parse(txt || '{}').error) || {}).message || txt).slice(0, 160);
       if (code === 429 && /per ?day|PerDay|limit: 0|free_tier|quota/i.test(txt) && !/per ?minute|PerMinute/i.test(txt)) { bad[model] = Date.now(); break; }   // no free quota today → next model
-      if (code === 429 || code >= 500) { Utilities.sleep(15000); continue; }   // per-minute limit or busy: wait once
+      if (code >= 500) { if (secs > 10) slow[model] = 1; break; }   // busy ("high demand"): go straight to the next model, don't wait
+      if (code === 429) { if (deadline && Date.now() + 15000 > deadline - margin) break; Utilities.sleep(15000); continue; }   // per-minute limit: wait once if there is time
       if (code === 404 || code === 400 || code === 403) { bad[model] = Date.now(); break; }   // model not available to this key
       throw new Error('Gemini error ' + last);
     }
   }
   props.setProperty('geminiBad', JSON.stringify(bad));
+  if (!tried) throw new Error('Out of time for this run (Gemini is slow right now). Will carry on next hour.');
   throw new Error('Gemini is busy or out of free quota (' + last + '). Will try again next hour.');
 }
 function sermonPrompt_(fileName, text) {
@@ -551,28 +561,39 @@ function cleanSermon_(o) {
 function indexSermonsGemini() {
   const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
   if (!key) throw new Error('No Gemini key yet. Run setGeminiKey first.');
-  const models = geminiModels_(key), started = Date.now(), log = ['Gemini models to try: ' + models.join(', ')];
+  const started = Date.now(), T = () => Math.round((Date.now() - started) / 1000) + 's ';
+  // Lite models answer in about a second; full Flash/Hydrogen models can take minutes when busy, so they are only a fallback here.
+  const all = geminiModels_(key), models = all.filter(n => /lite/.test(n)).concat(all.filter(n => !/lite/.test(n)));
+  const log = ['Gemini models to try: ' + models.join(', ')], slow = {};
+  Logger.log(T() + 'Models: ' + models.join(', '));
   const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), known = {};
   sheet_('sermons').getRange('A:A').getDisplayValues().forEach(r => { if (r[0]) known[String(r[0]).replace(/^s-/, '')] = 1; });
   const mvS = ss_().getSheetByName('sermon_moves') || ss_().insertSheet('sermon_moves');
   if (!mvS.getLastRow()) mvS.appendRow(['id', 'folder', 'title', 'added']);
   mvS.getRange('A:A').getDisplayValues().forEach(r => { if (r[0]) known[r[0]] = 1; });
   const sermonsId = sub_(rootFolder_(), 'Sermons').getId();
+  // All folders inside Claude/Sermons, found once (a few Drive calls), so each Doc needs no parent walk.
+  const inSermons = {}; inSermons[sermonsId] = 1;
+  for (let queue = [sermonsId]; queue.length;) {
+    const fo = DriveApp.getFolderById(queue.shift()).getFolders();
+    while (fo.hasNext()) { const id = fo.next().getId(); if (!inSermons[id]) { inSermons[id] = 1; queue.push(id); } }
+  }
   // One fast Drive API list instead of DriveApp, which needs an extra call per file.
   const auth = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
   const q = "mimeType = 'application/vnd.google-apps.document' and trashed = false and 'me' in owners and (" +
     SERMON_TITLE_WORDS.map(w => "name contains '" + w + "'").join(' or ') + " or fullText contains 'khotbah' or fullText contains 'firman')";
   const found = []; let page = '';
   do {
-    const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=nextPageToken,files(id,name,modifiedTime)&q=' +
+    const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=nextPageToken,files(id,name,modifiedTime,parents)&q=' +
       encodeURIComponent(q) + (page ? '&pageToken=' + encodeURIComponent(page) : ''), auth);
     if (r.getResponseCode() !== 200) throw new Error('Drive search failed (' + r.getResponseCode() + '): ' + r.getContentText().slice(0, 200));
     const j = JSON.parse(r.getContentText()); (j.files || []).forEach(f => { if (!known[f.id]) found.push(f); }); page = j.nextPageToken || '';
   } while (page);
   found.sort((a, b) => b.modifiedTime < a.modifiedTime ? -1 : 1);   // newest first (Drive can't sort full-text searches)
+  Logger.log(T() + 'Drive search: ' + found.length + ' new Docs');
   const rows = [], moves = [];
   let done = 0, left = 0, stop = false;
-  const deadline = started + 300000;   // Google stops a run at 6 minutes; finish and save before then
+  const deadline = started + 290000;   // whole run, moving included, ends before 5 minutes (Google's limit is 6)
   const save = () => {   // written after every Doc, so a slow run never loses work
     if (rows.length) { appendRows_('sermons', rows); counts.rows += rows.length; rows.length = 0; }
     if (moves.length) { const rng = mvS.getRange(mvS.getLastRow() + 1, 1, moves.length, 4); rng.setNumberFormat('@'); rng.setValues(moves.map(m => [m.id, m.folder, m.title, m.added])); counts.moves += moves.filter(m => m.folder !== 'skip').length; moves.length = 0; }
@@ -581,13 +602,13 @@ function indexSermonsGemini() {
   for (const f of found) {
     const id = f.id, name = f.name;
     if (SERMON_SKIP.test(name)) { moves.push({ id, folder: 'skip', title: name, added: today }); continue; }   // cheap: no Gemini call
-    if (stop || Date.now() > deadline - 90000 || done >= 25) { left++; continue; }   // the next hour carries on
-    if (isUnder_(DriveApp.getFileById(id), sermonsId)) { moves.push({ id, folder: 'skip', title: name + ' (already in Sermons)', added: today }); continue; }
+    if ((f.parents || []).some(p => inSermons[p])) { moves.push({ id, folder: 'skip', title: name + ' (already in Sermons)', added: today }); continue; }   // cheap
+    if (stop || Date.now() > deadline - 45000 || done >= 25) { left++; continue; }   // the next hour carries on
     try {
       const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text/plain', auth);
       if (r.getResponseCode() !== 200) throw new Error('could not read the Doc (' + r.getResponseCode() + ')');
       const text = r.getContentText().slice(0, 25000);
-      const o = geminiJson_(key, models, sermonPrompt_(name, text), deadline); done++;
+      const o = geminiJson_(key, models, sermonPrompt_(name, text), deadline, slow); done++;
       const kind = String(o.kind || '').toLowerCase();
       if (kind === 'sermon') {
         const c = cleanSermon_(o);
@@ -597,14 +618,15 @@ function indexSermonsGemini() {
       else if (kind === 'others') { moves.push({ id, folder: '09', title: name, added: today }); log.push('Others\' sermons: ' + name); }
       else if (kind === 'unclear') { moves.push({ id, folder: '00', title: name, added: today }); log.push('To check: ' + name); }
       else moves.push({ id, folder: 'skip', title: name, added: today });
-      save(); Logger.log(log[log.length - 1] || name);
-      Utilities.sleep(3000);   // stay inside Gemini's free-tier rate limit
-    } catch (e) { log.push('Failed: ' + name + ' – ' + (e.message || e)); Logger.log(log[log.length - 1]); if (/busy|quota|key|out of time/i.test(e.message || '')) { stop = true; left++; } }
+      save(); Logger.log(T() + (log[log.length - 1] || 'Not a sermon: ' + name));
+      Utilities.sleep(2000);   // stay inside Gemini's free-tier rate limit
+    } catch (e) { log.push('Failed: ' + name + ' – ' + (e.message || e)); Logger.log(T() + log[log.length - 1]); if (/busy|quota|key|out of time/i.test(e.message || '')) { stop = true; left++; } }
   }
   save();
   log.push(counts.rows + ' sermons indexed, ' + counts.moves + ' briefs/others/to check, ' + left + ' left for later.');
+  Logger.log(T() + log[log.length - 1]);
   try { log.push.apply(log, sortSermons(deadline)); } catch (e) { log.push('Moving failed: ' + (e.message || e)); }
-  Logger.log(log.join('\n'));
+  Logger.log(T() + 'Done.');
   return log;
 }
 function setupGeminiSermons() {   // one hourly job: index with Gemini, then move
