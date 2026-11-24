@@ -6,7 +6,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-24 09.40'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-24 09.31'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -29,6 +29,7 @@ function doGet(e) {
     if (a === 'book') return bookFile_(p.id);
     if (a === 'sortbooks') return { ok: true, log: sortNewBooks() };
     if (a === 'meetings') return { ok: true, log: exportFireflies() };
+    if (a === 'sortsermons') return { ok: true, log: sortSermons() };
     throw new Error('Unknown action: ' + a);
   });
 }
@@ -419,6 +420,53 @@ function sortNewBooks() {
 function setupBookTrigger() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sortNewBooks').forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('sortNewBooks').timeBased().everyHours(1).create();
+}
+
+/* ---------- Sermon Docs → Claude/Sermons/<context folder> ----------
+   Claude fills the sermons tab (and sermon_moves for briefs / unclear Docs, columns id, folder) but its Drive
+   connection cannot move files, so this does the moving, as Timothy. Hourly via setupSermonTrigger, or GET action=sortsermons.
+   Only Docs Timothy owns are moved; anything already somewhere inside Claude/Sermons is left where it is. */
+const SERMON_FOLDER_FOR = { 'sunday service': '01', 'youth': '02', 'encounter night': '03', 'prayer / mik': '03',
+  'equipping': '04', 'bible study': '04', 'guest preaching': '05', 'retreat': '06', 'conference': '06',
+  'special service': '07', 'theme & brief': '08', 'other preacher': '09' };
+function sortSermons() {
+  const props = PropertiesService.getScriptProperties();
+  const done = JSON.parse(props.getProperty('sermonsMoved') || '{}');
+  const sermons = sub_(rootFolder_(), 'Sermons'), byCode = {};
+  const fi = sermons.getFolders(); while (fi.hasNext()) { const fo = fi.next(), m = /^(\d\d) /.exec(fo.getName()); if (m) byCode[m[1]] = fo; }
+  const me = Session.getEffectiveUser().getEmail(), log = [], todo = [];
+  const docId = s => { const m = /\/d\/([\w-]{20,})/.exec(s || ''); return m ? m[1] : ''; };
+  const v = sheet_('sermons').getDataRange().getDisplayValues(), h = v[0];
+  const c = k => h.indexOf(k);
+  v.slice(1).forEach(r => {
+    if (!r[0] || r[c('void')]) return;
+    const id = docId(r[c('docLink')]) || String(r[0]).replace(/^s-/, '');
+    const who = String(r[c('preacher')] || '').trim().toLowerCase();
+    const code = who && who !== 'me' ? '09' : SERMON_FOLDER_FOR[String(r[c('context')] || '').trim().toLowerCase()] || '00';
+    todo.push([id, code]);
+  });
+  const mv = ss_().getSheetByName('sermon_moves');   // id | folder (two digits), for Docs that get no sermons row
+  if (mv) mv.getDataRange().getDisplayValues().slice(1).forEach(r => { if (r[0]) todo.push([String(r[0]).replace(/^s-/, ''), ('0' + String(r[1] || '00').trim()).slice(-2)]); });
+  const start = Date.now();
+  todo.forEach(([id, code]) => {
+    if (done[id] || Date.now() - start > 270000) return;   // stay under Apps Script's 6-minute limit; the next run carries on
+    try {
+      const f = DriveApp.getFileById(id);
+      if (f.getOwner() && f.getOwner().getEmail() !== me) { done[id] = 'not yours'; log.push('Skipped (not your file): ' + f.getName()); return; }
+      if (isUnder_(f, sermons.getId())) { done[id] = 'already'; return; }
+      const dest = byCode[code] || byCode['00'];
+      if (!dest) throw new Error('no folder ' + code + ' in Claude/Sermons');
+      f.moveTo(dest); done[id] = code; log.push('Moved ' + f.getName() + ' → ' + dest.getName());
+    } catch (e) { log.push('Could not move ' + id + ': ' + (e.message || e)); }
+  });
+  props.setProperty('sermonsMoved', JSON.stringify(done));
+  Logger.log(log.length ? log.join('\n') : 'No sermon Docs to move.');
+  return log;
+}
+function setupSermonTrigger() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sortSermons').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('sortSermons').timeBased().everyHours(1).create();
+  return sortSermons();
 }
 
 /** Change a few cells of one row (found by id) without rewriting the tab. Used for reading position. */
