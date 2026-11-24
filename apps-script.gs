@@ -477,35 +477,49 @@ const SERMON_TITLE_WORDS = ['Sermon', 'Khotbah', 'Kotbah', 'Firman', 'Equipping'
   'Doa', 'Paskah', 'Natal', 'Christmas', 'Easter', 'Devotion', 'Ibadah', 'Tema', 'Brief', 'Pemberkatan', 'Wedding', 'Preaching'];
 const SERMON_SKIP = /commentary|tyndale|word biblical|niv application|new international|new american|interpretation|\[?mom\]?\b|notulen|sinode|\[artikel\]|^artikel|survey|rundown|\btor\b|surat|invoice|budget|anggaran|\bhq\b/i;
 const SERMON_CONTEXTS = ['Sunday service', 'Youth', 'Encounter Night', 'Prayer / MIK', 'Equipping', 'Bible study', 'Guest preaching', 'Retreat', 'Conference', 'Special service', 'Other preacher'];
-function geminiModel_(key) {
+function geminiModels_(key) {   // Flash models this key can use, newest first; the one that last worked goes first
   const props = PropertiesService.getScriptProperties();
-  const fixed = props.getProperty('GEMINI_MODEL'); if (fixed) return fixed;
-  const cached = JSON.parse(props.getProperty('geminiModelAuto') || '{}');
-  if (cached.name && Date.now() - cached.at < 7 * 864e5) return cached.name;
-  const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true });
-  if (r.getResponseCode() !== 200) throw new Error('Gemini did not accept the key (' + r.getResponseCode() + '). Run setGeminiKey again with a fresh key from aistudio.google.com.');
-  const ms = (JSON.parse(r.getContentText()).models || []).filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0);
-  const ver = n => { const m = /gemini-(\d+(?:\.\d+)?)-flash$/.exec(n); return m ? Number(m[1]) : -1; };   // newest stable "Flash" model
-  const best = ms.map(m => m.name.replace(/^models\//, '')).filter(n => ver(n) >= 0).sort((a, b) => ver(b) - ver(a))[0]
-    || (ms.find(m => /flash/.test(m.name) && !/lite|image|tts|live|audio/.test(m.name)) || {}).name;
-  if (!best) throw new Error('No Gemini Flash model found for this key.');
-  const name = best.replace(/^models\//, '');
-  props.setProperty('geminiModelAuto', JSON.stringify({ name, at: Date.now() }));
-  return name;
-}
-function geminiJson_(key, model, prompt) {
-  const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } };
-  for (let tries = 0; tries < 3; tries++) {
-    const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-      method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: JSON.stringify(body), muteHttpExceptions: true });
-    const code = r.getResponseCode();
-    if (code === 429 || code >= 500) { Utilities.sleep(20000); continue; }   // free-tier limit or busy: wait and retry
-    if (code !== 200) throw new Error('Gemini error ' + code + ': ' + r.getContentText().slice(0, 200));
-    const parts = ((((JSON.parse(r.getContentText()).candidates || [])[0] || {}).content || {}).parts || []);
-    const text = parts.map(p => p.text || '').join('').replace(/^```(json)?|```$/g, '').trim();
-    return JSON.parse(text);
+  const fixed = props.getProperty('GEMINI_MODEL'); if (fixed) return [fixed];
+  let list = JSON.parse(props.getProperty('geminiModels') || '{}');
+  if (!list.names || Date.now() - list.at > 864e5) {
+    const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) throw new Error('Gemini did not accept the key (' + r.getResponseCode() + '). Run setGeminiKey again with a fresh key from aistudio.google.com.');
+    const ver = n => { const m = /gemini-(\d+(?:\.\d+)?)-flash/.exec(n); return m ? Number(m[1]) : 0; };
+    const names = (JSON.parse(r.getContentText()).models || [])
+      .filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0).map(m => m.name.replace(/^models\//, ''))
+      .filter(n => /^gemini-[\d.]+-flash(-lite)?$/.test(n))   // stable Flash and Flash-Lite only
+      .sort((x, y) => ver(y) - ver(x) || (/lite/.test(x) ? 1 : -1));
+    if (!names.length) throw new Error('No Gemini Flash model found for this key.');
+    list = { names, at: Date.now() }; props.setProperty('geminiModels', JSON.stringify(list));
   }
-  throw new Error('Gemini is busy (rate limit). Will try again next hour.');
+  const good = props.getProperty('geminiGood'), bad = JSON.parse(props.getProperty('geminiBad') || '{}');
+  const ok = list.names.filter(n => !(bad[n] && Date.now() - bad[n] < 864e5));   // a model out of free quota rests for a day
+  return good && ok.indexOf(good) >= 0 ? [good].concat(ok.filter(n => n !== good)) : ok;
+}
+function geminiJson_(key, models, prompt) {
+  const props = PropertiesService.getScriptProperties(), bad = JSON.parse(props.getProperty('geminiBad') || '{}');
+  const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } };
+  let last = '';
+  for (const model of models) {
+    if (bad[model] && Date.now() - bad[model] < 864e5) continue;
+    for (let tries = 0; tries < 2; tries++) {
+      const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+        method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: JSON.stringify(body), muteHttpExceptions: true });
+      const code = r.getResponseCode(), txt = r.getContentText();
+      if (code === 200) {
+        props.setProperty('geminiGood', model); props.setProperty('geminiBad', JSON.stringify(bad));
+        const parts = ((((JSON.parse(txt).candidates || [])[0] || {}).content || {}).parts || []);
+        return JSON.parse(parts.map(p => p.text || '').join('').replace(/^```(json)?|```$/g, '').trim());
+      }
+      last = model + ' ' + code + ': ' + (((JSON.parse(txt || '{}').error) || {}).message || txt).slice(0, 160);
+      if (code === 429 && /per ?day|PerDay|limit: 0|free_tier|quota/i.test(txt) && !/per ?minute|PerMinute/i.test(txt)) { bad[model] = Date.now(); break; }   // no free quota today → next model
+      if (code === 429 || code >= 500) { Utilities.sleep(15000); continue; }   // per-minute limit or busy: wait once
+      if (code === 404 || code === 400 || code === 403) { bad[model] = Date.now(); break; }   // model not available to this key
+      throw new Error('Gemini error ' + last);
+    }
+  }
+  props.setProperty('geminiBad', JSON.stringify(bad));
+  throw new Error('Gemini is busy or out of free quota (' + last + '). Will try again next hour.');
 }
 function sermonPrompt_(fileName, text) {
   return [
@@ -533,7 +547,7 @@ function cleanSermon_(o) {
 function indexSermonsGemini() {
   const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
   if (!key) throw new Error('No Gemini key yet. Run setGeminiKey first.');
-  const model = geminiModel_(key), started = Date.now(), log = ['Gemini model: ' + model];
+  const models = geminiModels_(key), started = Date.now(), log = ['Gemini models to try: ' + models.join(', ')];
   const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), known = {};
   sheet_('sermons').getRange('A:A').getDisplayValues().forEach(r => { if (r[0]) known[String(r[0]).replace(/^s-/, '')] = 1; });
   const mvS = ss_().getSheetByName('sermon_moves') || ss_().insertSheet('sermon_moves');
@@ -553,17 +567,17 @@ function indexSermonsGemini() {
   } while (page);
   found.sort((a, b) => b.modifiedTime < a.modifiedTime ? -1 : 1);   // newest first (Drive can't sort full-text searches)
   const rows = [], moves = [];
-  let done = 0, left = 0;
+  let done = 0, left = 0, stop = false;
   for (const f of found) {
     const id = f.id, name = f.name;
     if (SERMON_SKIP.test(name)) { moves.push({ id, folder: 'skip', title: name, added: today }); continue; }   // cheap: no Gemini call
-    if (Date.now() - started > 270000 || done >= 25) { left++; continue; }   // Apps Script stops at 6 min; the next hour carries on
+    if (stop || Date.now() - started > 270000 || done >= 25) { left++; continue; }   // Apps Script stops at 6 min; the next hour carries on
     if (isUnder_(DriveApp.getFileById(id), sermonsId)) { moves.push({ id, folder: 'skip', title: name + ' (already in Sermons)', added: today }); continue; }
     try {
       const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text/plain', auth);
       if (r.getResponseCode() !== 200) throw new Error('could not read the Doc (' + r.getResponseCode() + ')');
       const text = r.getContentText().slice(0, 40000);
-      const o = geminiJson_(key, model, sermonPrompt_(name, text)); done++;
+      const o = geminiJson_(key, models, sermonPrompt_(name, text)); done++;
       const kind = String(o.kind || '').toLowerCase();
       if (kind === 'sermon') {
         const c = cleanSermon_(o);
@@ -574,7 +588,7 @@ function indexSermonsGemini() {
       else if (kind === 'unclear') { moves.push({ id, folder: '00', title: name, added: today }); log.push('To check: ' + name); }
       else moves.push({ id, folder: 'skip', title: name, added: today });
       Utilities.sleep(4000);   // stay inside Gemini's free-tier rate limit
-    } catch (e) { log.push('Failed: ' + name + ' – ' + (e.message || e)); if (/rate limit|key/i.test(e.message || '')) break; }
+    } catch (e) { log.push('Failed: ' + name + ' – ' + (e.message || e)); if (/busy|quota|key/i.test(e.message || '')) { stop = true; left++; } }
   }
   appendRows_('sermons', rows);
   if (moves.length) { const rng = mvS.getRange(mvS.getLastRow() + 1, 1, moves.length, 4); rng.setNumberFormat('@'); rng.setValues(moves.map(m => [m.id, m.folder, m.title, m.added])); }
