@@ -518,6 +518,7 @@ function geminiJson_(key, models, prompt, deadline, slow) {   // deadline (ms) a
         payload: JSON.stringify(bodyFor(model)), muteHttpExceptions: true });
       const code = r.getResponseCode(), txt = r.getContentText(), secs = (Date.now() - g0) / 1000;
       if (secs > 30) slow[model] = 1;   // too slow for a run with a time limit; try other models first
+      if (code !== 200 && deadline) Logger.log('  Gemini ' + model + ' answered ' + code + ' after ' + Math.round(secs) + ' s');
       if (code === 400 && !noThink[model] && /thinking/i.test(txt)) { noThink[model] = 1; props.setProperty('geminiNoThink', JSON.stringify(noThink)); tries--; continue; }
       if (code === 200) {
         props.setProperty('geminiGood', model); props.setProperty('geminiBad', JSON.stringify(bad));
