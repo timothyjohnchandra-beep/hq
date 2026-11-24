@@ -446,7 +446,7 @@ function sortSermons() {
     todo.push([id, code]);
   });
   const mv = ss_().getSheetByName('sermon_moves');   // id | folder (two digits), for Docs that get no sermons row
-  if (mv) mv.getDataRange().getDisplayValues().slice(1).forEach(r => { if (r[0]) todo.push([String(r[0]).replace(/^s-/, ''), ('0' + String(r[1] || '00').trim()).slice(-2)]); });
+  if (mv) mv.getDataRange().getDisplayValues().slice(1).forEach(r => { const fo = String(r[1] || '').trim(); if (r[0] && /^\d{1,2}$/.test(fo)) todo.push([String(r[0]).replace(/^s-/, ''), ('0' + fo).slice(-2)]); });   // "skip" rows are only a note
   const start = Date.now();
   todo.forEach(([id, code]) => {
     if (done[id] || Date.now() - start > 270000) return;   // stay under Apps Script's 6-minute limit; the next run carries on
@@ -467,6 +467,120 @@ function setupSermonTrigger() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sortSermons').forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('sortSermons').timeBased().everyHours(1).create();
   return sortSermons();
+}
+
+/* ---------- Sermon Docs indexed by Gemini (Timothy's choice, 24 Nov 2026) ----------
+   Hourly: finds new sermon Docs, has Gemini read each one and fill a sermons row, then sortSermons moves them.
+   Needs Script property GEMINI_KEY (set with setGeminiKey). Optional GEMINI_MODEL to force a model.
+   Docs that are not sermons are noted in sermon_moves with folder "skip" so they are read only once. */
+const SERMON_TITLE_WORDS = ['Sermon', 'Khotbah', 'Kotbah', 'Firman', 'Equipping', 'BUILD', 'BBS', 'Retreat', 'EN ', 'MIK', 'Encounter',
+  'Doa', 'Paskah', 'Natal', 'Christmas', 'Easter', 'Devotion', 'Ibadah', 'Tema', 'Brief', 'Pemberkatan', 'Wedding', 'Preaching'];
+const SERMON_SKIP = /commentary|tyndale|word biblical|niv application|new international|new american|interpretation|\[?mom\]?\b|notulen|sinode|\[artikel\]|^artikel|survey|rundown|\btor\b|surat|invoice|budget|anggaran|\bhq\b/i;
+const SERMON_CONTEXTS = ['Sunday service', 'Youth', 'Encounter Night', 'Prayer / MIK', 'Equipping', 'Bible study', 'Guest preaching', 'Retreat', 'Conference', 'Special service', 'Other preacher'];
+function geminiModel_(key) {
+  const props = PropertiesService.getScriptProperties();
+  const fixed = props.getProperty('GEMINI_MODEL'); if (fixed) return fixed;
+  const cached = JSON.parse(props.getProperty('geminiModelAuto') || '{}');
+  if (cached.name && Date.now() - cached.at < 7 * 864e5) return cached.name;
+  const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) throw new Error('Gemini did not accept the key (' + r.getResponseCode() + '). Run setGeminiKey again with a fresh key from aistudio.google.com.');
+  const ms = (JSON.parse(r.getContentText()).models || []).filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0);
+  const ver = n => { const m = /gemini-(\d+(?:\.\d+)?)-flash$/.exec(n); return m ? Number(m[1]) : -1; };   // newest stable "Flash" model
+  const best = ms.map(m => m.name.replace(/^models\//, '')).filter(n => ver(n) >= 0).sort((a, b) => ver(b) - ver(a))[0]
+    || (ms.find(m => /flash/.test(m.name) && !/lite|image|tts|live|audio/.test(m.name)) || {}).name;
+  if (!best) throw new Error('No Gemini Flash model found for this key.');
+  const name = best.replace(/^models\//, '');
+  props.setProperty('geminiModelAuto', JSON.stringify({ name, at: Date.now() }));
+  return name;
+}
+function geminiJson_(key, model, prompt) {
+  const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } };
+  for (let tries = 0; tries < 3; tries++) {
+    const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+      method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: JSON.stringify(body), muteHttpExceptions: true });
+    const code = r.getResponseCode();
+    if (code === 429 || code >= 500) { Utilities.sleep(20000); continue; }   // free-tier limit or busy: wait and retry
+    if (code !== 200) throw new Error('Gemini error ' + code + ': ' + r.getContentText().slice(0, 200));
+    const parts = ((((JSON.parse(r.getContentText()).candidates || [])[0] || {}).content || {}).parts || []);
+    const text = parts.map(p => p.text || '').join('').replace(/^```(json)?|```$/g, '').trim();
+    return JSON.parse(text);
+  }
+  throw new Error('Gemini is busy (rate limit). Will try again next hour.');
+}
+function sermonPrompt_(fileName, text) {
+  return [
+    'You index sermon Google Docs for Timothy, Executive Pastor of GPKdI BCC (Jakarta). Read the Doc and answer with ONE JSON object only.',
+    'Keys: kind, title, date, place, context, series, refs, themes, theology, points, bigIdea, preacher.',
+    'kind: "sermon" (a message or teaching outline), "brief" (yearly theme, sermon brief, series planning), "others" (notes or feedback on other people\'s practice sermons), "unclear" (cannot tell), or "not_sermon" (minutes, admin, run sheet, liturgy guide, article, commentary, book, finance, anything else).',
+    'Only for kind "sermon" fill the rest; otherwise leave them "". Never invent anything: if unsure, use "".',
+    'title: the message title as preached, from the Doc text, not file-name tags like [Sermon]. date: yyyy-mm-dd from the file name or Doc. place: e.g. "GPKdI BCC", "DYC", church or event name.',
+    'context: exactly one of ' + SERMON_CONTEXTS.join(', ') + '. Rules: youth at BCC (DYC, KOMID, Teens) = Youth even on Sunday; a youth message at another church = Guest preaching; a retreat or camp = Retreat; EN = Encounter Night; MIK, Doa, prayer meetings = Prayer / MIK; Equipping, BUILD, classes, training, preaching class = Equipping; school chapel or devotions (BBS, Immanuel), weddings, Easter, Christmas, funerals, house blessings, panti jompo = Special service; a sermon by someone else = Other preacher.',
+    'series: yearly theme or series if named (e.g. DEEPER 2025, ENABLE). refs: the main Bible passages the Doc actually cites, as codes BOOK.CH.V or BOOK.CH.V-V separated by "; ", main text first, max 8. Use USFM codes: ' + BIBLE.map(b => b[0]).join(' ') + '. Indonesian names: Kej GEN, Kel EXO, Ul DEU, Hak JDG, 1Raj 1KI, 2Raj 2KI, 1Taw 1CH, Ayb JOB, Mzm PSA, Ams PRO, Pkh ECC, Yes ISA, Yer JER, Yeh EZK, Yl JOL, Yun JON, Za ZEC, Mrk MRK, Luk LUK, Yoh JHN, Kis ACT, Rm ROM, 1Kor 1CO, 2Kor 2CO, Ef EPH, Flp PHP, Kol COL, Ibr HEB, Yak JAS, 1Ptr 1PE, 1Yoh 1JN, Why REV.',
+    'themes: 3-5 short English themes separated by "; ". theology: 1-3 short theological categories separated by "; ".',
+    'points: the main points exactly as he wrote them (keep his wording and language), separated by " | ". bigIdea: one English sentence in your own words.',
+    'preacher: "me" if Timothy preached it, otherwise the other preacher\'s name. Never copy quotations from commentaries.',
+    '', 'File name: ' + fileName, 'Doc text:', text
+  ].join('\n');
+}
+function cleanSermon_(o) {
+  const codes = {}; BIBLE.forEach(b => codes[b[0]] = 1);
+  const s = v => String(v == null ? '' : Array.isArray(v) ? v.join(' | ') : v).trim();
+  const refs = s(o.refs).split(/\s*;\s*/).map(r => r.trim().toUpperCase()).filter(r => /^([1-3]?[A-Z]{2,3})\.\d+(\.\d+(-\d+)?)?$/.test(r) && codes[r.split('.')[0]]).slice(0, 8);
+  const ctx = SERMON_CONTEXTS.find(c => c.toLowerCase() === s(o.context).toLowerCase()) || '';
+  return { title: s(o.title), date: /^\d{4}-\d{2}-\d{2}$/.test(s(o.date)) ? s(o.date) : '', place: s(o.place), context: ctx, series: s(o.series),
+    refs: refs.join('; '), themes: s(o.themes), theology: s(o.theology), points: s(o.points), bigIdea: s(o.bigIdea), preacher: s(o.preacher) || 'me' };
+}
+function indexSermonsGemini() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
+  if (!key) throw new Error('No Gemini key yet. Run setGeminiKey first.');
+  const model = geminiModel_(key), started = Date.now(), log = ['Gemini model: ' + model];
+  const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), known = {};
+  sheet_('sermons').getRange('A:A').getDisplayValues().forEach(r => { if (r[0]) known[String(r[0]).replace(/^s-/, '')] = 1; });
+  const mvS = ss_().getSheetByName('sermon_moves') || ss_().insertSheet('sermon_moves');
+  if (!mvS.getLastRow()) mvS.appendRow(['id', 'folder', 'title', 'added']);
+  mvS.getRange('A:A').getDisplayValues().forEach(r => { if (r[0]) known[r[0]] = 1; });
+  const sermonsId = sub_(rootFolder_(), 'Sermons').getId();
+  const q = 'mimeType = "application/vnd.google-apps.document" and trashed = false and "me" in owners and (' +
+    SERMON_TITLE_WORDS.map(w => 'title contains "' + w + '"').join(' or ') + ' or fullText contains "khotbah" or fullText contains "firman")';
+  const found = [], it = DriveApp.searchFiles(q);
+  while (it.hasNext()) { const f = it.next(); if (!known[f.getId()]) found.push(f); }
+  found.sort((a, b) => b.getLastUpdated() - a.getLastUpdated());
+  const auth = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+  const rows = [], moves = [];
+  let done = 0, left = 0;
+  for (const f of found) {
+    if (Date.now() - started > 240000 || done >= 20) { left++; continue; }   // Apps Script stops at 6 min; the next hour carries on
+    const id = f.getId(), name = f.getName();
+    if (SERMON_SKIP.test(name)) { moves.push({ id, folder: 'skip', title: name, added: today }); continue; }
+    if (isUnder_(f, sermonsId)) { moves.push({ id, folder: 'skip', title: name + ' (already in Sermons)', added: today }); continue; }
+    try {
+      const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text/plain', auth);
+      if (r.getResponseCode() !== 200) throw new Error('could not read the Doc (' + r.getResponseCode() + ')');
+      const text = r.getContentText().slice(0, 40000);
+      const o = geminiJson_(key, model, sermonPrompt_(name, text)); done++;
+      const kind = String(o.kind || '').toLowerCase();
+      if (kind === 'sermon') {
+        const c = cleanSermon_(o);
+        if (!c.context && !c.title) { moves.push({ id, folder: '00', title: name, added: today }); log.push('To check: ' + name); }
+        else { rows.push(Object.assign({ id: 's-' + id, noteId: '', docLink: 'https://docs.google.com/document/d/' + id + '/edit', void: '', updated: today, checked: '' }, c)); log.push('Indexed: ' + name + ' → ' + (c.context || '?')); }
+      } else if (kind === 'brief') { moves.push({ id, folder: '08', title: name, added: today }); log.push('Theme/brief: ' + name); }
+      else if (kind === 'others') { moves.push({ id, folder: '09', title: name, added: today }); log.push('Others\' sermons: ' + name); }
+      else if (kind === 'unclear') { moves.push({ id, folder: '00', title: name, added: today }); log.push('To check: ' + name); }
+      else moves.push({ id, folder: 'skip', title: name, added: today });
+      Utilities.sleep(4000);   // stay inside Gemini's free-tier rate limit
+    } catch (e) { log.push('Failed: ' + name + ' – ' + (e.message || e)); if (/rate limit|key/i.test(e.message || '')) break; }
+  }
+  appendRows_('sermons', rows);
+  if (moves.length) { const rng = mvS.getRange(mvS.getLastRow() + 1, 1, moves.length, 4); rng.setNumberFormat('@'); rng.setValues(moves.map(m => [m.id, m.folder, m.title, m.added])); }
+  log.push(rows.length + ' sermons indexed, ' + moves.filter(m => m.folder !== 'skip').length + ' briefs/others/to check, ' + left + ' left for later.');
+  try { log.push.apply(log, sortSermons()); } catch (e) { log.push('Moving failed: ' + (e.message || e)); }
+  Logger.log(log.join('\n'));
+  return log;
+}
+function setupGeminiSermons() {   // one hourly job: index with Gemini, then move
+  ScriptApp.getProjectTriggers().filter(t => ['sortSermons', 'indexSermonsGemini'].indexOf(t.getHandlerFunction()) >= 0).forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('indexSermonsGemini').timeBased().everyHours(1).create();
+  return indexSermonsGemini();
 }
 
 /** Change a few cells of one row (found by id) without rewriting the tab. Used for reading position. */
