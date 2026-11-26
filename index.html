@@ -398,7 +398,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='31 · 23 Nov 2026';
+const VERSION='32 · 26 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -1072,6 +1072,17 @@ function paperPane(b){const all=[...new Set(D.books.flatMap(papersOf))].sort();c
  <div class="prow"><button class="btn y" id="pp-save">Save</button></div></div>`);
  $('#pp-save').onclick=()=>{const list=[...document.querySelectorAll('.pp')].filter(c=>c.checked).map(c=>c.value);const n=$('#pp-new').value.trim();if(n&&!list.includes(n))list.push(n);
   b.paper=list.join('; ');b.updated=TODAY;persist();if(live())post({action:'patch',name:'books',id:b.id,fields:{paper:b.paper,updated:TODAY}}).then(()=>say('Saved to your papers.')).catch(e=>say("Couldn't save: "+e.message));else say('Saved on this device.');closePane();library()}}
+/* Add a PDF or EPUB straight from the phone, iPad or Mac: the bridge saves it in Claude/Library (sorted by title) and HQ opens it. */
+async function addBookFile(f){
+ if(!live()){say('Connect your Google Sheet in Settings first.');return}
+ if(!/\.(pdf|epub)$/i.test(f.name)){say('Choose a PDF or EPUB file.');return}
+ if(f.size>30*1048576){say('That file is over 30 MB. Put it in a Library folder in Google Drive instead; HQ lists it within the hour.');return}
+ say('Adding “'+f.name+'” to your Library…');
+ try{const data=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=()=>rej(new Error('The file could not be read.'));r.readAsDataURL(f)});
+  const j=await post({action:'addbook',name:f.name,data});const b=j.book;
+  if(!D.books.some(x=>x.id===b.id))D.books.push(b);persist();library();
+  say('Added to '+(LIBCATS[b.category]||'the Library')+'. Opening it…');openReader(b)}
+ catch(e){say(/Unknown action/.test(e.message)?'Update the bridge script first. Then this button works.':"Couldn't add the book: "+e.message)}}
 async function checkDrive(){if(!live()){say('Connect your Google Sheet in Settings first.');return}say('Checking Drive for new books…');
  try{const j=await api({action:'sortbooks'});say(j.log&&j.log.length?j.log.length+' change'+(j.log.length>1?'s':'')+'. Refreshing the Library…':'No new books found.');if(j.log&&j.log.length)await load()}
  catch(e){say(/Unknown action/.test(e.message)?'Update the bridge script first. Then this button works.':"Couldn't check Drive: "+e.message)}}
@@ -1090,7 +1101,8 @@ function library(){
  ${(()=>{const ps=[...new Set(all.flatMap(papersOf))].sort();if(!ps.length||q)return'';return ps.map(pp=>{const k='paper:'+pp,isOpen=open[k];const list=all.filter(b=>papersOf(b).includes(pp));return `<h2 class="lcat"><button data-a="lcat" data-v="${esc(k)}" aria-expanded="${!!isOpen}"><span class="dot" style="background:#ffd60a"></span>Paper: ${esc(pp)} <span class="n">${list.length}</span><span class="chev">${isOpen?'⌄':'›'}</span></button></h2>${isOpen?`<div class="group">${list.map(rowB).join('')}</div>`:''}`}).join('')})()}
  ${cats.map(c=>{const isOpen=q||open[c];return `<h2 class="lcat"><button data-a="lcat" data-v="${c}" aria-expanded="${!!isOpen}"><span class="dot" style="background:${CATCOL[c]||'#999'}"></span>${esc(LIBCATS[c]||'Other')} <span class="n">${groups[c].length}</span><span class="chev">${isOpen?'⌄':'›'}</span></button></h2>${isOpen?`<div class="group">${groups[c].sort((x,y)=>x.title.localeCompare(y.title)).map(rowB).join('')}</div>`:''}`}).join('')||'<div class="empty">No books match.</div>'}
  <h2>Add a book</h2><form class="quick" id="ab"><input type="text" id="ab-t" placeholder="Title" aria-label="Title"><input type="text" id="ab-a" placeholder="Author" aria-label="Author"><select id="ab-c" aria-label="Category">${CATKEYS.map(k=>`<option value="${k}">${esc(LIBCATS[k])}</option>`).join('')}</select><input type="text" id="ab-l" placeholder="Google Drive link (optional)" aria-label="Drive link"><button class="btn y">Add</button></form>
- <p class="samp">New EPUBs you drop anywhere in Drive are filed into these folders and listed here every hour. PDFs are listed when you put them in a Library or Papers folder. <button class="btn link" data-a="checkdrive">Check Drive now</button></p>`;
+ <p class="samp">New EPUBs you drop anywhere in Drive are filed into these folders and listed here every hour. PDFs are listed when you put them in a Library or Papers folder. <button class="btn link" data-a="checkdrive">Check Drive now</button> · <label class="btn link" style="cursor:pointer">Add a PDF or EPUB from this device<input type="file" id="lib-add" accept="application/pdf,.pdf,application/epub+zip,.epub" hidden></label></p>`;
+ const la=view.querySelector('#lib-add');if(la)la.onchange=()=>{const f=la.files&&la.files[0];la.value='';if(f)addBookFile(f)};
  view.querySelectorAll('select.bcatsel').forEach(sel=>sel.onchange=()=>{const b=find('books',sel.dataset.id);if(!b)return;b.category=sel.value;b.updated=TODAY;persist();
   if(live())post({action:'patch',name:'books',id:b.id,fields:{category:b.category,updated:TODAY}}).then(()=>say('Moved to '+LIBCATS[b.category]+'. Claude moves the file in Drive to match.')).catch(e=>say("Couldn't save: "+e.message));else say('Moved on this device.');
   UI.libOpen=Object.assign(UI.libOpen||{},{[b.category]:true});saveUI();library()});

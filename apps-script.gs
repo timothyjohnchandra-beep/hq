@@ -1,12 +1,13 @@
 /**
  * Timothy HQ – bridge between the app and Google (Sheet, Calendar, Gmail, Maps, Drive).
- * Paste into script.google.com, fill in SHEET_ID and TOKEN, then Deploy > New deployment >
- * Web app (Execute as: Me, Who has access: Anyone). Never commit a filled-in copy.
+ * Paste into script.google.com as-is: the Sheet ID and token live in Project Settings › Script properties
+ * (SHEET_ID and HQ_TOKEN), so a fresh copy from GitHub never needs editing and never breaks the timers.
+ * Deploy > Manage deployments > Edit > New version (Execute as: Me, Who has access: Anyone).
  */
-const SHEET_ID = 'PASTE_SHEET_ID_HERE';
-const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';
+const SHEET_ID = 'PASTE_SHEET_ID_HERE';            // fallback only; Script property SHEET_ID wins
+const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';      // fallback only; Script property HQ_TOKEN wins
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-24 15.10'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-26 20.00'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -37,12 +38,14 @@ function doGet(e) {
 function doPost(e) {
   return handle_(() => {
     const b = JSON.parse(e.postData.contents);
+    if (b && b.update_id !== undefined && !b.token) return { ok: true };   // a leftover Telegram webhook: ignored, the bot reads messages by polling
     auth_(b.token);
     if (b.action === 'save') { writeTab_(b.name, b.rows); return { ok: true, saved: b.rows.length }; }
     if (b.action === 'note') return { ok: true, driveLink: writeNote_(b.id, b.title, b.html) };
     if (b.action === 'addEvent') return { ok: true, id: addEvent_(b) };
     if (b.action === 'attach') return { ok: true, url: attach_(b) };
     if (b.action === 'patch') return { ok: true, row: patchRow_(b.name, b.id, b.fields) };
+    if (b.action === 'addbook') return { ok: true, book: addBook_(b) };
     throw new Error('Unknown action: ' + b.action);
   });
 }
@@ -52,8 +55,23 @@ function handle_(fn) {
   try { out = fn(); } catch (err) { out = { ok: false, error: String(err.message || err) }; }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
-function auth_(t) { if (!t || t !== TOKEN) throw new Error('Wrong or missing token. Check Settings in the app.'); }
-function ss_() { return SpreadsheetApp.openById(SHEET_ID); }
+/** Secrets come from Script properties; the constants above are only a fallback for an older setup. */
+function secret_(name, fallback) {
+  const v = PropertiesService.getScriptProperties().getProperty(name);
+  return v || (/^PASTE_/.test(fallback) ? '' : fallback);
+}
+function auth_(t) {
+  const want = secret_('HQ_TOKEN', TOKEN);
+  if (!want) throw new Error('The bridge has no token yet. Add HQ_TOKEN in Project Settings › Script properties.');
+  if (!t || t !== want) throw new Error('Wrong or missing token. Check Settings in the app.');
+}
+let ss__ = null;
+function ss_() {
+  if (ss__) return ss__;
+  const id = secret_('SHEET_ID', SHEET_ID);
+  if (!id) throw new Error('The bridge has no Sheet ID yet. Add SHEET_ID (the HQ Data sheet) in Project Settings › Script properties.');
+  return (ss__ = SpreadsheetApp.openById(id));
+}
 function sheet_(name) {
   if (TABS.indexOf(name) < 0) throw new Error('Unknown tab: ' + name);
   const s = ss_().getSheetByName(name);
@@ -376,6 +394,21 @@ function knownBooks_() {
   const s = sheet_('books'), v = s.getDataRange().getDisplayValues(), h = v[0], pi = h.indexOf('paper'), out = {};
   v.slice(1).forEach(r => { if (r[0]) out[r[0]] = pi >= 0 ? r[pi] : ''; }); return out;
 }
+/** Files of one type created after `since`, as an iterator like DriveApp's. Since Nov 2026 DriveApp.searchFiles rejects
+    every date filter ("Invalid argument: q"), so this asks Drive's own API (as the sermon indexer does) and opens each file. */
+function newFiles_(mime, since) {
+  const t = new Date(since), iso = (isNaN(t) ? new Date(Date.now() - 2 * 864e5) : t).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const q = "mimeType = '" + mime + "' and trashed = false and createdTime > '" + iso + "'";
+  const auth = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+  const ids = []; let page = '';
+  do {
+    const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=nextPageToken,files(id)&q=' + encodeURIComponent(q) + (page ? '&pageToken=' + encodeURIComponent(page) : ''), auth);
+    if (r.getResponseCode() !== 200) throw new Error('Drive search failed (' + r.getResponseCode() + '): ' + r.getContentText().slice(0, 200));
+    const j = JSON.parse(r.getContentText()); (j.files || []).forEach(f => ids.push(f.id)); page = j.nextPageToken || '';
+  } while (page);
+  let k = 0;
+  return { hasNext: () => k < ids.length, next: () => DriveApp.getFileById(ids[k++]) };
+}
 /** Hourly (and from the app's "Check Drive" button): files new books and lists them in HQ. */
 function sortNewBooks() {
   const props = PropertiesService.getScriptProperties();
@@ -396,7 +429,7 @@ function sortNewBooks() {
   };
   const pf = papers.getFolders(); while (pf.hasNext()) { const folder = pf.next(); walk(folder, folder.getName()); }
   // 2. New EPUBs anywhere else in Drive are filed into the Library and listed.
-  const it = DriveApp.searchFiles('mimeType = "application/epub+zip" and trashed = false and createdDate > "' + since + '"');
+  const it = newFiles_('application/epub+zip', since);
   while (it.hasNext()) {
     const f = it.next();
     if (isUnder_(f, papers.getId())) continue;
@@ -409,9 +442,13 @@ function sortNewBooks() {
       f.moveTo(dest); if (f.getName() !== name) f.setName(name); registerBook_(known, f, code, ''); log.push('Moved ' + name + ' → ' + dest.getName());
     }
   }
-  // 3. PDFs put inside a Library folder are listed too. PDFs elsewhere in Drive are left alone.
-  const pit = DriveApp.searchFiles('mimeType = "application/pdf" and trashed = false and createdDate > "' + since + '"');
-  while (pit.hasNext()) { const f = pit.next(); if (isUnder_(f, lib.getId()) && registerBook_(known, f, folderCode_(f), '')) log.push('Listed PDF ' + f.getName()); }
+  // 3. Every PDF inside the Library folders is listed, however old (not "99 Duplicates"). PDFs elsewhere in Drive are left alone.
+  const walkLib = fo => {
+    const fs = fo.getFilesByType(MimeType.PDF);
+    while (fs.hasNext()) { const f = fs.next(); if (known[f.getId()] === undefined && registerBook_(known, f, folderCode_(f), '')) log.push('Listed PDF ' + f.getName()); }
+    const sf = fo.getFolders(); while (sf.hasNext()) { const sub = sf.next(); if (!/^99\b/.test(sub.getName())) walkLib(sub); }
+  };
+  walkLib(lib);
   props.setProperty('booksCopied', JSON.stringify(copied));
   props.setProperty('booksSince', started);
   Logger.log(log.length ? log.join('\n') : 'No new books.');
@@ -668,6 +705,21 @@ function bookFile_(id) {
 }
 
 
+/** "Add a PDF" in Library: saves the file into Claude/Library/<category> (00 = to sort) and lists it. */
+function addBook_(b) {
+  const name = String(b.name || '').replace(/[\\/:*?"<>|]+/g, ' ').trim();
+  if (!/\.(pdf|epub)$/i.test(name)) throw new Error('Choose a PDF or EPUB file.');
+  if (!b.data) throw new Error('The file did not arrive. Try again.');
+  const bytes = Utilities.base64Decode(String(b.data));
+  if (bytes.length > 30 * 1024 * 1024) throw new Error('That file is over 30 MB. Put it in a Library folder in Drive instead; HQ lists it within the hour.');
+  const code = /^\d\d$/.test(String(b.category || '')) ? String(b.category) : classifyBook_(name);
+  const pdf = /\.pdf$/i.test(name);
+  const f = libFolder_(code).createFile(Utilities.newBlob(bytes, pdf ? 'application/pdf' : 'application/epub+zip', name));
+  registerBook_(knownBooks_(), f, code, '');
+  const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  return { id: f.getId(), title: bookTitle_(name), author: '', category: code, position: '0', format: pdf ? 'pdf' : 'epub', paper: '', added: today, updated: today };
+}
+
 /* ---------- Fireflies → Drive (Claude/Meetings) + meetings tab ---------- */
 // Put your Fireflies API key in Project Settings › Script properties as FIREFLIES_KEY (never in the code).
 // Set FIREFLIES_DELETE to yes only after you've checked the first exports: then each exported meeting is removed
@@ -882,23 +934,6 @@ function importNotes() {
   return log;
 }
 /* Run once after the import fix of 23 Nov: rewrites imported notes so their pictures and formatting show. Safe to run again. */
-function fixImportedNotes() {
-  const t0 = Date.now(), done = PropertiesService.getScriptProperties();
-  const rows = readTab_('notes_index').filter(r => r.kind === 'note' && r.tags === 'imported' && /^md-/.test(r.id));
-  let n = 0, left = 0;
-  rows.forEach(r => {
-    if (done.getProperty('fix1-' + r.id)) return;
-    if (Date.now() - t0 > 4.5 * 60 * 1000) { left++; return; }
-    try {
-      const f = DriveApp.getFileById(r.id.slice(3)), imgs = {}, par = f.getParents().next();
-      ['images', 'attachments'].forEach(nm => { const it = par.getFoldersByName(nm); while (it.hasNext()) { const fi = it.next().getFiles(); while (fi.hasNext()) { const x = fi.next(); imgs[x.getName()] = x.getId(); } } });
-      writeNote_(r.id, r.title, mdToHtml_(f.getBlob().getDataAsString(), imgs)); n++;
-    } catch (e) {}
-    done.setProperty('fix1-' + r.id, '1');
-  });
-  Logger.log(left ? `Fixed ${n}; ${left} to go. Run fixImportedNotes again.` : `All done. Fixed ${n} notes.`); return left;
-}
-
 /* Adds rows at the bottom of a tab without rewriting it. */
 function appendRows_(name, rows) {
   if (!rows.length) return;
@@ -968,19 +1003,6 @@ function indexVerses() {
   Logger.log(left ? `Indexed ${n} notes; ${left} to go. Run indexVerses again.` : `All done. Indexed ${n} notes.`); return left;
 }
 
-/* Runs the notes import, then fixImportedNotes, then indexVerses, every 10 minutes until all three say All done, then switches itself off. Start with startAutoNotes. */
-function startAutoNotes() {
-  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'autoNotes').forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('autoNotes').timeBased().everyMinutes(10).create();
-}
-function autoNotes() {
-  const p = PropertiesService.getScriptProperties(), step = p.getProperty('autoNotesStep') || 'import';
-  const stop = () => ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'autoNotes').forEach(t => ScriptApp.deleteTrigger(t));
-  if (step === 'import') { const log = importNotes(); if (/^All done/.test(log[0])) p.setProperty('autoNotesStep', 'fix'); return; }
-  if (step === 'fix') { if (!fixImportedNotes()) p.setProperty('autoNotesStep', 'index'); return; }
-  if (step === 'index') { if (!indexVerses()) { p.setProperty('autoNotesStep', 'done'); stop(); } return; }
-  stop();
-}
 /* Counts the note files waiting in the export folders, so we know how many the import should end up with. */
 function countNotes() {
   const out = [];
@@ -995,4 +1017,20 @@ function countNotes() {
   });
   const rows = readTab_('notes_index'); out.push('In HQ now: ' + rows.filter(r => r.tags === 'imported').length + ' imported, ' + rows.filter(r => r.kind === 'note').length + ' notes in total');
   Logger.log(out.join('\n'));
+}
+
+/* ---------- Housekeeping (26 Nov 2026) ----------
+   Removes Script properties that only one-time fixes used (fix1-… for every imported note, autoNotesStep, a forced
+   GEMINI_MODEL) and the finished autoNotes timer. Keeps everything the bridge and the bot still need. Safe to run again. */
+const KEEP_PROPS = /^(SHEET_ID|HQ_TOKEN|GEMINI_KEY|TELEGRAM_TOKEN|TELEGRAM_CHAT|TELEGRAM_USER|FIREFLIES_KEY|FIREFLIES_DELETE|tgOffset|tgBriefSent|tgFollowSent|tgRecapSent|tgGroups|booksCopied|booksSince|ffDone|sermonsMoved|geminiModels|geminiGood|geminiBad|geminiNoThink|(bak|day)_.+)$/;
+function cleanupProperties() {
+  const p = PropertiesService.getScriptProperties(), all = p.getProperties(), gone = [];
+  Object.keys(all).forEach(k => { if (!KEEP_PROPS.test(k)) { p.deleteProperty(k); gone.push(k); } });
+  const stopped = [];
+  ScriptApp.getProjectTriggers().filter(t => ['autoNotes', 'fixImportedNotes'].indexOf(t.getHandlerFunction()) >= 0)
+    .forEach(t => { stopped.push(t.getHandlerFunction()); ScriptApp.deleteTrigger(t); });
+  const fixes = gone.filter(k => /^fix1-/.test(k)).length;
+  const msg = 'Removed ' + gone.length + ' properties (' + fixes + ' fix1-… note markers' + (gone.length > fixes ? '; also ' + gone.filter(k => !/^fix1-/.test(k)).join(', ') : '') + ').' +
+    (stopped.length ? ' Stopped timers: ' + stopped.join(', ') + '.' : '') + ' Kept: ' + Object.keys(p.getProperties()).length + '.';
+  Logger.log(msg); return msg;
 }

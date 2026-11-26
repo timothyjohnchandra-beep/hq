@@ -561,7 +561,37 @@ function pdfToc() {
   sheet(hd('Contents') + (rows.join('') || `<p>This PDF has no table of contents. Use Go to page instead (it has ${pdf.numPages} pages).</p>`));
 }
 
-function goTo(cfi) { if (String(cfi).startsWith('pdf:')) return pdfGo(Number(String(cfi).slice(4))); return rend.display(cfi); }
+function goTo(cfi) {
+  const c = String(cfi || '');
+  if (c.startsWith('pdf:')) return pdfGo(Number(c.slice(4)));
+  if (c.startsWith('epubcfi(')) return rend.display(c);
+  return goHref(c);
+}
+/* Contents links are written relative to the book's own contents file ("../Text/ch03.xhtml#sec2"), often to an anchor
+   inside a file that holds several chapters. rend.display(href) then misses: it lands at the start of the book or of the
+   file. So find the real spine section first, show it, then step to the anchor's exact spot. */
+function spineFor(href) {
+  const clean = p => { try { p = decodeURIComponent(p); } catch (e) {} return p.replace(/\\/g, '/').replace(/^(\.{1,2}\/)+/, '').replace(/^\/+/, '').toLowerCase(); };
+  const path = clean(String(href).split('#')[0]); if (!path) return null;
+  let s = null; try { s = book.spine.get(String(href).split('#')[0]); } catch (e) {}
+  if (s) return s;
+  const items = book.spine.spineItems || [];
+  return items.find(i => clean(i.href) === path) || items.find(i => { const h = clean(i.href); return h.endsWith('/' + path) || path.endsWith('/' + h); })
+    || items.find(i => clean(i.href).split('/').pop() === path.split('/').pop()) || null;
+}
+async function goHref(href) {
+  const frag = String(href).split('#')[1] || '';
+  const sec = spineFor(href);
+  if (!sec) { try { return await rend.display(href); } catch (e) { X.say("Couldn't find that part of the book."); return; } }
+  await rend.display(sec.href);
+  if (!frag) return;
+  try {
+    const c = rend.getContents().find(x => x.sectionIndex === sec.index) || rend.getContents()[0];
+    const id = decodeURIComponent(frag), d = c && c.document;
+    const node = d && (d.getElementById(id) || d.querySelector('[name="' + id.replace(/"/g, '\\"') + '"]'));
+    if (node) await rend.display(c.cfiFromNode(node));
+  } catch (e) {}
+}
 
 /* ---------- clicks ---------- */
 async function onClick(e) {
