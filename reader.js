@@ -56,7 +56,11 @@ async function bytes() {
   if (!X.live()) throw new Error('Connect your Google Sheet in Settings first, so HQ can fetch the book from Drive.');
   status('Downloading the book from Drive…');
   let j;
-  try { j = await X.api({ action: 'book', id: B.id }); }
+  // Books added with the "Add a book" form get a short HQ id, not a Drive id. Use the Drive link's file id instead.
+  const m = /\/d\/([\w-]{20,})|[?&]id=([\w-]{20,})/.exec(String(B.driveLink || ''));
+  const fileId = m ? (m[1] || m[2]) : (/^[\w-]{20,}$/.test(String(B.id)) ? B.id : '');
+  if (!fileId) throw new Error('This book has no file in Drive yet. Add it again with "Add a PDF or EPUB from this device" at the bottom of the Library, or with its Google Drive link.');
+  try { j = await X.api({ action: 'book', id: fileId }); }
   catch (e) { if (/Unknown action/.test(e.message)) throw new Error('Your bridge script needs the new version before books open here. Ask Claude for the latest script, or open the book in Drive for now.'); throw e; }
   const bin = atob(j.data), u = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
