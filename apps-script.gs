@@ -7,7 +7,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';            // fallback only; Script property SHEET_ID wins
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';      // fallback only; Script property HQ_TOKEN wins
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-27 10.00'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-27 17.40'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -1080,6 +1080,11 @@ function syncSessionNotes() {
   Logger.log(log.join('\n')); return log;
 }
 /** A Google Doc as Markdown (Drive's own export keeps headings, lists, checkboxes and links). */
+/** Rebuild every session note (e.g. after a converter fix). Ticks are kept. */
+function resyncSessionNotes() {
+  PropertiesService.getScriptProperties().deleteProperty('csDone');
+  return syncSessionNotes();
+}
 function docAsMarkdown_(id) {
   const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text%2Fmarkdown',
     { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
@@ -1094,7 +1099,7 @@ function sessionTicked_(html) {
 }
 function sessionHtml_(title, md, ticked, docUrl) {
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const inl = s => esc(s.replace(/\\([\\`*_{}\[\]()#+\-.!>~|])/g, '$1'))
+  const inl = s => esc(s.replace(/\\([^\w\s])/g, '$1'))
     .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank">$1</a>')
     .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank">$2</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|\W)\*([^*\s][^*]*)\*/g, '$1<i>$2</i>');
