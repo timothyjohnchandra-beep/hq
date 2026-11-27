@@ -7,7 +7,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';            // fallback only; Script property SHEET_ID wins
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';      // fallback only; Script property HQ_TOKEN wins
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-27 17.40'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-27 22.15'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -278,7 +278,7 @@ function writeNote_(id, title, html) {
 /* ---------- Verse of the Day ---------- */
 function verse_() {
   const cache = CacheService.getScriptCache();
-  const key = 'votd_' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const key = 'votd2_' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
   const hit = cache.get(key);
   if (hit) return JSON.parse(hit);
   let v = null;
@@ -287,7 +287,13 @@ function verse_() {
     const m = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i) || html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i);
     const img = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i);
     const ref = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i);
-    if (m) v = { text: decode_(m[1]), ref: ref ? decode_(ref[1]).replace(/\s*[|-].*$/, '') : '', image: img ? img[1] : '', source: 'YouVersion', link: 'https://www.bible.com/verse-of-the-day' };
+    if (m) {   // since Nov 2026 the description starts with the reference ("Isaiah 26:3 You will keep…") and og:title is just "Verse of the Day"
+      let text = decode_(m[1]).trim(), r = ref ? decode_(ref[1]).replace(/\s*[|-].*$/, '').trim() : '';
+      const lead = text.match(/^((?:[1-3]\s?)?[A-Za-z][A-Za-z .]*?\s\d+:\d+(?:[-–]\d+)?(?:\s\([A-Z0-9]+\))?)\s+([\s\S]+)$/);
+      if (lead) { text = lead[2]; r = lead[1]; }
+      if (/verse of the day/i.test(r)) r = '';
+      v = { text: text.replace(/^["“]|["”]$/g, ''), ref: r, image: img ? img[1] : '', source: 'YouVersion', link: 'https://www.bible.com/verse-of-the-day' };
+    }
   } catch (e) {}
   if (!v) {
     try {   // backup source

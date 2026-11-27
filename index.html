@@ -398,7 +398,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='34 · 27 Nov 2026';
+const VERSION='35 · 27 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -477,6 +477,7 @@ async function load(){
   syncState={s:'ok',at:hm(new Date())};render();
   api({action:'calendar',days:2}).then(c=>{EV=c.events;ls.set('hq-ev',EV);if(UI.view==='today')render()}).catch(e=>{syncState={s:'error',msg:'Calendar: '+e.message};showSync()});
   api({action:'brief'}).then(b=>{BRIEF=b.brief;ls.set('hq-brief',BRIEF);if(UI.view==='today')render()}).catch(()=>{});
+  if(CONTACTS.day!==TODAY)fillFromContacts(true).then(r=>{if(r.n&&UI.view==='people')people()}).catch(()=>{});
   if(!VERSE||VERSE.day!==TODAY)api({action:'verse'}).then(v=>{VERSE={...v.verse,day:TODAY};ls.set('hq-verse',VERSE);if(UI.view==='today')render()}).catch(e=>{VERSE={day:TODAY,err:/Unknown action/.test(e.message)?'old':e.message};if(UI.view==='today')render()});
  }catch(e){ensure();syncState={s:'error',msg:e.message};render()}
  showSync()}
@@ -1010,7 +1011,7 @@ function people(){
   <button class="bcard" data-a="bf" data-v="quiet" aria-pressed="${bf==='quiet'}"><div class="big">${quiet.length}</div><span>Quiet 30+ days</span></button>
   <button class="bcard" data-a="bf" data-v="bday" aria-pressed="${bf==='bday'}"><div class="big">${bd.length}</div><span>Birthdays this week</span></button></div>
  <h2>Waiting for a reply <span class="n">${all.filter(p=>yes(p.waiting)).length}</span></h2>${grp(all.filter(p=>yes(p.waiting)).map(pr),'No one to wait on.')}
- <h2>${bf?{nonext:'No next date',quiet:'Quiet 30+ days',bday:'Birthdays this week'}[bf]:'Everyone'} <span class="n">${list.length}</span>${bf?'<button class="btn link act" data-a="bf" data-v="">Show all</button>':'<button class="btn link act" data-a="contactsfill">Fill from Google Contacts</button><button class="btn link" data-a="newperson">Add person</button>'}</h2>${grp(list.map(pr),'Nobody here yet.')}`}
+ <h2>${bf?{nonext:'No next date',quiet:'Quiet 30+ days',bday:'Birthdays this week'}[bf]:'Everyone'} <span class="n">${list.length}</span>${bf?'<button class="btn link act" data-a="bf" data-v="">Show all</button>':'<button class="btn link act" data-a="contactsadd">From Google Contacts</button><button class="btn link" data-a="newperson">Add person</button>'}</h2>${grp(list.map(pr),'Nobody here yet.')}`}
 function personPane(p){
  openPane(`<div class="detail"><div class="dhead">${back}<button class="btn link" data-a="pvoid" data-id="${esc(p.id)}" style="margin-left:auto">Remove</button></div>
  <div class="field"><label for="pf-n">Name</label><input type="text" id="pf-n" value="${esc(p.name)}"></div>
@@ -1374,10 +1375,12 @@ document.addEventListener('click',async e=>{
  if(a==='links'){cfg.plan=$('#s-plan').value.trim();cfg.playlist=$('#s-pl').value.trim();ls.set('hq-cfg',cfg);say('Links saved.')}
  if(a==='reload')load();
  if(a==='contactsfill'){if(!live()){say('Connect your Google Sheet first.');return}say('Reading your Google Contacts…');
-  try{const j=await api({action:'contacts'});const cs=j.contacts;const norm=x=>String(x||'').toLowerCase().replace(/^(pastor|ps\.?|pak|bu|ibu|bapak|kak)\s+/,'').trim();let n=0;const unsure=[];
-   D.people.filter(p=>!yes(p.void)).forEach(p=>{const k=norm(p.name);const hits=cs.filter(c=>{const cn=norm(c.name);return cn===k||cn.split(/\s+/)[0]===k});if(hits.length===1){const c=hits[0];let ch=false;if(!p.phone&&c.phone){p.phone=c.phone.replace(/\D/g,'').replace(/^0/,'62');ch=true}if(!p.birthday&&c.birthday){p.birthday=c.birthday;ch=true}if(ch)n++}else if(hits.length>1)unsure.push(p.name+' ('+hits.length+' matches)')});
-   if(n)touch('people');people();say(`Filled details for ${n} ${n===1?'person':'people'}.`+(unsure.length?` Check by hand: ${unsure.slice(0,4).join(', ')}${unsure.length>4?'…':''}.`:''))}
+  try{const r=await fillFromContacts(true);people();say(r.n?`Filled details for ${r.n} ${r.n===1?'person':'people'}.`+(r.unsure.length?` Check by hand: ${r.unsure.slice(0,4).join(', ')}${r.unsure.length>4?'…':''}.`:''):'Everyone already has the details Google Contacts knows.')}
   catch(err){say(/Unknown action/.test(err.message)?'This needs the updated bridge script.':"Couldn't read contacts: "+err.message)}}
+ if(a==='contactsadd'){if(!live()){say('Connect your Google Sheet first.');return}contactsPane()}
+ if(a==='cadd'){const c=(CONTACTS.list||[])[+v];if(!c)return;if(D.people.some(p=>!yes(p.void)&&cnorm(p.name)===cnorm(c.name))){say(c.name+' is already in People.');return}
+  const p={id:uid(),name:c.name,world:UI.pw&&UI.pw!=='all'?UI.pw:'church',stage:'',tags:'',phone:c.phone?c.phone.replace(/\D/g,'').replace(/^0/,'62'):'',lastContact:'',nextDate:'',nextAction:'',waiting:'',birthday:c.birthday||'',notes:'',void:''};
+  D.people.push(p);touch('people');say(c.name+' added to People.');contactsPane($('#cq')?$('#cq').value:'')}
  if(a==='openbook'){UI.book=id;UI.cf={};saveUI();closePane();money();$('#main').scrollTop=0}
  if(a==='newbook')bookPaneEdit(null);
  if(a==='bookmenu')bookPaneEdit(find('cashbooks',id));
@@ -1413,9 +1416,27 @@ addEventListener('popstate',()=>{
  const end=e=>{if(x0===null)return;const t=e.changedTouches[0],dx=t.clientX-x0;x0=null;if(ar){ar.remove();ar=null}if(dx>80)history.back()};
  addEventListener('touchend',end,{passive:true});addEventListener('touchcancel',end,{passive:true})})();
 let hiddenAt=0;
+/* Google Contacts: read once a day (cached on this device), fill missing phones and birthdays in People quietly. */
+let CONTACTS=ls.get('hq-contacts',{day:'',list:[]});
+const cnorm=x=>String(x||'').toLowerCase().replace(/^(pastor|ps\.?|pak|bu|ibu|bapak|kak)\s+/,'').replace(/\s+/g,' ').trim();
+async function getContacts(fresh){if(!fresh&&CONTACTS.day===TODAY&&CONTACTS.list.length)return CONTACTS.list;
+ const j=await api({action:'contacts'});CONTACTS={day:TODAY,list:(j.contacts||[]).sort((a,b)=>a.name.localeCompare(b.name))};ls.set('hq-contacts',CONTACTS);return CONTACTS.list}
+async function fillFromContacts(fresh){const cs=await getContacts(fresh);let n=0;const unsure=[];
+ D.people.filter(p=>!yes(p.void)).forEach(p=>{const k=cnorm(p.name);const hits=cs.filter(c=>{const cn=cnorm(c.name);return cn===k||cn.split(' ')[0]===k});
+  if(hits.length===1){const c=hits[0];let ch=false;if(!p.phone&&c.phone){p.phone=c.phone.replace(/\D/g,'').replace(/^0/,'62');ch=true}if(!p.birthday&&c.birthday){p.birthday=c.birthday;ch=true}if(ch)n++}else if(hits.length>1)unsure.push(p.name+' ('+hits.length+' matches)')});
+ if(n)touch('people');return{n,unsure}}
+function contactsPane(q){const list=CONTACTS.day===TODAY?CONTACTS.list:null;
+ const inP=new Set(D.people.filter(p=>!yes(p.void)).map(p=>cnorm(p.name)));const w=String(q||'').toLowerCase().trim();
+ const rows=(list||[]).map((c,i)=>({c,i})).filter(x=>!inP.has(cnorm(x.c.name))&&(!w||x.c.name.toLowerCase().includes(w)||String(x.c.phone).replace(/\D/g,'').includes(w.replace(/\D/g,'')||'~'))).slice(0,60);
+ openPane(`<div class="detail"><div class="dhead">${back}</div><h2 style="margin-top:4px">Add from Google Contacts</h2>
+  <div class="field"><input type="search" id="cq" placeholder="Search name or number" value="${esc(q||'')}" autocomplete="off"></div>
+  ${list?grp(rows.map(x=>`<div class="row nt"><div><div class="ttl">${esc(x.c.name)}</div><div class="meta">${[x.c.phone,x.c.birthday?'Birthday '+x.c.birthday.slice(5):''].filter(Boolean).map(esc).join(' · ')||'No phone or birthday'}</div></div><button class="btn y" data-a="cadd" data-v="${x.i}">Add</button></div>`),w?'No one by that name who isn’t already in People.':'Everyone in your contacts is already in People.'):'<p class="meta">Reading your Google Contacts…</p>'}
+  <p class="meta">People already in HQ are left out. Adding someone brings their name, number and birthday.</p></div>`);
+ const cq=$('#cq');if(cq){cq.oninput=()=>{clearTimeout(cq.t);cq.t=setTimeout(()=>{const pos=cq.selectionStart;contactsPane(cq.value);const n=$('#cq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}},250)}}
+ if(!list)getContacts().then(()=>{if($('#cq'))contactsPane(q)}).catch(e=>{say("Couldn't read contacts: "+e.message)})}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){hiddenAt=Date.now();return}
  if(hiddenAt&&Date.now()-hiddenAt>10*60*1000&&!document.getElementById('rdr')&&UI.view!=='today'){closePane();UI.view='today';UI.folder='';UI.q='';saveUI();render();$('#main').scrollTop=0}
- if(live()&&iso(0)!==TODAY)load()});
+ if(live()&&(iso(0)!==TODAY||(hiddenAt&&Date.now()-hiddenAt>2*60*1000)))load()});
 if('serviceWorker' in navigator&&location.protocol==='https:'){
  navigator.serviceWorker.register('sw.js').then(reg=>{reg.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update()})}).catch(()=>{});
  let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded)return;reloaded=true;const ed=$('#ed');if(ed&&document.activeElement===ed)return;location.reload()})}
