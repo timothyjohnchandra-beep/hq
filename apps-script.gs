@@ -1023,7 +1023,7 @@ function countNotes() {
 /* ---------- Housekeeping (26 Nov 2026) ----------
    Removes Script properties that only one-time fixes used (fix1-… for every imported note, autoNotesStep, a forced
    GEMINI_MODEL) and the finished autoNotes timer. Keeps everything the bridge and the bot still need. Safe to run again. */
-const KEEP_PROPS = /^(SHEET_ID|HQ_TOKEN|GEMINI_KEY|TELEGRAM_TOKEN|TELEGRAM_CHAT|TELEGRAM_USER|FIREFLIES_KEY|FIREFLIES_DELETE|tgOffset|tgBriefSent|tgFollowSent|tgRecapSent|tgGroups|booksCopied|booksSince|ffDone|sermonsMoved|csDone|geminiModels|geminiGood|geminiBad|geminiNoThink|(bak|day)_.+)$/;
+const KEEP_PROPS = /^(SHEET_ID|tgAwake|tgDaily|HQ_TOKEN|GEMINI_KEY|TELEGRAM_TOKEN|TELEGRAM_CHAT|TELEGRAM_USER|FIREFLIES_KEY|FIREFLIES_DELETE|tgOffset|tgBriefSent|tgFollowSent|tgRecapSent|tgGroups|booksCopied|booksSince|ffDone|sermonsMoved|csDone|geminiModels|geminiGood|geminiBad|geminiNoThink|(bak|day)_.+)$/;
 function cleanupProperties() {
   const p = PropertiesService.getScriptProperties(), all = p.getProperties(), gone = [];
   Object.keys(all).forEach(k => { if (!KEEP_PROPS.test(k)) { p.deleteProperty(k); gone.push(k); } });

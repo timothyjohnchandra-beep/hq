@@ -125,7 +125,7 @@ function newsGemini(force) {
    Automatic: 9 a.m. follow-up in each group for to-dos that are due or overdue (each item at most every 2 days);
               9 p.m. recap of busy groups to Timothy privately.
    ====================================================================================================== */
-const TG_VERSION = '2026-11-27 07.40';
+const TG_VERSION = '2026-11-27 18.00';
 
 function tgProps_() { return PropertiesService.getScriptProperties(); }
 function tg_(method, payload) {
@@ -155,19 +155,22 @@ function tgId_() { return Date.now().toString(36) + Math.random().toString(36).s
 function tgName_(u) { return u ? [u.first_name, u.last_name].filter(String).join(' ') || u.username || 'Someone' : 'Someone'; }
 
 /* ---------- Gemini (text, voice, photo, PDF) ---------- */
-function geminiParts_(parts, asJson, temp) {
+function geminiParts_(parts, asJson, temp, fast) {   // fast = Lite models first (about 1 s), for replies Timothy is waiting for
   const key = tgProps_().getProperty('GEMINI_KEY');
   if (!key) throw new Error('No Gemini key yet. Add GEMINI_KEY in Project Settings › Script properties.');
-  const props = tgProps_(), bad = JSON.parse(props.getProperty('geminiBad') || '{}');
-  const cfg = { temperature: temp == null ? 0.2 : temp }; if (asJson) cfg.responseMimeType = 'application/json';
-  let last = '';
-  for (const model of geminiModels_(key)) {
+  const props = tgProps_(), bad = JSON.parse(props.getProperty('geminiBad') || '{}'), noThink = JSON.parse(props.getProperty('geminiNoThink') || '{}');
+  let last = '', models = geminiModels_(key);
+  if (fast) models = models.filter(n => /lite/.test(n)).concat(models.filter(n => !/lite/.test(n)));
+  for (const model of models) {
     for (let tries = 0; tries < 2; tries++) {
+      const cfg = { temperature: temp == null ? 0.2 : temp }; if (asJson) cfg.responseMimeType = 'application/json';
+      if (!noThink[model]) cfg.thinkingConfig = { thinkingLevel: 'low' };   // little thinking = quick answers
       const r = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
         method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-        headers: { 'x-goog-api-key': key, 'X-Server-Timeout': '40' },   // a busy Gemini must not hold the 1-minute poll for minutes
+        headers: { 'x-goog-api-key': key, 'X-Server-Timeout': fast ? '25' : '40' },   // a busy Gemini must not hold the poll for minutes
         payload: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: cfg }) });
       const code = r.getResponseCode(), txt = r.getContentText();
+      if (code === 400 && !noThink[model] && /thinking/i.test(txt)) { noThink[model] = 1; props.setProperty('geminiNoThink', JSON.stringify(noThink)); tries--; continue; }
       if (code === 200) {
         props.setProperty('geminiGood', model);
         const out = ((((JSON.parse(txt).candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('').replace(/^\x60{3}(json|html)?|\x60{3}$/g, '').trim();
@@ -254,26 +257,36 @@ const TG_HELP = [
   '• a receipt photo → Money (cash out)',
   '• "What\'s on tomorrow?" / "Sermons on Nehemiah?" → an answer from HQ',
   '',
-  '/today – brief · /tasks – open tasks · /news – news',
+  '/today – brief · /tasks – open tasks · /news – news · /notes – today\'s chat notes now',
+  'Every chat (this one and each group) gets one note per day in HQ Notes › Telegram, updated every hour.',
   '/groups – groups I take notes in · /recap – recap of all groups now',
   '',
   'Add me to a group and I take notes there: /summary, /todo, /done.'
 ].join('\n');
 
 /* ---------- Every minute ---------- */
+/** Runs every minute. While Timothy is chatting with the bot (3 minutes after his last private message) it keeps
+ *  listening for ~50 s (Telegram long polling), so replies come in seconds instead of up to a minute.
+ *  Idle minutes stay short (~1 s) to keep inside Google's daily limit for timer run time. */
 function pollTelegram() {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(3000)) return;
+  if (!lock.tryLock(1000)) return;   // the previous run is still listening
   try {
-    const props = tgProps_(), log = [];
-    const updates = tg_('getUpdates', { offset: Number(props.getProperty('tgOffset') || 0), timeout: 0, allowed_updates: ['message', 'edited_message', 'callback_query', 'my_chat_member'] });
-    updates.forEach(u => {
-      props.setProperty('tgOffset', String(u.update_id + 1));   // saved first, so a failing message is never handled twice
-      try { tgUpdate_(u, log); } catch (e) { Logger.log('Update ' + u.update_id + ' failed: ' + (e.message || e)); }
-    });
-    tgAppend_('tg_log', log);
+    const props = tgProps_(), start = Date.now();
+    do {
+      const awake = Number(props.getProperty('tgAwake') || 0) > Date.now();
+      const wait = awake ? Math.max(0, Math.min(20, Math.floor((48000 - (Date.now() - start)) / 1000))) : 0;
+      const log = [];
+      const updates = tg_('getUpdates', { offset: Number(props.getProperty('tgOffset') || 0), timeout: wait, allowed_updates: ['message', 'edited_message', 'callback_query', 'my_chat_member'] });
+      updates.forEach(u => {
+        props.setProperty('tgOffset', String(u.update_id + 1));   // saved first, so a failing message is never handled twice
+        try { tgUpdate_(u, log); } catch (e) { Logger.log('Update ' + u.update_id + ' failed: ' + (e.message || e)); }
+      });
+      tgAppend_('tg_log', log);
+    } while (Number(props.getProperty('tgAwake') || 0) > Date.now() && Date.now() - start < 45000);
   } finally { lock.releaseLock(); }
 }
+let tgHeard_ = '';   // what Gemini heard in a voice note, so the day's note keeps the words
 function tgUpdate_(u, log) {
   const owner = tgProps_().getProperty('TELEGRAM_CHAT');
   if (u.my_chat_member) return tgMembership_(u.my_chat_member);
@@ -283,7 +296,17 @@ function tgUpdate_(u, log) {
   if (type === 'private') {
     if (!owner && /^\/start/.test(text)) { tgProps_().setProperty('TELEGRAM_CHAT', chat); return tgSay_('Hi Timothy, this bot is now linked to your HQ.\n\n' + TG_HELP, chat); }
     if (chat !== owner) return;   // strangers in private are ignored
-    try { return tgPrivate_(m); } catch (e) { return tgSay_('Sorry, that didn\'t work: ' + tgEsc_(e.message || e)); }
+    tgProps_().setProperty('tgAwake', String(Date.now() + 3 * 60000));
+    tgHeard_ = '';
+    try { tgPrivate_(m); } catch (e) { tgSay_('Sorry, that didn\'t work: ' + tgEsc_(e.message || e)); }
+    if (!/^\//.test(text) && !u.edited_message) {   // every private message also goes into today's "TJC PA" note
+      const pv = m.voice || m.audio, pk = pv ? 'voice' : m.photo ? 'photo' : m.document ? 'file' : text ? 'text' : '';
+      if (pk) { const d = new Date(m.date * 1000);
+        log.push({ id: chat + ':' + m.message_id, chat, group: TG_PRIVATE, date: Utilities.formatDate(d, TZ, 'yyyy-MM-dd'), time: Utilities.formatDate(d, TZ, 'HH:mm'), ts: m.date, from: 'Timothy',
+          text: (m.forward_origin || m.forward_date ? '[forwarded] ' : '') + (tgHeard_ ? '[voice] ' + tgHeard_ : text || (pk === 'photo' ? '[photo]' : pk === 'file' ? '[file: ' + (m.document.file_name || '') + ']' : '')),
+          kind: tgHeard_ ? 'text' : pk, file: pv && !tgHeard_ ? pv.file_id : '' }); }
+    }
+    return;
   }
   if (type !== 'group' && type !== 'supergroup') return;
   if (!tgGroupOk_(m.chat)) return;
@@ -393,10 +416,10 @@ function tgSummarise_(chat, toGroup) {
     todos.length ? '\n<b>To-do</b>\n' + todos.map((t, i) => (i + 1) + '. ' + tgEsc_(t.task) + (t.owner ? ' — <i>' + tgEsc_(t.owner) + '</i>' : '') + tgDueLabel_(t.due)).join('\n') : '',
     list(res.questions).length ? '\n<b>Still open</b>\n' + list(res.questions).map(x => '• ' + tgEsc_(x)).join('\n') : ''
   ].filter(String).join('\n');
-  const noteLink = tgSaveNote_(info.title, res, todos, msgs);
+  let noteLink = ''; try { noteLink = tgDailyNotes_([tgToday_()], true, chat).length ? 'ok' : ''; } catch (e) { Logger.log('Day note: ' + e.message); }
   info.lastSummaryTs = Number(msgs[msgs.length - 1].ts); g[chat] = info; tgSaveGroups_(g);
   if (toGroup) tgSay_(html, chat, tgTodoButtons_(chat, todos));
-  else tgSay_(html + (noteLink ? '\n\nSaved in HQ Notes › Telegram › ' + tgEsc_(info.title) + '.' : ''), null, todos.length ? tgTodoButtons_(chat, todos) : null);
+  else tgSay_(html + (noteLink ? '\n\nToday\'s note: HQ Notes › Telegram › ' + tgEsc_(info.title) + '.' : ''), null, todos.length ? tgTodoButtons_(chat, todos) : null);
   return html;
 }
 /** Each summary becomes an HQ note in the folder Telegram/<group>, with a checklist of the to-dos and the chat underneath. */
@@ -422,6 +445,57 @@ function tgHourly() {
   const props = tgProps_(), hour = Number(Utilities.formatDate(new Date(), TZ, 'H')), today = tgToday_();
   if (hour === 9 && props.getProperty('tgFollowSent') !== today) { props.setProperty('tgFollowSent', today); tgFollowUp_(); }
   if (hour === 21 && props.getProperty('tgRecapSent') !== today) { props.setProperty('tgRecapSent', today); tgRecapAll_(false); }
+  try { tgDailyNotes_(hour < 2 ? [tgToday_(-1), today] : [today]); } catch (e) { Logger.log('Day notes failed: ' + e.message); }
+}
+
+/* ---------- One HQ note per chat per day (groups + Timothy's own chat with the bot) ---------- */
+const TG_PRIVATE = 'TJC PA';
+/** For each chat with messages on these dates: one note "<chat> – Fri 27 Nov 2026" in Notes › Telegram › <chat>,
+ *  with summary, decisions, to-dos, open questions and the whole chat. Rebuilt only when new messages came in. */
+function tgDailyNotes_(dates, force, onlyChat) {
+  const props = tgProps_(), built = JSON.parse(props.getProperty('tgDaily') || '{}'), done = [], started = Date.now();
+  const rows = tgRows_('tg_log').filter(r => dates.indexOf(r.date) >= 0 && (!onlyChat || r.chat === onlyChat));
+  const chats = {}; rows.forEach(r => (chats[r.chat + '|' + r.date] = chats[r.chat + '|' + r.date] || []).push(r));
+  Object.keys(chats).forEach(key => {
+    const msgs = chats[key].sort((a, b) => Number(a.ts) - Number(b.ts));
+    if (!force && built[key] === msgs.length) return;
+    if (Date.now() - started > 240000) return;   // leave the rest for the next hour
+    const [chat, date] = key.split('|'), mine = msgs[0].group === TG_PRIVATE, name = mine ? TG_PRIVATE : (msgs[msgs.length - 1].group || 'Group');
+    msgs.forEach(r => { if (r.kind === 'voice' && r.file && Date.now() - started < 200000) { try {   // hear each voice note once and keep the words
+      const heard = geminiParts_([{ text: 'Transcribe this voice note word for word in its own language (Indonesian, English or mixed). Return only the words.' }, tgMedia_(r.file, 'audio/ogg')], false, 0);
+      r.text = '[voice] ' + heard.trim(); r.kind = 'text'; tgSet_('tg_log', r.id, { text: r.text, kind: 'text' });
+    } catch (e) { Logger.log('Voice ' + r.id + ': ' + e.message); } } });
+    const chatText = msgs.map(r => '[' + r.time + '] ' + r.from + ': ' + (r.kind === 'voice' ? '(voice note, not transcribed yet)' : r.text)).join('\n');
+    let res = {};
+    try {
+      res = geminiParts_([{ text: [
+        mine ? 'These are Timothy\'s own messages to his assistant bot on ' + date + ' (notes, ideas, tasks, questions). He is Executive Pastor at GPKdI BCC Jakarta and director of two companies.'
+             : 'You are the note-taker for Timothy (Executive Pastor at GPKdI BCC Jakarta, director of two companies) in the Telegram group "' + name + '" on ' + date + '.',
+        'Write in the main language of the messages (Indonesian or English). Use ONLY what is in them. Never invent names, dates, numbers or decisions; keep lists of names complete and exact.',
+        'title: a short title for the day. summary: 2–6 short bullets of what was said or noted. decisions: what was agreed. todos: next actions (start with a verb; owner = person named, "Timothy" for him; due yyyy-mm-dd if a day is said, resolve relative days from ' + date + '). questions: asked but not answered.',
+        'Return JSON only: {"title":"","summary":[""],"decisions":[""],"todos":[{"task":"","owner":"","due":""}],"questions":[""]}',
+        '', 'Messages:', chatText.slice(0, 60000)].join('\n') }], true, 0.2);
+    } catch (e) { res = { summary: ['(Summary not ready: ' + e.message + '. The chat is below; it will try again next hour.)'] }; }
+    const day = Utilities.formatDate(new Date(date + 'T12:00:00'), TZ, 'EEE d MMM yyyy'), title = name + ' – ' + day;
+    const list = a => (a || []).filter(x => x && String(x).trim());
+    const ul = a => '<ul>' + list(a).map(x => '<li>' + tgEsc_(x) + '</li>').join('') + '</ul>';
+    const todos = (res.todos || []).filter(t => t && t.task);
+    const html = '<h1>' + tgEsc_(title) + '</h1>' +
+      (res.title ? '<p><b>' + tgEsc_(res.title) + '</b> · ' + msgs.length + ' messages · ' + msgs[0].time + '–' + msgs[msgs.length - 1].time + '</p>' : '') +
+      (list(res.summary).length ? '<h2>Summary</h2>' + ul(res.summary) : '') +
+      (list(res.decisions).length ? '<h2>Decisions</h2>' + ul(res.decisions) : '') +
+      (todos.length ? '<h2>To-do</h2><ul class="check">' + todos.map(t => '<li>' + tgEsc_(t.task + (t.owner ? ' — ' + t.owner : '') + (t.due ? ' (due ' + t.due + ')' : '')) + '</li>').join('') + '</ul>' : '') +
+      (list(res.questions).length ? '<h2>Still open</h2>' + ul(res.questions) : '') +
+      '<hr><h3>' + (mine ? 'Everything I sent' : 'Chat') + '</h3>' + msgs.map(r => '<p><b>' + tgEsc_(r.from) + '</b> <small>' + r.time + '</small><br>' + tgEsc_(r.text).replace(/\n/g, '<br>') + '</p>').join('');
+    const id = 'tgd-' + chat.replace(/^-/, 'g') + '-' + date.replace(/-/g, '');
+    const link = writeNote_(id, title, html);
+    patchRow_('notes_index', id, { title, para: 'Areas', type: mine ? 'Personal' : 'Work', date, driveLink: link, tags: 'telegram', void: '', kind: 'note',
+      folder: 'Telegram/' + name.replace(/\//g, '-'), text: [title, res.title || ''].concat(list(res.summary)).join(' ').slice(0, 300), hasCheck: todos.length ? '1' : '', updated: tgToday_() });
+    built[key] = msgs.length; done.push(title);
+  });
+  Object.keys(built).forEach(k => { if (k.split('|')[1] < tgToday_(-3)) delete built[k]; });
+  props.setProperty('tgDaily', JSON.stringify(built));
+  return done;
 }
 function tgFollowUp_() {
   const today = tgToday_(), twoDaysAgo = tgToday_(-2), g = tgGroups_(), mine = [];
@@ -492,6 +566,8 @@ function tgPrivate_(m) {
   if (/^\/tasks/.test(text)) return tgSay_(todayTasksText_());
   if (/^\/groups/.test(text)) { const g = tgGroups_(), ks = Object.keys(g); return tgSay_(ks.length ? '<b>Groups I take notes in</b>\n' + ks.map(k => '• ' + tgEsc_(g[k].title) + ' – ' + tgOpenTodos_(k).length + ' open to-dos').join('\n') : 'No groups yet. Add me to a group and I take notes there.'); }
   if (/^\/recap/.test(text)) { tg_('sendChatAction', { chat_id: m.chat.id, action: 'typing' }); return tgRecapAll_(true); }
+  if (/^\/(notes|daily)/.test(text)) { tg_('sendChatAction', { chat_id: m.chat.id, action: 'typing' }); const done = tgDailyNotes_([tgToday_()], true);
+    return tgSay_(done.length ? '📒 Today\'s notes are up to date in HQ Notes › Telegram:\n' + done.map(x => '• ' + tgEsc_(x)).join('\n') : 'No chat messages logged yet today.'); }
   const voice = m.voice || m.audio, photo = m.photo && m.photo.length ? m.photo[m.photo.length - 1] : null;
   const doc = m.document && /^(application\/pdf|image\/)/.test(m.document.mime_type || '') ? m.document : null;
   const fwd = !!(m.forward_date || m.forward_origin);
@@ -508,7 +584,8 @@ function tgPrivate_(m) {
   if (voice) parts.push(tgMedia_(voice.file_id, voice.mime_type || 'audio/ogg'));
   if (photo) parts.push(tgMedia_(photo.file_id, 'image/jpeg'));
   if (doc) parts.push(tgMedia_(doc.file_id, doc.mime_type));
-  const res = geminiParts_(parts, true, 0.1);
+  const res = geminiParts_(parts, true, 0.1, true);
+  if (voice && res.transcript) tgHeard_ = String(res.transcript);
   if (res.intent === 'question') return tgSay_(answerHqQuestion_(res.query || text || res.transcript, res.domain || 'all'));
   if (res.intent === 'expense' && res.expense && Number(String(res.expense.amount).replace(/[^\d.]/g, ''))) return tgExpense_(res.expense);
   const items = (res.items || []).filter(i => i && i.title).slice(0, 5);
@@ -616,7 +693,7 @@ function answerHqQuestion_(query, domain) {
     const b = brief_(); if (b.important && b.important.length) ctx.push('IMPORTANT UNREAD EMAIL:\n' + b.important.map(e => '- ' + e.from + ': ' + e.subject).join('\n'));
   } catch (e) {} }
   return geminiParts_([{ text: ['You are Timothy\'s HQ assistant on Telegram. Answer briefly using ONLY the HQ context below; if it is not there, say so.',
-    'Format with Telegram HTML only (<b>, <i>) and "• " bullets. Answer in the language of the question.', '', 'Question: ' + query, '', ctx.join('\n\n')].join('\n') }], false, 0.3)
+    'Format with Telegram HTML only (<b>, <i>) and "• " bullets. Answer in the language of the question.', '', 'Question: ' + query, '', ctx.join('\n\n')].join('\n') }], false, 0.3, true)
     .replace(/<(?!\/?(b|i|u|s|a|code|pre)\b)[^>]*>/g, '');   // Telegram rejects other tags
 }
 function todayTasksText_() {
