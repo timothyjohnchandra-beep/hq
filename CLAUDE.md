@@ -64,8 +64,11 @@ Sheet ID and token live in Script properties `SHEET_ID` and `HQ_TOKEN`; the file
 ## Email sorting
 Separate Apps Script project "HQ Email Sort": `sortInbox` labels, marks read and archives bank mail (Banks/BCA, Permata, Bank Jago, BSI), Investments/Samuel Sekuritas and Investments/Stockbit, "YLG – Lausanne – AEA" (lausanne.org, asiaea.org) and Promotions; subjects with approval/tagihan/payroll/bulk stay in the inbox. `setupDailyTrigger` = daily ~4 a.m.; `startCatchUp` runs it every 10 min until the inbox is clear, then stops.
 
+## Claude session notes (built 27 Nov 2026)
+At the end of every working session with Timothy (voice or text), Claude writes a Google Doc into Drive "Claude/Claude Session Notes", titled "yyyy-mm-dd – <topic>", with headings: Minutes (numbered), Artifacts (each a link), To-do / Follow-ups ("- [ ]" items, or plain bullets under that heading). The bridge's `syncSessionNotes` (hourly via `setupSessionNotes`, or GET action=sessions) turns each Doc into an HQ note `cs-<fileId>` in Notes folder "Claude Sessions" (tag claude): to-dos become tickable checklist items, links open on tap. When Claude adds to a Doc later, the note is rebuilt and items Timothy ticked stay ticked (Script property `csDone` = file id → last change). Ticks live in HQ, not in the Doc.
+
 ## Never put in this repo
 Tokens, the Sheet ID, ID numbers, bank/card numbers, member names, phone numbers, financial figures, pastoral notes. Those live only in the Sheet. The repo is public.
 
 ## Next up (agreed, not built yet)
-Voice notes with transcription; handwriting scan; Claude session notes written to Drive; sermon pipeline; weekly review; family time blocks (Wed/Thu evenings).
+Voice notes with transcription; handwriting scan; sermon pipeline; weekly review; family time blocks (Wed/Thu evenings).

@@ -7,7 +7,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';            // fallback only; Script property SHEET_ID wins
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';      // fallback only; Script property HQ_TOKEN wins
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-26 20.00'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-27 10.00'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -31,6 +31,7 @@ function doGet(e) {
     if (a === 'sortbooks') return { ok: true, log: sortNewBooks() };
     if (a === 'meetings') return { ok: true, log: exportFireflies() };
     if (a === 'sortsermons') return { ok: true, log: sortSermons() };
+    if (a === 'sessions') return { ok: true, log: syncSessionNotes() };
     throw new Error('Unknown action: ' + a);
   });
 }
@@ -1022,7 +1023,7 @@ function countNotes() {
 /* ---------- Housekeeping (26 Nov 2026) ----------
    Removes Script properties that only one-time fixes used (fix1-… for every imported note, autoNotesStep, a forced
    GEMINI_MODEL) and the finished autoNotes timer. Keeps everything the bridge and the bot still need. Safe to run again. */
-const KEEP_PROPS = /^(SHEET_ID|HQ_TOKEN|GEMINI_KEY|TELEGRAM_TOKEN|TELEGRAM_CHAT|TELEGRAM_USER|FIREFLIES_KEY|FIREFLIES_DELETE|tgOffset|tgBriefSent|tgFollowSent|tgRecapSent|tgGroups|booksCopied|booksSince|ffDone|sermonsMoved|geminiModels|geminiGood|geminiBad|geminiNoThink|(bak|day)_.+)$/;
+const KEEP_PROPS = /^(SHEET_ID|HQ_TOKEN|GEMINI_KEY|TELEGRAM_TOKEN|TELEGRAM_CHAT|TELEGRAM_USER|FIREFLIES_KEY|FIREFLIES_DELETE|tgOffset|tgBriefSent|tgFollowSent|tgRecapSent|tgGroups|booksCopied|booksSince|ffDone|sermonsMoved|csDone|geminiModels|geminiGood|geminiBad|geminiNoThink|(bak|day)_.+)$/;
 function cleanupProperties() {
   const p = PropertiesService.getScriptProperties(), all = p.getProperties(), gone = [];
   Object.keys(all).forEach(k => { if (!KEEP_PROPS.test(k)) { p.deleteProperty(k); gone.push(k); } });
@@ -1033,4 +1034,93 @@ function cleanupProperties() {
   const msg = 'Removed ' + gone.length + ' properties (' + fixes + ' fix1-… note markers' + (gone.length > fixes ? '; also ' + gone.filter(k => !/^fix1-/.test(k)).join(', ') : '') + ').' +
     (stopped.length ? ' Stopped timers: ' + stopped.join(', ') + '.' : '') + ' Kept: ' + Object.keys(p.getProperties()).length + '.';
   Logger.log(msg); return msg;
+}
+
+/* ---------- Claude session notes → HQ Notes (Timothy, 27 Nov 2026) ----------
+   At the end of each session Claude writes the minutes, to-dos and links into Drive "Claude/Claude Session Notes"
+   (a Google Doc or a .md file). Every hour syncSessionNotes turns each one into a real HQ note in Notes folder
+   "Claude Sessions": headings, minutes, to-dos as tickable checklist items, tappable links. When Claude adds to a
+   session Doc later, the note is rebuilt and the items Timothy already ticked stay ticked.
+   Run setupSessionNotes once (it makes the hourly timer and syncs straight away), or GET action=sessions. */
+const SESSIONS_DRIVE = 'Claude Session Notes';
+const SESSIONS_NOTES = 'Claude Sessions';
+function setupSessionNotes() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'syncSessionNotes').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('syncSessionNotes').timeBased().everyHours(1).create();
+  return syncSessionNotes();
+}
+function syncSessionNotes() {
+  const root = rootFolder_(), it = root.getFoldersByName(SESSIONS_DRIVE);
+  if (!it.hasNext()) { const m = 'No "' + SESSIONS_DRIVE + '" folder inside Claude yet – nothing to sync.'; Logger.log(m); return [m]; }
+  const folder = it.next(), props = PropertiesService.getScriptProperties();
+  const done = JSON.parse(props.getProperty('csDone') || '{}'), log = [];
+  const index = readTab_('notes_index'), have = {}; index.forEach(r => { have[r.id] = r; });
+  const files = folder.getFiles(), adds = [];
+  while (files.hasNext()) {
+    const f = files.next(), mime = f.getMimeType(), fid = f.getId(), mod = f.getLastUpdated().toISOString();
+    if (mime !== MimeType.GOOGLE_DOCS && !/\.(md|txt)$/i.test(f.getName()) && !/^text\//.test(mime)) continue;
+    if (done[fid] === mod && have['cs-' + fid]) continue;
+    try {
+      const md = mime === MimeType.GOOGLE_DOCS ? docAsMarkdown_(fid) : f.getBlob().getDataAsString();
+      const id = 'cs-' + fid, old = have[id], title = f.getName().replace(/\.(md|txt)$/i, '');
+      const ticked = old ? sessionTicked_(readNote_(id)) : {};
+      const html = sessionHtml_(title, md, ticked, f.getUrl());
+      const link = writeNote_(id, title, html);
+      const date = (title.match(/\d{4}-\d{2}-\d{2}/) || [Utilities.formatDate(f.getDateCreated(), TZ, 'yyyy-MM-dd')])[0];
+      const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+      const text = (title + ' ' + md.replace(/[#*\[\]()>`_-]+/g, ' ').replace(/\s+/g, ' ')).slice(0, 300);
+      if (old) { patchRow_('notes_index', id, { title, driveLink: link, text, hasCheck: /class="check"/.test(html) ? 'yes' : '', updated: today, void: '' }); log.push('Updated: ' + title); }
+      else { adds.push({ id, title, para: 'Projects', type: 'Personal', date, driveLink: link, tags: 'claude', void: '', kind: 'note', folder: SESSIONS_NOTES, text, hasCheck: /class="check"/.test(html) ? 'yes' : '', updated: today }); log.push('Added: ' + title); }
+      done[fid] = mod;
+    } catch (e) { log.push('Could not bring in "' + f.getName() + '": ' + e.message); }
+  }
+  if (adds.length) appendRows_('notes_index', adds);
+  props.setProperty('csDone', JSON.stringify(done));
+  if (!log.length) log.push('Session notes are up to date.');
+  Logger.log(log.join('\n')); return log;
+}
+/** A Google Doc as Markdown (Drive's own export keeps headings, lists, checkboxes and links). */
+function docAsMarkdown_(id) {
+  const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text%2Fmarkdown',
+    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) throw new Error('Drive would not export it (' + r.getResponseCode() + ')');
+  return r.getContentText();
+}
+/** Texts of the checklist items already ticked in the HQ note, so a rebuild keeps them ticked. */
+function sessionTicked_(html) {
+  const out = {}, re = /<li class="on">([\s\S]*?)<\/li>/g; let m;
+  while ((m = re.exec(html || ''))) out[m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().toLowerCase()] = 1;
+  return out;
+}
+function sessionHtml_(title, md, ticked, docUrl) {
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inl = s => esc(s.replace(/\\([\\`*_{}\[\]()#+\-.!>~|])/g, '$1'))
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank">$2</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|\W)\*([^*\s][^*]*)\*/g, '$1<i>$2</i>');
+  const plain = s => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  let html = '<h1>' + esc(title) + '</h1>', list = null, todo = false;
+  const close = () => { if (list) { html += '</' + list.tag + '>'; list = null; } };
+  const open = (tag, cls) => { if (!list || list.tag !== tag || list.cls !== cls) { close(); list = { tag, cls }; html += '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>'; } };
+  String(md || '').replace(/\r/g, '').split('\n').forEach(l => {
+    let m;
+    if ((m = l.match(/^\s*(#{1,6})\s+(.*)/))) {
+      close(); const t = m[2].replace(/\*\*/g, '').trim();
+      if (m[1].length === 1 && plain(esc(t)) === plain(esc(title))) return;          // the Doc's own title: already the note title
+      todo = /to-?do|follow|action|next step|tindak/i.test(t);
+      html += (m[1].length <= 2 ? '<h2>' : '<h3>') + inl(t) + (m[1].length <= 2 ? '</h2>' : '</h3>'); return;
+    }
+    if ((m = l.match(/^\s*[-*+]\s+\[( |x|X)\]\s+(.*)/)) || (todo && (m = l.match(/^\s*[-*+]\s+()(.*)/)))) {
+      open('ul', 'check'); const t = inl(m[2]);
+      html += '<li class="' + (/x/i.test(m[1]) || ticked[plain(t)] ? 'on' : '') + '">' + t + '</li>'; return;
+    }
+    if ((m = l.match(/^\s*[-*+]\s+(.*)/))) { open('ul', ''); html += '<li>' + inl(m[1]) + '</li>'; return; }
+    if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { open('ol', ''); html += '<li>' + inl(m[1]) + '</li>'; return; }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)) { close(); html += '<hr>'; return; }
+    close(); const t = l.trim();
+    if (t) html += '<p>' + inl(t) + '</p>';
+  });
+  close();
+  html += '<p><small>From Claude · <a href="' + esc(docUrl) + '" target="_blank">Open the original in Drive</a></small></p>';
+  return html;
 }
