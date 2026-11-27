@@ -125,7 +125,7 @@ function newsGemini(force) {
    Automatic: 9 a.m. follow-up in each group for to-dos that are due or overdue (each item at most every 2 days);
               9 p.m. recap of busy groups to Timothy privately.
    ====================================================================================================== */
-const TG_VERSION = '2026-11-26 20.00';
+const TG_VERSION = '2026-11-27 07.40';
 
 function tgProps_() { return PropertiesService.getScriptProperties(); }
 function tg_(method, payload) {
@@ -249,7 +249,8 @@ const TG_HELP = [
   'Send text, a voice note, a forwarded message, a photo of a receipt or a PDF:',
   '• "Call Pak Budi Thursday" → a task on Thursday',
   '• "Claude, draft the KOMID outline" → your For Claude list',
-  '• "Idea: sermon on Nehemiah 4" → a note for Claude',
+  '• "Note: …" or "Catatan: …" → saved word for word in HQ Notes › Telegram',
+  '• "Idea: sermon on Nehemiah 4" → a note in HQ Notes',
   '• a receipt photo → Money (cash out)',
   '• "What\'s on tomorrow?" / "Sermons on Nehemiah?" → an answer from HQ',
   '',
@@ -470,7 +471,7 @@ function tgCallback_(cb) {
     patchRow_('tasks', id, { world: next, updated: today }); answer('Now: ' + next);
     tg_('editMessageReplyMarkup', { chat_id: chat, message_id: msg.message_id, reply_markup: { inline_keyboard: tgTaskButtons_(id, next) } });
   } else if (action === 'del') {
-    patchRow_(extra === 'cash' ? 'cash_entries' : 'tasks', id, { void: '1', updated: today }); answer('Removed from HQ');
+    patchRow_(extra === 'cash' ? 'cash_entries' : extra === 'note' ? 'notes_index' : 'tasks', id, { void: '1', updated: today }); answer('Removed from HQ');
     tg_('editMessageText', { chat_id: chat, message_id: msg.message_id, text: '<s>' + tgEsc_(msg.text || '') + '</s>\n<i>(removed)</i>', parse_mode: 'HTML' });
   } else if (action === 'done') {
     patchRow_('tasks', id, { status: 'done', updated: today }); answer('Done ✓');
@@ -495,6 +496,13 @@ function tgPrivate_(m) {
   const doc = m.document && /^(application\/pdf|image\/)/.test(m.document.mime_type || '') ? m.document : null;
   const fwd = !!(m.forward_date || m.forward_origin);
   if (!text && !voice && !photo && !doc) return tgSay_('I can take text, voice notes, forwarded messages, photos of receipts and PDFs.');
+  const noteCmd = text.match(/^(?:note|notes|catatan|\/note)\s*[:：\-–]?\s*([\s\S]*)$/i);
+  if (noteCmd && (/^\/note/i.test(text) || /^(note|notes|catatan)\s*[:：\-–]/i.test(text))) {   // "Note: …" = saved word for word, no guessing
+    const body = noteCmd[1].trim();
+    if (!body) return tgSay_('Send the note after "Note:", for example:\nNote: Discipleship Core – Evan, Gerry …');
+    const lines = body.split('\n'), title = lines[0].replace(/^[-•*]\s*/, '').trim().slice(0, 80);
+    return tgNoteSaid_(tgSaveCapture_(title, lines.length > 1 ? lines.slice(1).join('\n') : '', /gereja|church|komid|khotbah|sermon|doa|prayer|discipleship|pemuridan|pelayan|retreat|ibadah/i.test(body) ? 'church' : /pt |cwm|peregrine|citra|supplier|invoice|kantor|office/i.test(body) ? 'company' : 'personal', fwd ? 'forwarded' : ''));
+  }
   tg_('sendChatAction', { chat_id: m.chat.id, action: 'typing' });
   const parts = [{ text: tgPrompt_(text, fwd, !!photo, !!doc) }];
   if (voice) parts.push(tgMedia_(voice.file_id, voice.mime_type || 'audio/ogg'));
@@ -506,18 +514,47 @@ function tgPrivate_(m) {
   const items = (res.items || []).filter(i => i && i.title).slice(0, 5);
   if (!items.length) return tgSay_('I couldn\'t find a task, note or question in that.' + (res.transcript ? '\n<i>I heard: ' + tgEsc_(res.transcript) + '</i>' : ''));
   const today = tgToday_(), how = voice ? ' (voice)' : photo ? ' (photo)' : doc ? ' (PDF)' : fwd ? ' (forwarded)' : '';
-  const rows = items.map(i => ({
-    id: tgId_(), title: String(i.title).trim(), world: ['church', 'company', 'personal'].indexOf(i.world) >= 0 ? i.world : 'personal',
-    date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || '') ? i.date : (i.kind === 'task' ? today : ''),
-    part: ['morning', 'noon', 'evening'].indexOf(i.part) >= 0 ? i.part : 'morning', status: '',
-    for: i.kind === 'task' ? '' : 'claude', type: i.kind === 'task' ? '' : (i.kind === 'note' ? 'note' : 'task'),
-    notes: [i.notes, 'From Telegram' + how].filter(x => x).join(' · '), void: '', created: today, updated: today }));
-  appendTasks_(rows);
   const lines = [];
   if (voice && res.transcript) lines.push('<i>"' + tgEsc_(res.transcript) + '"</i>\n');
   if (res.summary) lines.push('📋 ' + tgEsc_(res.summary) + '\n');
-  rows.forEach(r => lines.push('✓ <b>' + tgEsc_(r.title) + '</b> — ' + (r.for ? (r.type === 'note' ? 'note for Claude' : 'for Claude') : (r.date === today ? 'today' : r.date)) + ' · ' + r.world));
-  tgSay_(lines.join('\n'), null, rows.length === 1 && !rows[0].for ? tgTaskButtons_(rows[0].id, rows[0].world) : null);
+  const notes = items.filter(i => i.kind === 'note').map(i => tgSaveCapture_(String(i.title).trim(),
+    [i.notes, voice && res.transcript ? 'Voice note: "' + res.transcript + '"' : ''].filter(x => x).join('\n\n'), i.world, how.replace(/[() ]/g, '')));
+  notes.forEach(n => lines.push(n.link ? '📝 <b>' + tgEsc_(n.title) + '</b> — saved in Notes › Telegram' : '⚠️ <b>' + tgEsc_(n.title) + '</b> — could not save to Notes: ' + tgEsc_(n.error)));
+  const rows = items.filter(i => i.kind !== 'note').map(i => ({
+    id: tgId_(), title: String(i.title).trim(), world: ['church', 'company', 'personal'].indexOf(i.world) >= 0 ? i.world : 'personal',
+    date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || '') ? i.date : (i.kind === 'task' ? today : ''),
+    part: ['morning', 'noon', 'evening'].indexOf(i.part) >= 0 ? i.part : 'morning', status: '',
+    for: i.kind === 'task' ? '' : 'claude', type: i.kind === 'task' ? '' : 'task',
+    notes: [i.notes, 'From Telegram' + how].filter(x => x).join(' · '), void: '', created: today, updated: today }));
+  if (rows.length) appendTasks_(rows);
+  rows.forEach(r => lines.push('✓ <b>' + tgEsc_(r.title) + '</b> — ' + (r.for ? 'for Claude' : (r.date === today ? 'today' : r.date)) + ' · ' + r.world));
+  const one = notes.length + rows.length === 1;
+  tgSay_(lines.join('\n'), null, one && rows.length && !rows[0].for ? tgTaskButtons_(rows[0].id, rows[0].world)
+    : one && notes[0].link ? [[{ text: '🗑 Undo', callback_data: 'del:' + notes[0].id + ':note' }]] : null);
+}
+/** A note from Timothy's private chat becomes a real HQ note in the folder "Telegram" (lists kept as lists). */
+function tgSaveCapture_(title, body, world, how) {
+  const id = 'tg-' + tgId_(), today = tgToday_();
+  title = title || 'Note from Telegram (' + today + ')';
+  let html = '<h1>' + tgEsc_(title) + '</h1>', list = '';
+  const flush = () => { if (list) { html += '<ul>' + list + '</ul>'; list = ''; } };
+  String(body || '').split('\n').forEach(l => {
+    const t = l.trim();
+    if (/^[-•*]\s+/.test(t)) list += '<li>' + tgEsc_(t.replace(/^[-•*]\s+/, '')) + '</li>';
+    else { flush(); html += t ? '<p>' + tgEsc_(t) + '</p>' : '<p><br></p>'; }
+  });
+  flush();
+  html += '<p><small>From Telegram' + (how ? ' (' + tgEsc_(how) + ')' : '') + ' · ' + Utilities.formatDate(new Date(), TZ, 'd MMM yyyy HH:mm') + '</small></p>';
+  try {
+    const link = writeNote_(id, title, html);
+    appendRows_('notes_index', [{ id, title, para: 'Areas', type: world === 'company' ? 'Work' : world === 'church' ? 'Church' : 'Personal', date: today, driveLink: link, tags: 'telegram', void: '', kind: 'note',
+      folder: 'Telegram', text: (title + ' ' + String(body || '').replace(/\s+/g, ' ')).slice(0, 300), hasCheck: '', updated: today }]);
+    return { id, title, link };
+  } catch (e) { Logger.log('Telegram note not saved: ' + e.message); return { id, title, link: '', error: e.message }; }
+}
+function tgNoteSaid_(n) {
+  if (!n.link) return tgSay_('⚠️ I couldn\'t save that to Notes: ' + tgEsc_(n.error) + '\nNothing was lost — your message is still here in the chat. Try again in a minute.');
+  tgSay_('📝 Saved in HQ Notes › Telegram\n<b>' + tgEsc_(n.title) + '</b>', null, [[{ text: '🗑 Undo', callback_data: 'del:' + n.id + ':note' }]]);
 }
 function tgPrompt_(text, fwd, hasPhoto, hasDoc) {
   return [
@@ -565,10 +602,15 @@ function answerHqQuestion_(query, domain) {
       q.split(/\s+/).filter(w => w.length > 3).some(w => (x.title + ' ' + x.themes + ' ' + x.series + ' ' + x.bigIdea + ' ' + x.refs).toLowerCase().indexOf(w) >= 0)).slice(0, 10);
     if (s.length) ctx.push('SERMONS:\n' + s.map(x => '- ' + (x.date || '?') + ' "' + x.title + '" (' + (x.context || '') + ', ' + (x.refs || '') + ') – ' + (x.bigIdea || '')).join('\n'));
   } catch (e) {} }
-  if (want('notes', /note|catatan|idea|ide/i)) { try {
+  if (want('notes', /note|catatan|idea|ide|save|simpan|where|mana/i)) { try {
     const w = query.toLowerCase().split(/\s+/).filter(x => x.length > 3);
-    const n = readTab_('notes_index').filter(x => !x.void && x.kind === 'note' && w.some(k => (x.title + ' ' + x.text + ' ' + x.folder).toLowerCase().indexOf(k) >= 0)).slice(0, 8);
+    const all = readTab_('notes_index').filter(x => !x.void && x.kind === 'note');
+    const n = all.filter(x => w.some(k => (x.title + ' ' + x.text + ' ' + x.folder).toLowerCase().indexOf(k) >= 0)).slice(0, 8);
     if (n.length) ctx.push('NOTES:\n' + n.map(x => '- [' + (x.folder || 'Notes') + '] ' + x.title + ': ' + String(x.text || '').slice(0, 200)).join('\n'));
+    const recent = all.filter(x => x.folder === 'Telegram').slice(-5);
+    if (recent.length) ctx.push('LATEST NOTES SAVED FROM TELEGRAM (in HQ Notes › Telegram):\n' + recent.map(x => '- ' + x.date + ' ' + x.title).join('\n'));
+    const fc = readTab_('tasks').filter(x => !x.void && x.for === 'claude' && x.type === 'note').slice(-5);
+    if (fc.length) ctx.push('OLDER NOTES ON THE FOR CLAUDE LIST (not in Notes):\n' + fc.map(x => '- ' + x.title).join('\n'));
   } catch (e) {} }
   if (want('email', /email|mail|inbox/i)) { try {
     const b = brief_(); if (b.important && b.important.length) ctx.push('IMPORTANT UNREAD EMAIL:\n' + b.important.map(e => '- ' + e.from + ': ' + e.subject).join('\n'));
