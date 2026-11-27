@@ -398,11 +398,15 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='35 · 27 Nov 2026';
+const VERSION='36 · 27 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
 let D=ls.get('hq-data',null),EV=ls.get('hq-ev',[]),BRIEF=ls.get('hq-brief',null),VERSE=ls.get('hq-verse',null);
+/* YouVersion now puts the reference at the start of the verse text: split it off (also fixes a verse saved earlier). */
+function fixVerse(v){if(!v||!v.text)return v;const m=String(v.text).match(/^((?:[1-3]\s?)?[A-Za-z][A-Za-z .]*?\s\d+:\d+(?:[-–]\d+)?(?:\s\([A-Z0-9]+\))?)\s+([\s\S]+)$/);
+ if(m&&(!v.ref||/verse of the day/i.test(v.ref)))return{...v,text:m[2],ref:m[1]};if(/verse of the day/i.test(v.ref||''))return{...v,ref:''};return v}
+VERSE=fixVerse(VERSE);
 let BODY=ls.get('hq-notes',{});
 let UI=ls.get('hq-ui',{view:'today',nf:'All',pw:'all',fs:19});
 /* HQ always opens on Today, and Notes always starts at its main list (not the last folder). */
@@ -478,7 +482,7 @@ async function load(){
   api({action:'calendar',days:2}).then(c=>{EV=c.events;ls.set('hq-ev',EV);if(UI.view==='today')render()}).catch(e=>{syncState={s:'error',msg:'Calendar: '+e.message};showSync()});
   api({action:'brief'}).then(b=>{BRIEF=b.brief;ls.set('hq-brief',BRIEF);if(UI.view==='today')render()}).catch(()=>{});
   if(CONTACTS.day!==TODAY)fillFromContacts(true).then(r=>{if(r.n&&UI.view==='people')people()}).catch(()=>{});
-  if(!VERSE||VERSE.day!==TODAY)api({action:'verse'}).then(v=>{VERSE={...v.verse,day:TODAY};ls.set('hq-verse',VERSE);if(UI.view==='today')render()}).catch(e=>{VERSE={day:TODAY,err:/Unknown action/.test(e.message)?'old':e.message};if(UI.view==='today')render()});
+  if(!VERSE||VERSE.day!==TODAY||!VERSE.ref||/verse of the day/i.test(VERSE.ref))api({action:'verse'}).then(v=>{VERSE=fixVerse({...v.verse,day:TODAY});ls.set('hq-verse',VERSE);if(UI.view==='today')render()}).catch(e=>{VERSE={day:TODAY,err:/Unknown action/.test(e.message)?'old':e.message};if(UI.view==='today')render()});
  }catch(e){ensure();syncState={s:'error',msg:e.message};render()}
  showSync()}
 addEventListener('online',()=>flush());
