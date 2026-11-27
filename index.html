@@ -398,7 +398,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ls={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 /* ---------- state ---------- */
-const VERSION='36 · 27 Nov 2026';
+const VERSION='37 · 27 Nov 2026';
 const TABS=['tasks','people','notes_index','places','habits','books','highlights','cashbooks','cash_entries','briefs','reading_log','sermons','notebooks'];
 let cfg=ls.get('hq-cfg',{});
 const live=()=>!!(cfg.url&&cfg.token);
@@ -482,7 +482,7 @@ async function load(){
   api({action:'calendar',days:2}).then(c=>{EV=c.events;ls.set('hq-ev',EV);if(UI.view==='today')render()}).catch(e=>{syncState={s:'error',msg:'Calendar: '+e.message};showSync()});
   api({action:'brief'}).then(b=>{BRIEF=b.brief;ls.set('hq-brief',BRIEF);if(UI.view==='today')render()}).catch(()=>{});
   if(CONTACTS.day!==TODAY)fillFromContacts(true).then(r=>{if(r.n&&UI.view==='people')people()}).catch(()=>{});
-  if(!VERSE||VERSE.day!==TODAY||!VERSE.ref||/verse of the day/i.test(VERSE.ref))api({action:'verse'}).then(v=>{VERSE=fixVerse({...v.verse,day:TODAY});ls.set('hq-verse',VERSE);if(UI.view==='today')render()}).catch(e=>{VERSE={day:TODAY,err:/Unknown action/.test(e.message)?'old':e.message};if(UI.view==='today')render()});
+  if(!VERSE||VERSE.day!==TODAY||!VERSE.ref||/verse of the day/i.test(VERSE.ref)||!VERSE.v3)api({action:'verse'}).then(v=>{VERSE=fixVerse({...v.verse,day:TODAY,v3:1});ls.set('hq-verse',VERSE);if(UI.view==='today')render()}).catch(e=>{VERSE={day:TODAY,err:/Unknown action/.test(e.message)?'old':e.message};if(UI.view==='today')render()});
  }catch(e){ensure();syncState={s:'error',msg:e.message};render()}
  showSync()}
 addEventListener('online',()=>flush());

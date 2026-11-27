@@ -7,7 +7,7 @@
 const SHEET_ID = 'PASTE_SHEET_ID_HERE';            // fallback only; Script property SHEET_ID wins
 const TOKEN = 'PASTE_YOUR_SECRET_TOKEN_HERE';      // fallback only; Script property HQ_TOKEN wins
 const TZ = 'Asia/Jakarta';
-const SCRIPT_VERSION = '2026-11-27 22.15'; // shown in HQ › Settings, so you can tell which copy is deployed
+const SCRIPT_VERSION = '2026-11-27 22.30'; // shown in HQ › Settings, so you can tell which copy is deployed
 const ROOT_FOLDER = 'Claude';      // everything HQ creates lives inside this Drive folder
 const NOTES_FOLDER = 'HQ Notes';
 const BUFFER_MIN = 10;               // extra minutes added before every leave-by time
@@ -278,12 +278,13 @@ function writeNote_(id, title, html) {
 /* ---------- Verse of the Day ---------- */
 function verse_() {
   const cache = CacheService.getScriptCache();
-  const key = 'votd2_' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const key = 'votd3_' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
   const hit = cache.get(key);
   if (hit) return JSON.parse(hit);
   let v = null;
   try {   // YouVersion's own Verse of the Day page
-    const html = UrlFetchApp.fetch('https://www.bible.com/verse-of-the-day', { muteHttpExceptions: true, followRedirects: true }).getContentText();
+    const doy = Number(Utilities.formatDate(new Date(), TZ, 'D'));   // Jakarta's day of the year: bible.com otherwise uses the US date, a day behind every morning
+    const html = UrlFetchApp.fetch('https://www.bible.com/verse-of-the-day?day=' + doy, { muteHttpExceptions: true, followRedirects: true }).getContentText();
     const m = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i) || html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i);
     const img = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i);
     const ref = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i);
